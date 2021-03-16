@@ -32,7 +32,7 @@
     This module compresses the BÍN dictionary from a ~300 MB uncompressed
     form into a compact binary representation. A radix trie data structure
     is used to store a mapping from word forms to integer indices.
-    These indices are then used to look up word stems, categories and meanings.
+    These indices are then used to look up word lemmas, categories and meanings.
 
     The data format is a tradeoff between storage space and retrieval
     speed. The resulting binary image is designed to be read into memory as
@@ -60,19 +60,19 @@
 
         mapping section: a mapping from word forms to meanings. Each word
         form has an index, and this section maps from that index to a list
-        of (stem index, meaning index, ksnid string index) tuples.
+        of (lemma index, meaning index, ksnid string index) tuples.
 
         forms section: a compact radix trie that maps word forms to indices
         into the mapping section.
 
-        stems section: a mapping of stem indices to
-        (stem string, utg number, category index) tuples. Also, if the stem
-        has case variants (a list of suffixes that maps the stem to each case),
+        lemmas section: a mapping of lemma indices to
+        (lemma string, utg number, category index) tuples. Also, if the lemma
+        has case variants (a list of suffixes that maps the lemma to each case),
         the index of the variant list is stored here as well.
 
         variants section: a mapping of case variant indexes to case variant
         specifications. A case variant specification describes how to obtain
-        the case variants of a given stem string, i.e. stem -> nf,þf,þgf,ef forms.
+        the case variants of a given lemma string, i.e. lemma -> nf,þf,þgf,ef forms.
 
         alphabet section: a mapping of character indexes to characters.
         This is used to compress word form strings into 7 bits per character
@@ -126,14 +126,13 @@ from islenska.basics import (
     MeaningTuple,
     BIN_COMPRESSOR_VERSION,
     BIN_COMPRESSED_FILE,
-    STEM_MAX,
+    LEMMA_MAX,
     MEANING_MAX,
     MEANING_BITS,
     KSNID_MAX,
     UTG_BITS,
     SUBCAT_BITS,
     UINT32,
-    CASES_LATIN,
     COMMON_KIX_0,
     COMMON_KIX_1,
 )
@@ -366,7 +365,7 @@ class BinCompressor:
         in UTF-8 and have five columns, delimited by semicolons (';'), i.e.:
 
         (Icelandic) stofn;utg;ordfl;fl;ordmynd;beyging
-        (English)   stem;version;category;subcategory;form;meaning
+        (English)   lemma;version;category;subcategory;form;meaning
 
         The compression is not particularly intensive, as there is a
         tradeoff between the compression level and lookup speed. The
@@ -395,7 +394,7 @@ class BinCompressor:
 
     def __init__(self) -> None:
         self._forms = Trie()  # ordmynd
-        self._stems = Indexer()  # stofn
+        self._lemmas = Indexer()  # stofn
         self._meanings = Indexer()  # beyging
         self._ksnid_strings = Indexer()  # ksnid additional fields
         self._subcats = Indexer()  # fl
@@ -403,16 +402,12 @@ class BinCompressor:
         self._alphabet_bytes = bytes()
         # map form index -> { (stem_ix, meaning_ix, ksnid_ix) }
         self._lookup_form: Dict[int, Set[Tuple[int, int, int]]] = defaultdict(set)
-        # map stem index -> { case: { form } }
-        self._lookup_stem: Dict[int, Dict[bytes, Set[bytes]]] = defaultdict(
-            lambda: defaultdict(set)
-        )
-        # Count of stem word categories
+        # map lemma index -> set of all associated word forms
+        self._stem_forms: Dict[int, Set[bytes]] = defaultdict(set)
+        # Count of lemma word categories
         self._stem_cat_count: Dict[str, int] = defaultdict(int)
-        # Count of word forms for each case for each stem
-        self._canonical_count: Dict[bytes, int] = defaultdict(int)
-        # map declension pattern -> { offset }
-        self._case_variants: Dict[bytes, int] = dict()
+        # Word form templates
+        self._templates: Dict[bytes, int] = dict()
         # Running utg index counter
         self._utg = 0
         # The starting utg index of Greynir additions
@@ -455,7 +450,7 @@ class BinCompressor:
                                 self._begin_greynir_utg = self._utg
                                 last_stofn = m.stofn
                             elif m.stofn != last_stofn:
-                                # New stem: increment the utg number
+                                # New lemma: increment the utg number
                                 self._utg += 1
                                 last_stofn = m.stofn
                             # Assign a Greynir utg number
@@ -469,12 +464,12 @@ class BinCompressor:
                         if m.utg > self._utg:
                             # Keep track of the highest utg number from BÍN
                             self._utg = m.utg
-                    # Skip this if the stem is capitalized differently
+                    # Skip this if the lemma is capitalized differently
                     # than the word form (which is a bug in BÍN)
                     if m.stofn[0].isupper() != m.ordmynd[0].isupper():
                         print(
-                            "Deleting {stem} {utg} {ordfl} {fl} {form} {meaning}".format(
-                                stem=m.stofn,
+                            "Deleting {lemma} {utg} {ordfl} {fl} {form} {meaning}".format(
+                                lemma=m.stofn,
                                 utg=m.utg,
                                 ordfl=m.ordfl,
                                 fl=m.fl,
@@ -483,7 +478,7 @@ class BinCompressor:
                             )
                         )
                         continue
-                    stem = m.stofn.encode("latin-1")
+                    lemma = m.stofn.encode("latin-1")
                     ordfl = m.ordfl.encode("latin-1")
                     fl = m.fl.encode("latin-1")
                     form = m.ordmynd.encode("latin-1")
@@ -495,10 +490,10 @@ class BinCompressor:
                     cix = self._subcats.add(fl)
                     if wix > max_wix:
                         max_wix = wix
-                    # Add a (stem index, utg, subcat index) tuple
-                    six = self._stems.add((stem, wix, cix))
+                    # Add a (lemma index, utg, subcat index) tuple
+                    six = self._lemmas.add((lemma, wix, cix))
                     if six > stem_cnt:
-                        # New stem, not seen before: count its category (ordfl)
+                        # New lemma, not seen before: count its category (ordfl)
                         self._stem_cat_count[m.ordfl] += 1
                         stem_cnt = six
                     # Form index
@@ -508,13 +503,10 @@ class BinCompressor:
                     # Ksnid string index
                     kix = self._ksnid_strings.add(ksnid)
                     self._lookup_form[fix].add((six, mix, kix))
-                    case_forms = self._lookup_stem[six]
-                    for case in CASES_LATIN:
-                        if case in meaning:
-                            # Store each case with the stem
-                            if form not in case_forms[case]:
-                                case_forms[case].add(form)
-                                self._canonical_count[case] += 1
+                    # Add this word form to the set of word forms
+                    # of its lemma, if it is different from the lemma
+                    if lemma != form:
+                        self._stem_forms[six].add(form)
                     cnt += 1
                     # Progress indicator
                     if cnt % 10000 == 0:
@@ -523,7 +515,7 @@ class BinCompressor:
         print("Time: {0:.1f} seconds".format(time.time() - start_time))
         print("Highest utg (wix) is {0}".format(max_wix))
         # Invert the indices so that values can be looked up by integer index
-        self._stems.invert()
+        self._lemmas.invert()
         self._meanings.invert()
         self._ksnid_strings.invert()
         self._subcats.invert()
@@ -533,18 +525,10 @@ class BinCompressor:
     def print_stats(self) -> None:
         """ Print a few key statistics about the dictionary """
         print("Forms are {0}".format(len(self._forms)))
-        print("Stems are {0}".format(len(self._stems)))
+        print("Stems are {0}".format(len(self._lemmas)))
         print("They are distributed as follows:")
         for key, val in self._stem_cat_count.items():
             print("   {0:6s} {1:8d}".format(key, val))
-        for index, case in enumerate(
-            ("Nominative", "Accusative", "Dative", "Possessive")
-        ):
-            print(
-                "{0} forms associated with stems are {1}".format(
-                    case, self._canonical_count[CASES_LATIN[index]]
-                )
-            )
         print("Subcategories are {0}".format(len(self._subcats)))
         print("Meanings are {0}".format(len(self._meanings)))
         print("Ksnid-strings are {0}".format(len(self._ksnid_strings)))
@@ -556,9 +540,9 @@ class BinCompressor:
         form_latin = form.encode("latin-1")
         try:
             values = self._lookup_form[self._forms[form_latin]]
-            # Obtain the stem and meaning tuples corresponding to the word form
+            # Obtain the lemma and meaning tuples corresponding to the word form
             result = [
-                (self._stems[six], self._meanings[mix])
+                (self._lemmas[six], self._meanings[mix])
                 for six, mix, _ in values
             ]
             # Convert to Unicode and return a 5-tuple
@@ -583,9 +567,9 @@ class BinCompressor:
         try:
             result: List[Ksnid] = []
             values = self._lookup_form[self._forms[form_latin]]
-            # Obtain the stem and meaning tuples corresponding to the word form
+            # Obtain the lemma and meaning tuples corresponding to the word form
             for six, mix, kix in values:
-                stofn, utg, fl_ix = self._stems[six]
+                stofn, utg, fl_ix = self._lemmas[six]
                 ordfl, beyging = self._meanings[mix]
                 ksnid = self._ksnid_strings[kix]
                 result.append(
@@ -604,24 +588,24 @@ class BinCompressor:
             return []
 
     def lookup_forms(self, form: str, case: str = "NF") -> List[Tuple[str, str]]:
-        """ Test lookup of all forms having the same stem as the given form """
+        """ Test lookup of all forms having the same lemma as the given form """
         form_latin = form.encode("latin-1")
         case_latin = case.encode("latin-1")
         try:
             values = self._lookup_form[self._forms[form_latin]]
-            # Obtain the stem and meaning tuples corresponding to the word form
-            v: List[Tuple[bytes, bytes]] = []
-            # Go through the distinct stems found for this word form
-            for six in set(v[0] for v in values):
-                # Look at all forms of this stem that may be canonical
-                if six in self._lookup_stem and case in self._lookup_stem[six]:
-                    for canonical in self._lookup_stem[six][case_latin]:
-                        for s, m, _ in self._lookup_form[self._forms[canonical]]:
-                            if s == six:
-                                b = self._meanings[m][1]
-                                if case_latin in b:
-                                    # Nominative
-                                    v.append((b, canonical))
+            # Obtain the lemma and meaning tuples corresponding to the word form
+            v: Set[Tuple[bytes, bytes]] = set()
+            # Go through the distinct lemmas found for this word form
+            for six in set(vv[0] for vv in values):
+                # Look at all word forms of this lemma
+                lemma = self._lemmas[six][0]
+                for canonical in [lemma] + list(self._stem_forms.get(six, [])):
+                    for s, m, _ in self._lookup_form[self._forms[canonical]]:
+                        if s == six:
+                            b = self._meanings[m][1]
+                            if case_latin in b:
+                                # The 'beyging' string contains the requested case
+                                v.add((b, canonical))
             return [(m.decode("latin-1"), f.decode("latin-1")) for m, f in v]
         except KeyError:
             return []
@@ -715,9 +699,9 @@ class BinCompressor:
         f.write(UINT32.pack(0))
         forms_offset = f.tell()
         f.write(UINT32.pack(0))
-        stems_offset = f.tell()
+        lemmas_offset = f.tell()
         f.write(UINT32.pack(0))
-        variants_offset = f.tell()
+        templates_offset = f.tell()
         f.write(UINT32.pack(0))
         meanings_offset = f.tell()
         f.write(UINT32.pack(0))
@@ -761,7 +745,7 @@ class BinCompressor:
             # cut off the end of the previous string, before appending the
             # following characters (prefixed by a length byte). The
             # set "hestur", "hest", "hesti", "hests" is thus encoded
-            # like so, assuming "hestur" is the base (stem):
+            # like so, assuming "hestur" is the base (lemma):
             # 1) The set is sorted to become the list
             #    "hest", "hesti", "hests", "hestur"
             # 2) "hest" is written as 2, 0, ""
@@ -771,7 +755,7 @@ class BinCompressor:
             # Note that a variation string such as this one, with four components,
             # is stored only once and then referred to by index. This saves
             # a lot of space since declension variants are identical
-            # for many different stems.
+            # for many different lemmas.
 
             # Sort the set for maximum compression
             ss = sorted(s)
@@ -837,15 +821,15 @@ class BinCompressor:
             # loop through them
             num_meanings = len(self._lookup_form[fix])
             assert num_meanings > 0
-            # Bucket the meanings by stem index
+            # Bucket the meanings by lemma index
             stem_meanings: DefaultDict[int, List[Tuple[int, int]]] = defaultdict(list)
             for six, mix, kix in self._lookup_form[fix]:
                 stem_meanings[six].append((mix, kix))
             # Index of the meaning being written
             ix = 0
             for six, mlist in stem_meanings.items():
-                # Allocate bits for the stem index
-                assert six < STEM_MAX
+                # Allocate bits for the lemma index
+                assert six < LEMMA_MAX
                 for mix, kix in mlist:
                     # Allocate 11 bits for the meaning index
                     assert mix < MEANING_MAX
@@ -878,70 +862,62 @@ class BinCompressor:
         fixup(forms_offset)
         self.write_forms(f, self._alphabet_bytes, lookup_map)
 
-        # Write the stems
-        write_padded(b"[stems]", 16)
+        # Write the lemmas
+        write_padded(b"[lemmas]", 16)
         lookup_map = []
-        f.write(UINT32.pack(len(self._stems)))
-        # Keep track of the number of bytes that will be written
-        # to the case variant buffer
-        num_sets_bytes = 0
-        for ix in range(len(self._stems)):
+        f.write(UINT32.pack(len(self._lemmas)))
+        # Keep track of the number of bytes that have been written
+        # to the template buffer
+        template_bytes = 0
+        for ix in range(len(self._lemmas)):
             lookup_map.append(f.tell())
             # Squeeze the utg (word id) and subcategory index into the lower 31 bits.
             # The uppermost bit flags whether a canonical forms list is present.
-            stem, utg, cix = self._stems[ix]
+            lemma, utg, cix = self._lemmas[ix]
             assert 0 <= utg < 2 ** UTG_BITS
             assert 0 <= cix < 2 ** SUBCAT_BITS
             bits = (utg << SUBCAT_BITS) | cix
-            has_case_variants = False
-            if self._lookup_stem.get(ix):
-                # We have a set of word forms in four cases
-                # for this stem
+            has_template = False
+            if ix in self._stem_forms:
+                # We have a set of word forms for this lemma
+                # (that differ from the lemma itself)
                 bits |= 0x80000000
-                has_case_variants = True
+                has_template = True
             f.write(UINT32.pack(bits))
-            # Write the stem
-            write_string(stem)
-            # Write the set of word forms in four cases, compressed,
-            # if this stem has such a set
-            if has_case_variants:
-                case_forms = self._lookup_stem[ix]
-                sets: List[bytearray] = []
-                for case in CASES_LATIN:
-                    sets.append(compress_set(case_forms[case], base=stem))
-                sets_bytes = b"".join(sets)
-                # Have we seen this set of case variants before?
-                case_variant_offset = self._case_variants.get(sets_bytes)
-                if case_variant_offset is None:
-                    # No: put it in the index, at the current offset
-                    case_variant_offset = num_sets_bytes
-                    num_sets_bytes += len(sets_bytes)
-                    self._case_variants[sets_bytes] = case_variant_offset
-                f.write(UINT32.pack(case_variant_offset))
+            # Write the lemma
+            write_string(lemma)
+            # Write the inflection template, compressed, if the lemma
+            # has multiple associated word forms
+            if has_template:
+                b = bytes(compress_set(self._stem_forms[ix], base=lemma))
+                # Have we seen this inflection template before?
+                template_offset = self._templates.get(b)
+                if template_offset is None:
+                    # No: put it in the template buffer, at the current offset
+                    template_offset = template_bytes
+                    template_bytes += len(b)
+                    self._templates[b] = template_offset
+                f.write(UINT32.pack(template_offset))
 
-        print("Different case variants are {0}".format(len(self._case_variants)))
-        print(
-            "Bytes used for case variants are {0}".format(
-                num_sets_bytes + 4 * len(self._case_variants)
-            )
-        )
+        print("Distinct inflection templates are {0}".format(len(self._templates)))
+        print("Bytes used for templates are {0}".format(template_bytes))
 
-        # Write the index-to-offset mapping table for stems
-        fixup(stems_offset)
+        # Write the index-to-offset mapping table for lemmas
+        fixup(lemmas_offset)
         for offset in lookup_map:
             f.write(UINT32.pack(offset))
 
-        # Write the case variants
-        write_padded(b"[variants]", 16)
-        fixup(variants_offset)
+        # Write the inflection templates
+        write_padded(b"[templates]", 16)
+        fixup(templates_offset)
         # Sort the case variants array by increasing offset
+        # (actually, this should not be needed if the dict is enumerated
+        # in insertion order, but just in case)
         check = 0
-        for sets_bytes, offset in sorted(
-            self._case_variants.items(), key=lambda x: x[1]
-        ):
+        for b, offset in self._templates.items():
             assert offset == check
-            f.write(sets_bytes)
-            check += len(sets_bytes)
+            f.write(b)
+            check += len(b)
         # Align to a 16-byte boundary
         align = check % 16
         if align:

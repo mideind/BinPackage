@@ -101,17 +101,17 @@ def test_bin() -> None:
     def f(
         word: str,
         case: str,
-        stem: str,
+        lemma: str,
         cat: str,
         beyging_filter: Optional[BeygingFunc] = None,
     ):
         meanings = b.lookup_case(
-            word, case, cat=cat, stem=stem, beyging_filter=beyging_filter
+            word, case, cat=cat, lemma=lemma, beyging_filter=beyging_filter
         )
         return {(m[4], m[5]) for m in meanings}
 
     def declension(
-        word: str, stem: str, cat: str, beyging_filter: Optional[BeygingFunc] = None
+        word: str, lemma: str, cat: str, beyging_filter: Optional[BeygingFunc] = None
     ):
         result: List[str] = []
 
@@ -121,7 +121,7 @@ def test_bin() -> None:
             return "2" not in b and "3" not in b
 
         for case in ("NF", "ÞF", "ÞGF", "EF"):
-            wf_list = list(f(word, case, stem, cat, bf))
+            wf_list = list(f(word, case, lemma, cat, bf))
             result.append(wf_list[0][0] if wf_list else "N/A")
         return tuple(result)
 
@@ -133,10 +133,10 @@ def test_bin() -> None:
         ("breiðustu", "EVB-HK-NFFT"),
         ("breiðustu", "EVB-KK-NFFT"),
     }
-    assert b.lookup_case("fjarðarins", "NF", cat="kk", stem="fjörður") == {
+    assert b.lookup_case("fjarðarins", "NF", cat="kk", lemma="fjörður") == {
         ("fjörður", 5697, "kk", "alm", "fjörðurinn", "NFETgr")
     }
-    assert b.lookup_case("breiðastra", "NF", cat="lo", stem="breiður") == {
+    assert b.lookup_case("breiðastra", "NF", cat="lo", lemma="breiður") == {
         ("breiður", 388135, "lo", "alm", "breiðastir", "ESB-KK-NFFT"),
         ("breiður", 388135, "lo", "alm", "breiðastar", "ESB-KVK-NFFT"),
         ("breiður", 388135, "lo", "alm", "breiðust", "ESB-HK-NFFT"),
@@ -467,7 +467,9 @@ def test_casting() -> None:
     assert db.cast_to_dative("Kattarhestur") == "Kattarhesti"
     assert db.cast_to_genitive("Kattarhestur") == "Kattarhests"
 
-    f: Callable[[Iterable[BinMeaning]], List[BinMeaning]] = lambda mm: [m for m in mm if "2" not in m.beyging]
+    f: Callable[[Iterable[BinMeaning]], List[BinMeaning]] = lambda mm: [
+        m for m in mm if "2" not in m.beyging
+    ]
     assert db.cast_to_accusative("fjórir", meaning_filter_func=f) == "fjóra"
     assert db.cast_to_dative("fjórir", meaning_filter_func=f) == "fjórum"
     assert db.cast_to_genitive("fjórir", meaning_filter_func=f) == "fjögurra"
@@ -484,6 +486,11 @@ def test_casting() -> None:
     assert db.cast_to_accusative("Kópavogur", meaning_filter_func=f) == "Kópavog"
     assert db.cast_to_dative("Kópavogur", meaning_filter_func=f) == "Kópavogi"
     assert db.cast_to_genitive("Kópavogur", meaning_filter_func=f) == "Kópavogs"
+
+    assert (
+        db.cast_to_genitive("borgarstjórnarofurmeirihlutinn")
+        == "borgarstjórnarofurmeirihlutans"
+    )
 
 
 def test_forms():

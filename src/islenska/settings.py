@@ -302,6 +302,7 @@ class Settings:
                 "noun_preferences": Settings._handle_noun_preferences,
                 "stem_preferences": Settings._handle_stem_preferences,
                 "adjective_template": Settings._handle_adjective_template,
+                "undeclinable_adjectives": lambda _: None,  # Not required
                 "bin_errata": Settings._handle_bin_errata,
                 "bin_deletions": Settings._handle_bin_deletions,
             }

@@ -100,11 +100,11 @@ ALL_NUMBERS = frozenset(("et", "ft"))
 CASES = ("NF", "ÞF", "ÞGF", "EF")
 CASES_LATIN = tuple(case.encode("latin-1") for case in CASES)
 
-MeaningTuple = Tuple[str, Optional[int], str, str, str, str]
+MeaningTuple = Tuple[str, int, str, str, str, str]
 
 # Named tuple for the smaller "Sigrúnarsnið" (SHsnid) vocabulary format
-BIN_Meaning = NamedTuple(
-    "BIN_Meaning",
+BinMeaning = NamedTuple(
+    "BinMeaning",
     [
         ("stofn", str),
         ("utg", int),
@@ -114,6 +114,16 @@ BIN_Meaning = NamedTuple(
         ("beyging", str),
     ],
 )
+
+# Compact string representation
+_meaning_repr: Callable[[BinMeaning], str] = lambda self: (
+    "(stofn='{0}', {2}/{3}/{1}, ordmynd='{4}', {5})".format(
+        self.stofn, self.utg, self.ordfl, self.fl, self.ordmynd, self.beyging
+    )
+)
+
+setattr(BinMeaning, "__str__", _meaning_repr)
+setattr(BinMeaning, "__repr__", _meaning_repr)
 
 # Type variable for the Ksnid class
 _Ksnid = TypeVar("_Ksnid", bound="Ksnid")
@@ -139,25 +149,15 @@ class Ksnid:
         self.bmalsnid = ""
         self.bgildi = ""
         self.aukafletta = ""
-        # If _delete is False, we don't want to see this word form in Greynir
-        self._delete = False
-
-    def mark_delete(self) -> None:
-        self._delete = True
-
-    @property
-    def delete(self) -> bool:
-        return self._delete
 
     @property
     def ksnid_string(self) -> str:
         """ Return a concatenation of all Ksnid-specific attributes """
-        delete = "*" if self._delete else ""
         millivisun = "" if self.millivisun == 0 else str(self.millivisun)
         return (
             f"{self.einkunn};{self.malsnid};{self.malfraedi};"
             f"{millivisun};{self.birting};{self.beinkunn};"
-            f"{self.bmalsnid};{self.bgildi};{self.aukafletta}{delete}"
+            f"{self.bmalsnid};{self.bgildi};{self.aukafletta}"
         )
 
     @classmethod
@@ -188,7 +188,7 @@ class Ksnid:
             m.bgildi,
             m.aukafletta,
         ) = t
-        m.utg = int(utg)
+        m.utg = int(utg or "0")
         m.einkunn = int(einkunn)
         m.millivisun = int(millivisun or "0")
         m.beinkunn = int(beinkunn)
@@ -263,15 +263,12 @@ class LFU_Cache(Generic[_K, _V]):
                 result = func(key)
                 self.cache[key] = result
                 self.misses += 1
-
                 # Purge the 10% least frequently used cache entries
                 if len(self.cache) > self.maxsize:
                     for key, _ in nsmallest(
                         self.maxsize // 10, self.use_count.items(), key=itemgetter(1)
                     ):
-
                         del self.cache[key], self.use_count[key]
-
             return result
 
 

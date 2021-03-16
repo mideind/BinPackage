@@ -97,21 +97,15 @@ from islenska.basics import (
     COMMON_KIX_0,
     COMMON_KIX_1,
 )
-from islenska.settings import Settings, BinErrata, BinDeletions
 
 
-_PATH, _ = os.path.split(os.path.realpath(__file__))
-if _PATH.endswith("/tools"):
+_path, _ = os.path.split(os.path.realpath(__file__))
+if _path.endswith("/tools"):
     # Running from the tools directory (./tools)
-    _PATH += "/../src/islenska"  # type: ignore
+    _path += "/../src/islenska"
 else:
     # Running from the base directory (.)
-    _PATH += "/src/islenska"  # type: ignore
-
-# A dictionary of BÍN errata, loaded from BinErrata.conf
-bin_errata: Dict[Tuple[str, str], str] = {}
-# A set of BÍN deletions, loaded from BinErrata.conf
-bin_deletions: Set[Tuple[str, str, str]] = set()
+    _path += "/src/islenska"
 
 
 class _Node:
@@ -325,7 +319,7 @@ class Indexer:
         return str(self._d)
 
 
-class BIN_Compressor:
+class BinCompressor:
 
     """ This class generates a compressed binary file from plain-text
         dictionary data. The input plain-text file is assumed to be coded
@@ -338,7 +332,7 @@ class BIN_Compressor:
         tradeoff between the compression level and lookup speed. The
         resulting binary file is assumed to be read completely into
         memory as a BLOB and usable directly for lookup without further
-        unpacking into higher-level data structures. See the BIN_Compressed
+        unpacking into higher-level data structures. See the BinCompressed
         class for the lookup code.
 
         Note that all text strings and characters in the binary BLOB
@@ -379,6 +373,10 @@ class BIN_Compressor:
         self._canonical_count: Dict[bytes, int] = defaultdict(int)
         # map declension pattern -> { offset }
         self._case_variants: Dict[bytes, int] = dict()
+        # Running utg index counter
+        self._utg = 0
+        # The starting utg index of Greynir additions
+        self._begin_greynir_utg = 0
         # The indices of the most common ksnid_strings
         common_kix_0 = self._ksnid_strings.add("1;;;;V;1;;;".encode("latin-1"))
         assert COMMON_KIX_0 == common_kix_0
@@ -392,6 +390,7 @@ class BIN_Compressor:
         stem_cnt = -1
         max_wix = 0
         start_time = time.time()
+        last_stofn = ""
         for fname in fnames:
             print("Reading file '{0}'...\n".format(fname))
             with open(fname, "r") as f:
@@ -403,17 +402,33 @@ class BIN_Compressor:
                     t = line.split(";")
                     m = Ksnid()
                     if len(t) == 6:
-                        # Older (SHsnid) format file
+                        # Older (SHsnid) format file, containing Greynir additions
                         m.stofn, utg, m.ordfl, m.fl, m.ordmynd, m.beyging = t
                         m.utg = int(utg)
+                        if m.utg <= 0:
+                            # No utg number: allocate a new one
+                            if self._begin_greynir_utg == 0:
+                                # First Greynir number: round up to a nice
+                                # number divisible by 1000, leaving a headroom of
+                                # at least 1000 numbers for BÍN
+                                self._utg = ((self._utg + 1999) // 1000) * 1000
+                                self._begin_greynir_utg = self._utg
+                                last_stofn = m.stofn
+                            elif m.stofn != last_stofn:
+                                # New stem: increment the utg number
+                                self._utg += 1
+                                last_stofn = m.stofn
+                            # Assign a Greynir utg number
+                            m.utg = self._utg
+                        # !!! TODO: Keep track of Greynir additions that
+                        # !!! have a proper utg number, e.g. plural forms
+                        # !!! that don't exist in BÍN
                     else:
                         # Newer (KRISTINsnid) format file
                         m = Ksnid.from_tuple(t)
-                    # Silently skip word forms with spaces in them
-                    # !!! TODO: Probably don't want this for Ksnid
-                    if " " in m.ordmynd:
-                        continue
-                    assert " " not in line
+                        if m.utg > self._utg:
+                            # Keep track of the highest utg number from BÍN
+                            self._utg = m.utg
                     # Skip this if the stem is capitalized differently
                     # than the word form (which is a bug in BÍN)
                     if m.stofn[0].isupper() != m.ordmynd[0].isupper():
@@ -428,51 +443,6 @@ class BIN_Compressor:
                             )
                         )
                         continue
-                    if (m.stofn, m.ordfl, m.fl) in bin_deletions:
-                        # This is marked for deletion in BinErrata.conf:
-                        # include a special marker in the word form instance
-                        m.mark_delete()
-                        print(
-                            "Marking {stem} {utg} {ordfl} {fl} {form} {meaning}".format(
-                                stem=m.stofn,
-                                utg=m.utg,
-                                ordfl=m.ordfl,
-                                fl=m.fl,
-                                form=m.ordmynd,
-                                meaning=m.beyging,
-                            )
-                        )
-                    # !!! TODO: The following should be done later, at query time
-                    # Convert uninflectable number words to "töl" for compatibility
-                    if m.ordfl == "to" and m.beyging == "OBEYGJANLEGT":
-                        m.ordfl = "töl"
-                    # Convert uninflectable indicator to "-" for compatibility
-                    if m.beyging == "OBEYGJANLEGT":
-                        m.beyging = "-"
-                    # Convert "afn" (reflexive pronoun) to "abfn" for compatibility
-                    if m.ordfl == "afn":
-                        m.ordfl = "abfn"
-                    # Convert "rt" (ordinal number) to "lo" (adjective)
-                    # for compatibility
-                    if m.ordfl == "rt":
-                        m.ordfl = "lo"
-                    # Apply a fix if we have one for this
-                    # particular (stem, ordfl) combination
-                    # orig_fl = m.fl
-                    # !!! TODO: Consider whether to do this at query time
-                    m.fl = bin_errata.get((m.stofn, m.ordfl), m.fl)
-                    # if orig_fl != m.fl:
-                    #    print(
-                    #        "Modifying {stem} {utg} {ordfl} {orig_fl}->{fl} {form} {meaning}".format(
-                    #            stem=m.stofn,
-                    #            utg=m.utg,
-                    #            ordfl=m.ordfl,
-                    #            orig_fl=orig_fl,
-                    #            fl=m.fl,
-                    #            form=m.ordmynd,
-                    #            meaning=m.beyging,
-                    #        )
-                    #    )
                     stem = m.stofn.encode("latin-1")
                     ordfl = m.ordfl.encode("latin-1")
                     fl = m.fl.encode("latin-1")
@@ -480,18 +450,22 @@ class BIN_Compressor:
                     meaning = m.beyging.encode("latin-1")
                     ksnid = m.ksnid_string.encode("latin-1")
                     self._alphabet |= set(form)
-                    # Map null (no string) in utg to -1
-                    wix = int(m.utg) if m.utg else -1
+                    wix = m.utg
+                    # Subcategory (fl) index
                     cix = self._subcats.add(fl)
                     if wix > max_wix:
                         max_wix = wix
+                    # Add a (stem index, utg, subcat index) tuple
                     six = self._stems.add((stem, wix, cix))
                     if six > stem_cnt:
                         # New stem, not seen before: count its category (ordfl)
                         self._stem_cat_count[m.ordfl] += 1
                         stem_cnt = six
-                    fix = self._forms.add(form)  # Add to a trie
+                    # Form index
+                    fix = self._forms.add(form)
+                    # Combined (ordfl, meaning) index
                     mix = self._meanings.add((ordfl, meaning))
+                    # Ksnid string index
                     kix = self._ksnid_strings.add(ksnid)
                     self._lookup_form[fix].add((six, mix, kix))
                     case_forms = self._lookup_stem[six]
@@ -571,18 +545,18 @@ class BIN_Compressor:
             values = self._lookup_form[self._forms[form_latin]]
             # Obtain the stem and meaning tuples corresponding to the word form
             for six, mix, kix in values:
-                s = self._stems[six]
-                m = self._meanings[mix]
-                k = self._ksnid_strings[kix]
+                stofn, utg, fl_ix = self._stems[six]
+                ordfl, beyging = self._meanings[mix]
+                ksnid = self._ksnid_strings[kix]
                 result.append(
                     Ksnid.from_parameters(
-                        s[0].decode("latin-1"),  # stofn
-                        s[1],  # utg
-                        m[0].decode("latin-1"),  # ordfl
-                        self._subcats[s[2]].decode("latin-1"),  # fl
+                        stofn.decode("latin-1"),
+                        utg,
+                        ordfl.decode("latin-1"),
+                        self._subcats[fl_ix].decode("latin-1"),  # fl
                         form,  # ordmynd
-                        m[1].decode("latin-1"),  # beyging
-                        k.decode("latin-1"),  # ksnid
+                        beyging.decode("latin-1"),
+                        ksnid.decode("latin-1"),
                     )
                 )
             return result
@@ -713,6 +687,9 @@ class BIN_Compressor:
         f.write(UINT32.pack(0))
         ksnid_offset = f.tell()
         f.write(UINT32.pack(0))
+
+        # Store the lowest Greynir-specific utg number
+        f.write(UINT32.pack(self._begin_greynir_utg))
 
         def write_padded(b: bytes, n: int) -> None:
             assert len(b) <= n
@@ -873,7 +850,6 @@ class BIN_Compressor:
             # Squeeze the utg (word id) and subcategory index into the lower 31 bits.
             # The uppermost bit flags whether a canonical forms list is present.
             stem, utg, cix = self._stems[ix]
-            utg += 1  # -1 becomes 0
             assert 0 <= utg < 2 ** UTG_BITS
             assert 0 <= cix < 2 ** SUBCAT_BITS
             bits = (utg << SUBCAT_BITS) | cix
@@ -973,23 +949,17 @@ class BIN_Compressor:
 
 print("Welcome to the BinPackage compressed vocabulary file generator")
 
-# config_file = os.path.join(_PATH, "config", "BinErrata.conf")
-config_file = "config/BinErrata.conf"
-Settings.read(config_file, force=True)
-bin_errata = BinErrata.DICT
-bin_deletions = BinDeletions.SET
-
-b = BIN_Compressor()
+b = BinCompressor()
 b.read(
     [
-        os.path.join(_PATH, "resources", "KRISTINsnid.csv"),
-        os.path.join(_PATH, "resources", "ord.add.csv"),
-        os.path.join(_PATH, "resources", "ord.auka.csv"),
-        os.path.join(_PATH, "resources", "systematic_additions.csv"),
+        os.path.join(_path, "resources", "KRISTINsnid.csv"),
+        os.path.join(_path, "resources", "ord.add.csv"),
+        os.path.join(_path, "resources", "ord.auka.csv"),
+        os.path.join(_path, "resources", "systematic_additions.csv"),
     ]
 )
 b.print_stats()
 
-filename = os.path.join(_PATH, "resources", BIN_COMPRESSED_FILE)
+filename = os.path.join(_path, "resources", BIN_COMPRESSED_FILE)
 b.write_binary(filename)
 print("Done; the compressed vocabulary was written to {0}".format(filename))

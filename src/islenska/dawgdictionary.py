@@ -58,9 +58,9 @@ class Wordbase:
     # All word forms
     _dawg_all: Optional["PackedDawgDictionary"] = None
     # Word forms allowed as former parts of compounds
-    _dawg_formers: Optional["PackedDawgDictionary"] = None
+    _dawg_prefixes: Optional["PackedDawgDictionary"] = None
     # Word forms allowed as last part of compounds
-    _dawg_last: Optional["PackedDawgDictionary"] = None
+    _dawg_suffixes: Optional["PackedDawgDictionary"] = None
 
     _lock = threading.Lock()
 
@@ -95,25 +95,25 @@ class Wordbase:
             return cls._dawg_all
 
     @classmethod
-    def dawg_formers(cls) -> "PackedDawgDictionary":
+    def dawg_prefixes(cls) -> "PackedDawgDictionary":
         """ Load the dictionary of words allowed as prefixes
             in a compound word (i.e. can occur in any part except
             the last part of the compound word) """
         with cls._lock:
-            if cls._dawg_formers is None:
-                cls._dawg_formers = Wordbase._load_resource("ordalisti-formers")
-            assert cls._dawg_formers is not None
-            return cls._dawg_formers
+            if cls._dawg_prefixes is None:
+                cls._dawg_prefixes = Wordbase._load_resource("ordalisti-prefixes")
+            assert cls._dawg_prefixes is not None
+            return cls._dawg_prefixes
 
     @classmethod
-    def dawg_last(cls) -> "PackedDawgDictionary":
+    def dawg_suffixes(cls) -> "PackedDawgDictionary":
         """ Load the dictionary of words that are allowed as the last
             part of a compound word """
         with cls._lock:
-            if cls._dawg_last is None:
-                cls._dawg_last = Wordbase._load_resource("ordalisti-last")
-            assert cls._dawg_last is not None
-            return cls._dawg_last
+            if cls._dawg_suffixes is None:
+                cls._dawg_suffixes = Wordbase._load_resource("ordalisti-suffixes")
+            assert cls._dawg_suffixes is not None
+            return cls._dawg_suffixes
 
     @classmethod
     def slice_compound_word(cls, word: str) -> Optional[List[str]]:
@@ -124,8 +124,8 @@ class Wordbase:
         if w:
             # Sort by (1) longest last part and (2) the lowest overall number of parts
             w.sort(key=lambda x: (len(x[-1]), -len(x)), reverse=True)
-            prefixes = cls.dawg_formers()
-            suffixes = cls.dawg_last()
+            prefixes = cls.dawg_prefixes()
+            suffixes = cls.dawg_suffixes()
             # Loop over the sorted combinations until we find a legal one,
             # i.e. where the suffix is a legal suffix and all prefixes are
             # legal prefixes

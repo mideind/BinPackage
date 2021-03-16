@@ -3,7 +3,7 @@
 
     BinPackage
 
-    BÍN compressor module
+    Low-level access module for the compressed BÍN dictionary
 
     Copyright (C) 2021 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
@@ -36,6 +36,10 @@
 
     The compression of the dictionary is performed in tools/binpack.py.
 
+    This is a lower-level module used by the higher-level Bin class in
+    bindb.py. Normally, clients should interact with the Bin class, which
+    is likely to have a more stable interface than BinCompressed.
+
     ************************************************************************
 
     LICENSE NOTICE:
@@ -58,7 +62,7 @@
 
 """
 
-from typing import Any, Set, Tuple, List, Optional, Callable, cast
+from typing import Any, Set, Tuple, List, Optional, Callable, Union, cast
 
 import struct
 import functools
@@ -67,10 +71,15 @@ import pkg_resources
 
 # Import the CFFI wrapper for the bin.cpp C++ module (see also build_bin.py)
 # pylint: disable=no-name-in-module
-from ._bin import lib as bin_cffi, ffi  # type: ignore
+from ._bin import lib as lib_unknown, ffi as ffi_unknown
+
+# Go through shenanigans to satisfy Pylance/Mypy
+bin_cffi = cast(Any, lib_unknown)
+ffi = cast(Any, ffi_unknown)
 
 from .basics import (
     MeaningTuple,
+    Ksnid,
     ALL_GENDERS,
     BIN_COMPRESSOR_VERSION,
     BIN_COMPRESSED_FILE,
@@ -85,7 +94,7 @@ from .basics import (
 )
 
 
-class BIN_Compressed:
+class BinCompressed:
 
     """ A wrapper for the compressed binary dictionary,
         allowing read-only lookups of word forms """
@@ -119,7 +128,8 @@ class BIN_Compressed:
             alphabet_offset,
             subcats_offset,
             ksnid_offset,
-        ) = struct.unpack("<IIIIIIII", self._b[16:48])
+            self._begin_greynir_utg,
+        ) = struct.unpack("<IIIIIIIII", self._b[16:52])
         self._forms_offset: int = forms_offset
         self._mappings: bytes = self._b[mappings_offset:]
         self._stems: bytes = self._b[stems_offset:]
@@ -137,7 +147,7 @@ class BIN_Compressed:
         self._alphabet_bytes = bytes(
             self._b[alphabet_offset + 4 : alphabet_offset + 4 + alphabet_length]
         )
-        self._alphabet: Set[str]
+        self._alphabet: Set[str] = set()
         # Decode the subcategories ('fl') into a list of strings
         subcats_length = self._UINT(subcats_offset)
         subcats_bytes = bytes(
@@ -145,7 +155,8 @@ class BIN_Compressed:
         )
         self._subcats = [s.decode("latin-1") for s in subcats_bytes.split()]
         # Create a CFFI buffer object pointing to the memory map
-        self._mmap_buffer: bytes = ffi.from_buffer(self._b)  # type: ignore
+        self._mmap_buffer: bytes = ffi.from_buffer(self._b)
+        self._mmap_ptr: int = ffi.cast("uint8_t*", self._mmap_buffer)
 
     def _UINT(self, offset: int) -> int:
         """ Return the 32-bit UINT at the indicated offset
@@ -162,8 +173,14 @@ class BIN_Compressed:
             self._alphabet = set()
             self._alphabet_bytes = bytes()
             self._mmap_buffer = cast(bytes, None)
+            self._mmap_ptr = 0
             self._b.close()
-            self._b = None  # type: ignore
+            self._b = cast(mmap.mmap, None)
+
+    @property
+    def begin_greynir_utg(self):
+        """ Return the lowest utg number of Greynir additions """
+        return self._begin_greynir_utg
 
     def meaning(self, ix: int) -> Tuple[str, str]:
         """ Find and decode a meaning (ordfl, beyging) tuple,
@@ -179,14 +196,13 @@ class BIN_Compressed:
         (off,) = UINT32.unpack_from(self._ksnid_strings, ix * 4)
         assert self._b is not None
         lw = self._b[off]  # Length byte
-        return self._b[off + 1:off + 1 + lw].decode("latin-1")
+        return self._b[off + 1 : off + 1 + lw].decode("latin-1")
 
     def stem(self, ix: int) -> Tuple[str, int, str]:
         """ Find and decode a stem (stofn, utg, subcat) tuple, given its index """
         (off,) = UINT32.unpack_from(self._stems, ix * 4)
         bits = self._UINT(off) & 0x7FFFFFFF
-        # The id (utg) is stored after adding 1 - subtract it again
-        utg = (bits >> SUBCAT_BITS) - 1
+        utg = (bits >> SUBCAT_BITS)
         # Subcategory (fl) index
         cix = bits & (2 ** SUBCAT_BITS - 1)
         p = off + 4
@@ -264,11 +280,9 @@ class BIN_Compressed:
         return []
 
     def _mapping_cffi(self, word: str) -> Optional[int]:
-        """ Call the C++ mapping() function that has been wrapped using CFFI"""
+        """ Call the C++ mapping() function that has been wrapped using CFFI """
         try:
-            m: int = bin_cffi.mapping(  # type: ignore
-                ffi.cast("uint8_t*", self._mmap_buffer), word.encode("latin-1")  # type: ignore
-            )
+            m: int = bin_cffi.mapping(self._mmap_ptr, word.encode("latin-1"))
             return None if m == 0xFFFFFFFF else m
         except UnicodeEncodeError:
             # The word contains a non-latin-1 character:
@@ -319,10 +333,12 @@ class BIN_Compressed:
         utg: Any = NoUtg,
         beyging_func: Optional[Callable[[str], bool]] = None,
     ) -> List[MeaningTuple]:
+
         """ Returns a list of BÍN meanings for the given word form,
             eventually constrained to the requested word category,
             stem, utg number and/or the given beyging_func filter function,
             which is called with the beyging field as a parameter. """
+
         # Category set
         if cat is None:
             cats = None
@@ -333,25 +349,67 @@ class BIN_Compressed:
             cats = frozenset([cat])
         result: List[MeaningTuple] = []
         for stem_index, meaning_index, _ in self._raw_lookup(word):
-            meaning = self.meaning(meaning_index)
-            if cats is not None and meaning[0] not in cats:
+            ordfl, beyging = self.meaning(meaning_index)
+            if cats is not None and ordfl not in cats:
                 # Fails the word category constraint
                 continue
-            word_stem = self.stem(stem_index)
-            if stem is not None and word_stem[0] != stem:
+            stofn, wutg, fl = self.stem(stem_index)
+            if stem is not None and stofn != stem:
                 # Fails the stem filter
                 continue
-            word_utg = None if word_stem[1] == -1 else word_stem[1]
-            if utg is not BIN_Compressed.NoUtg and word_utg != utg:
+            if utg is not self.NoUtg and wutg != utg:
                 # Fails the utg filter
                 continue
-            beyging = meaning[1]
             if beyging_func is not None and not beyging_func(beyging):
                 # Fails the beyging_func filter
                 continue
             # stofn, utg, ordfl, fl, ordmynd, beyging
+            result.append((stofn, wutg, ordfl, fl, word, beyging))
+        return result
+
+    def lookup_ksnid(
+        self,
+        word: str,
+        cat: Optional[str] = None,
+        stem: Optional[str] = None,
+        utg: Union[int, object] = NoUtg,
+        beyging_func: Optional[Callable[[str], bool]] = None,
+    ) -> List[Ksnid]:
+
+        """ Returns a list of BÍN meanings for the given word form,
+            eventually constrained to the requested word category,
+            stem, utg number and/or the given beyging_func filter function,
+            which is called with the beyging field as a parameter. """
+
+        # Category set
+        if cat is None:
+            cats = None
+        elif cat == "no":
+            # Allow a cat of "no" to mean a noun of any gender
+            cats = ALL_GENDERS
+        else:
+            cats = frozenset([cat])
+        result: List[Ksnid] = []
+        for stem_index, meaning_index, ksnid_index in self._raw_lookup(word):
+            ordfl, beyging = self.meaning(meaning_index)
+            if cats is not None and ordfl not in cats:
+                # Fails the word category constraint
+                continue
+            stofn, wutg, fl = self.stem(stem_index)
+            if stem is not None and stofn != stem:
+                # Fails the stem filter
+                continue
+            if utg is not self.NoUtg and wutg != utg:
+                # Fails the utg filter
+                continue
+            if beyging_func is not None and not beyging_func(beyging):
+                # Fails the beyging_func filter
+                continue
+            ksnid_string = self.ksnid_string(ksnid_index)
             result.append(
-                (word_stem[0], word_utg, meaning[0], word_stem[2], word, beyging)
+                Ksnid.from_parameters(
+                    stofn, wutg, ordfl, fl, word, beyging, ksnid_string,
+                )
             )
         return result
 
@@ -368,6 +426,7 @@ class BIN_Compressed:
         utg: Any = NoUtg,
         beyging_filter: Optional[Callable[[str], bool]] = None
     ) -> Set[MeaningTuple]:
+
         """ Returns a set of meanings, in the requested case, derived
             from the lemmas of the given word form, optionally constrained
             by word category and by the other arguments given. The
@@ -438,22 +497,21 @@ class BIN_Compressed:
 
         for stem_index, meaning_index, _ in self._raw_lookup(word):
             # Check the category filter, if present
-            meaning = self.meaning(meaning_index)
+            ordfl, beyging = self.meaning(meaning_index)
             if cats is not None:
-                if meaning[0] not in cats:
+                if ordfl not in cats:
                     # Not the category we're looking for
                     continue
-            word_stem = self.stem(stem_index)
-            if stem is not None and stem != word_stem[0]:
+            stofn, wutg, _ = self.stem(stem_index)
+            if stem is not None and stem != stofn:
                 # Not the stem we're looking for
                 continue
-            word_utg = None if word_stem[1] == -1 else word_stem[1]
-            if utg is not BIN_Compressed.NoUtg and utg != word_utg:
+            if utg is not self.NoUtg and utg != wutg:
                 # Not the utg we're looking for (note that None is a valid utg)
                 continue
             # Go through the variants of this
             # stem, for the requested case
-            wanted_beyging = simplify_beyging(meaning[1])
+            wanted_beyging = simplify_beyging(beyging)
             for c_latin in self.case_variants(stem_index, case=case_latin):
                 # TODO: Encoding and decoding back and forth is not terribly efficient
                 c = c_latin.decode("latin-1")
@@ -465,11 +523,7 @@ class BIN_Compressed:
                 result.update(
                     m
                     for m in self.lookup(
-                        c,
-                        cat=meaning[0],
-                        stem=word_stem[0],
-                        utg=word_utg,
-                        beyging_func=beyging_func,
+                        c, cat=ordfl, stem=stofn, utg=wutg, beyging_func=beyging_func,
                     )
                 )
         return result
@@ -477,7 +531,7 @@ class BIN_Compressed:
     def raw_nominative(self, word: str) -> Set[MeaningTuple]:
         """ Returns a set of all nominative forms of the stems of the given word form.
             Note that the word form is case-sensitive. """
-        result = set()  # type: Set[MeaningTuple]
+        result: Set[MeaningTuple] = set()
         for stem_index, _, _ in self._raw_lookup(word):
             for c_latin in self.case_variants(stem_index):
                 c = c_latin.decode("latin-1")

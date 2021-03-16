@@ -1,3 +1,4 @@
+# type: ignore
 """
 
     BinPackage
@@ -32,6 +33,9 @@
 """
 
 from .version import __version__
+
+from .basics import BinMeaning, Ksnid
+from .bindb import Bin
 
 __author__ = "Miðeind ehf."
 __copyright__ = "(C) 2021 Miðeind ehf."

@@ -40,7 +40,7 @@
     dictionaries or other data structures should be needed. The binary image
     is shared between running processes.
 
-    binpack.py reads the files ord.csv (originally SHsnid.csv from BÍN), ord.auka.csv
+    binpack.py reads the files KRISTINsnid.csv (as fetched from BÍN), ord.auka.csv
     (additional vocabulary), and ord.add.csv (generated from config/Vocab.conf
     by the program utils/vocab.py in the Greynir repository). Additionally,
     errata from the config/BinErrata.conf file are applied during
@@ -48,6 +48,46 @@
     the original BÍN source data.
 
     The run-time counterpart of this module is bincompress.py.
+
+    The compressed format is roughly as follows (see BinCompressor.write_binary()):
+
+    The file starts with an identifying header and format version.
+
+    It is followed by a list of 32-bit offsets of the various sections
+    of the file.
+
+    The sections are:
+
+        mapping section: a mapping from word forms to meanings. Each word
+        form has an index, and this section maps from that index to a list
+        of (stem index, meaning index, ksnid string index) tuples.
+
+        forms section: a compact radix trie that maps word forms to indices
+        into the mapping section.
+
+        stems section: a mapping of stem indices to
+        (stem string, utg number, category index) tuples. Also, if the stem
+        has case variants (a list of suffixes that maps the stem to each case),
+        the index of the variant list is stored here as well.
+
+        variants section: a mapping of case variant indexes to case variant
+        specifications. A case variant specification describes how to obtain
+        the case variants of a given stem string, i.e. stem -> nf,þf,þgf,ef forms.
+
+        alphabet section: a mapping of character indexes to characters.
+        This is used to compress word form strings into 7 bits per character
+        instead of 8, keeping the high bit available to denote end-of-string.
+
+        meanings section: a mapping of BÍN meaning indexes to BÍN beyging
+        strings (such as 'NFETgr').
+
+        ksnid section: a mapping of ksnid string indices to ksnid strings.
+        The ksnid strings contain additional data from the KRISTINsnid.csv
+        file.
+
+        subcats section: a mapping of subcategory indices to subcategory strings
+        ('fl' field in BÍN). Subcategories are strings such as 'föð', 'móð',
+        'örn', etc.
 
     ************************************************************************
 

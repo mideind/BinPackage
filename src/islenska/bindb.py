@@ -186,9 +186,8 @@ class Bin:
         return list(
             BinMeaning._make(mt)
             for mt in mtlist
-            # Only return entries with utg numbers below the Greynir-specific mark
-            # and with beyging strings that don't end with asterisks (which
-            # are also Greynir-specific)
+            # Only return entries with utg numbers below the Greynir-specific mark,
+            # i.e. skip entries that are Greynir-specific
             if mt[1] < max_utg
         )
 

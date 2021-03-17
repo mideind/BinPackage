@@ -32,6 +32,12 @@ jobs:
       run: |
         if [ "${{ matrix.python-version }}" == "3.6" ]; then python -m pip install mypy; fi
         if [ "${{ matrix.python-version }}" == "3.6" ]; then mypy --python-version=3.6 src/reynir; fi
+    - name: Build *.dawg.bin
+      run: |
+        python tools/dawgbuilder.py
+    - name: Build compressed.bin
+      run: |
+        python tools/binpack.py
     - name: Test with pytest
       run: |
         python -m pip install pytest

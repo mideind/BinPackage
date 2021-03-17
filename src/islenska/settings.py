@@ -99,10 +99,10 @@ class Preferences:
 
 class StemPreferences:
 
-    """ Wrapper around stem disambiguation hints, initialized from the config file """
+    """ Wrapper around lemma disambiguation hints, initialized from the config file """
 
     # Dictionary keyed by word form containing a tuple (worse, better)
-    # where each is a list word stems
+    # where each is a list word lemmas
     DICT: Dict[str, Tuple[List[str], List[str]]] = dict()
 
     @staticmethod
@@ -110,7 +110,7 @@ class StemPreferences:
         """ Add a preference to the dictionary. Called from the config file handler. """
         if word in StemPreferences.DICT:
             raise ConfigError(
-                "Duplicate stem preference for word form {0}".format(word)
+                "Duplicate lemma preference for word form {0}".format(word)
             )
         StemPreferences.DICT[word] = (worse, better)
 
@@ -123,7 +123,7 @@ class StemPreferences:
 class NounPreferences:
 
     """ Wrapper for noun preferences, i.e. to assign priorities to different
-        noun stems that can have identical word forms. """
+        noun lemmas that can have identical word forms. """
 
     # This is a dict of noun word forms, giving the relative priorities
     # of different genders
@@ -157,10 +157,10 @@ class BinErrata:
     DICT: Dict[Tuple[str, str], str] = dict()
 
     @staticmethod
-    def add(stem: str, ordfl: str, fl: str) -> None:
+    def add(lemma: str, ordfl: str, fl: str) -> None:
         """ Add a BÍN fix. Used by bincompress.py when generating a new
             compressed vocabulary file. """
-        BinErrata.DICT[(stem, ordfl)] = fl
+        BinErrata.DICT[(lemma, ordfl)] = fl
 
 
 class BinDeletions:
@@ -170,10 +170,10 @@ class BinDeletions:
     SET: Set[Tuple[str, str, str]] = set()
 
     @staticmethod
-    def add(stem: str, ordfl: str, fl: str) -> None:
+    def add(lemma: str, ordfl: str, fl: str) -> None:
         """ Add a BÍN fix. Used by bincompress.py when generating a new
             compressed vocabulary file. """
-        BinDeletions.SET.add((stem, ordfl, fl))
+        BinDeletions.SET.add((lemma, ordfl, fl))
 
 
 class Settings:
@@ -216,7 +216,7 @@ class Settings:
 
     @staticmethod
     def _handle_stem_preferences(s: str) -> None:
-        """ Handle stem ambiguity preference hints in the settings section """
+        """ Handle lemma ambiguity preference hints in the settings section """
         # Format: word worse1 worse2... < better
         a = s.lower().split("<", maxsplit=1)
         if len(a) != 2:
@@ -254,28 +254,28 @@ class Settings:
         """ Handle changes to BÍN categories ('fl') """
         a = s.split()
         if len(a) != 3:
-            raise ConfigError("Expected 'stem ordfl fl' fields in bin_errata section")
-        stem, ordfl, fl = a
+            raise ConfigError("Expected 'lemma ordfl fl' fields in bin_errata section")
+        lemma, ordfl, fl = a
         if not ordfl.islower() or not fl.islower():
             raise ConfigError(
                 "Expected lowercase ordfl and fl fields in bin_errata section"
             )
-        BinErrata.add(stem, ordfl, fl)
+        BinErrata.add(lemma, ordfl, fl)
 
     @staticmethod
     def _handle_bin_deletions(s: str) -> None:
-        """ Handle deletions from BÍN, given as stem/ordfl/fl triples """
+        """ Handle deletions from BÍN, given as lemma/ordfl/fl triples """
         a = s.split()
         if len(a) != 3:
             raise ConfigError(
-                "Expected 'stem ordfl fl' fields in bin_deletions section"
+                "Expected 'lemma ordfl fl' fields in bin_deletions section"
             )
-        stem, ordfl, fl = a
+        lemma, ordfl, fl = a
         if not ordfl.islower() or not fl.islower():
             raise ConfigError(
                 "Expected lowercase ordfl and fl fields in bin_deletions section"
             )
-        BinDeletions.add(stem, ordfl, fl)
+        BinDeletions.add(lemma, ordfl, fl)
 
     @staticmethod
     def _handle_adjective_template(s: str) -> None:

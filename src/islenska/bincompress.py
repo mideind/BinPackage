@@ -62,9 +62,21 @@
 
 """
 
-from typing import Any, Set, Tuple, List, Optional, Callable, Union, cast
+from typing import (
+    Any,
+    AnyStr,
+    FrozenSet,
+    Set,
+    Tuple,
+    List,
+    Optional,
+    Callable,
+    Union,
+    cast,
+)
 
 import struct
+import re
 import functools
 import mmap
 import pkg_resources
@@ -81,14 +93,21 @@ from .basics import (
     MeaningTuple,
     Ksnid,
     ALL_GENDERS,
+    ALL_BIN_GENDERS,
+    ALL_BIN_CASES,
+    ALL_BIN_NUMBERS,
+    ALL_BIN_PERSONS,
+    ALL_BIN_DEGREES,
+    ALL_BIN_TENSES,
+    ALL_BIN_MOODS,
+    ALL_BIN_VOICES,
     BIN_COMPRESSOR_VERSION,
     BIN_COMPRESSED_FILE,
-    STEM_MAX,
+    LEMMA_MAX,
     MEANING_MAX,
     MEANING_BITS,
     SUBCAT_BITS,
     UINT32,
-    CASES_LATIN,
     COMMON_KIX_0,
     COMMON_KIX_1,
 )
@@ -122,8 +141,8 @@ class BinCompressed:
         (
             mappings_offset,
             forms_offset,
-            stems_offset,
-            variants_offset,
+            lemmas_offset,
+            templates_offset,
             meanings_offset,
             alphabet_offset,
             subcats_offset,
@@ -132,8 +151,8 @@ class BinCompressed:
         ) = struct.unpack("<IIIIIIIII", self._b[16:52])
         self._forms_offset: int = forms_offset
         self._mappings: bytes = self._b[mappings_offset:]
-        self._stems: bytes = self._b[stems_offset:]
-        self._case_variants: bytes = self._b[variants_offset:]
+        self._lemmas: bytes = self._b[lemmas_offset:]
+        self._templates: bytes = self._b[templates_offset:]
         self._meanings: bytes = self._b[meanings_offset:]
         self._ksnid_strings: bytes = self._b[ksnid_offset:]
         # Create partial unpacking functions for speed
@@ -167,9 +186,10 @@ class BinCompressed:
         """ Close the memory map """
         if self._b is not None:
             self._mappings = cast(bytes, None)
-            self._stems = cast(bytes, None)
+            self._lemmas = cast(bytes, None)
             self._meanings = cast(bytes, None)
             self._ksnid_strings = cast(bytes, None)
+            self._templates = cast(bytes, None)
             self._alphabet = set()
             self._alphabet_bytes = bytes()
             self._mmap_buffer = cast(bytes, None)
@@ -198,11 +218,11 @@ class BinCompressed:
         lw = self._b[off]  # Length byte
         return self._b[off + 1 : off + 1 + lw].decode("latin-1")
 
-    def stem(self, ix: int) -> Tuple[str, int, str]:
-        """ Find and decode a stem (stofn, utg, subcat) tuple, given its index """
-        (off,) = UINT32.unpack_from(self._stems, ix * 4)
+    def lemma(self, ix: int) -> Tuple[str, int, str]:
+        """ Find and decode a lemma (stofn, utg, subcat) tuple, given its index """
+        (off,) = UINT32.unpack_from(self._lemmas, ix * 4)
         bits = self._UINT(off) & 0x7FFFFFFF
-        utg = (bits >> SUBCAT_BITS)
+        utg = bits >> SUBCAT_BITS
         # Subcategory (fl) index
         cix = bits & (2 ** SUBCAT_BITS - 1)
         p = off + 4
@@ -212,24 +232,16 @@ class BinCompressed:
         b = bytes(self._b[p : p + lw])
         return b.decode("latin-1"), utg, self._subcats[cix]  # stofn, utg, fl
 
-    def case_variants(self, ix: int, case: bytes = b"NF") -> List[bytes]:
+    def lemma_forms(self, lemma_ix: int) -> List[bytes]:
         """ Return all word forms having the given case, that are
-            associated with the stem whose index is in ix """
+            associated with the lemma whose index is in ix """
 
-        def read_set(p: int, base: Optional[bytes] = None) -> Tuple[List[bytes], int]:
+        def read_set(p: int, base: bytes) -> List[bytes]:
             """ Decompress a set of strings compressed by compress_set() """
-            b = self._case_variants
-            c: List[bytes]
-            if base is None:
-                lw = b[p]
-                p += 1
-                last_w = b[p : p + lw]
-                p += lw
-                c = [last_w]
-            else:
-                last_w = base
-                lw = len(last_w)
-                c = []
+            b = self._templates
+            c: List[bytes] = []
+            last_w = base
+            lw = len(last_w)
             while True:
                 # How many letters should we cut off the end of the
                 # last word before appending the divergent part?
@@ -249,71 +261,64 @@ class BinCompressed:
                 c.append(w)
                 last_w = w
                 lw += common
-            # Return the set as a list of strings, as well as the current byte pointer
-            return c, p
+            # Return the set as a list of byte strings
+            return c
 
-        (off,) = UINT32.unpack_from(self._stems, ix * 4)
+        (off,) = UINT32.unpack_from(self._lemmas, lemma_ix * 4)
         bits = self._UINT(off)
-        if bits & 0x80000000 == 0:
-            # No case_variants associated with this stem
-            return []
-        # Skip past the stem itself
+        # Skip past the lemma itself
         assert self._b is not None
         p = off + 4
         lw = self._b[p]  # Length byte
-        stem = bytes(self._b[p + 1 : p + 1 + lw])
+        lemma = bytes(self._b[p + 1 : p + 1 + lw])
+        if bits & 0x80000000 == 0:
+            # No templates associated with this lemma
+            return [lemma]
         lw += 1
         if lw & 3:
             lw += 4 - (lw & 3)
         p += lw
-        # Make p point to the case variant offset within the
-        # self._case_variants buffer
-        p = self._UINT(p)
-        # Read the sets of case_variants from the byte buffer, starting at p.
-        # They are stored in case order: NF, ÞF, ÞGF, EF
-        for this_case in CASES_LATIN:
-            c, p = read_set(p, base=stem)
-            if case == this_case:
-                # That's us: return
-                return c
-        assert False, "Unknown case requested in case_variants()"
-        return []
+        # Return all inflection forms as well as the lemma itself
+        result = read_set(self._UINT(p), base=lemma)
+        result.append(lemma)
+        return result
 
-    def _mapping_cffi(self, word: str) -> Optional[int]:
+    def _mapping_cffi(self, word: AnyStr) -> Optional[int]:
         """ Call the C++ mapping() function that has been wrapped using CFFI """
         try:
-            m: int = bin_cffi.mapping(self._mmap_ptr, word.encode("latin-1"))
+            w = word.encode("latin-1") if isinstance(word, str) else word
+            m: int = bin_cffi.mapping(self._mmap_ptr, w)
             return None if m == 0xFFFFFFFF else m
         except UnicodeEncodeError:
             # The word contains a non-latin-1 character:
             # it can't be in the trie
             return None
 
-    def _raw_lookup(self, word: str) -> List[Tuple[int, int, int]]:
-        """ Return a list of stem/meaning/ksnid tuples for the word, or
+    def _raw_lookup(self, word: AnyStr) -> List[Tuple[int, int, int]]:
+        """ Return a list of lemma/meaning/ksnid tuples for the word, or
             an empty list if it is not found in the trie """
         mapping = self._mapping_cffi(word)
         if mapping is None:
             # Word not found in trie: return an empty list of meanings
             return []
         # Found the word in the trie; return potentially multiple meanings
-        # Fetch the mapping-to-stem/meaning tuples
+        # Fetch the mapping-to-lemma/meaning tuples
         result: List[Tuple[int, int, int]] = []
-        stem_mask = STEM_MAX - 1
+        lemma_mask = LEMMA_MAX - 1
         meaning_mask = MEANING_MAX - 1
         while True:
-            (stem_meaning,) = self._partial_mappings(mapping * 4)
-            meaning_index = stem_meaning & meaning_mask
-            stem_index = (stem_meaning >> MEANING_BITS) & stem_mask
-            if stem_meaning & 0x40000000:
+            (lemma_meaning,) = self._partial_mappings(mapping * 4)
+            meaning_index = lemma_meaning & meaning_mask
+            lemma_index = (lemma_meaning >> MEANING_BITS) & lemma_mask
+            if lemma_meaning & 0x40000000:
                 ksnid_index = COMMON_KIX_0
-            elif stem_meaning & 0x20000000:
+            elif lemma_meaning & 0x20000000:
                 ksnid_index = COMMON_KIX_1
             else:
                 mapping += 1
                 (ksnid_index,) = self._partial_mappings(mapping * 4)
-            result.append((stem_index, meaning_index, ksnid_index))
-            if stem_meaning & 0x80000000:
+            result.append((lemma_index, meaning_index, ksnid_index))
+            if lemma_meaning & 0x80000000:
                 # Last mapping indicator: we're done
                 break
             mapping += 1
@@ -329,14 +334,14 @@ class BinCompressed:
         self,
         word: str,
         cat: Optional[str] = None,
-        stem: Optional[str] = None,
+        lemma: Optional[str] = None,
         utg: Any = NoUtg,
         beyging_func: Optional[Callable[[str], bool]] = None,
     ) -> List[MeaningTuple]:
 
         """ Returns a list of BÍN meanings for the given word form,
             eventually constrained to the requested word category,
-            stem, utg number and/or the given beyging_func filter function,
+            lemma, utg number and/or the given beyging_func filter function,
             which is called with the beyging field as a parameter. """
 
         # Category set
@@ -348,14 +353,14 @@ class BinCompressed:
         else:
             cats = frozenset([cat])
         result: List[MeaningTuple] = []
-        for stem_index, meaning_index, _ in self._raw_lookup(word):
+        for lemma_index, meaning_index, _ in self._raw_lookup(word):
             ordfl, beyging = self.meaning(meaning_index)
             if cats is not None and ordfl not in cats:
                 # Fails the word category constraint
                 continue
-            stofn, wutg, fl = self.stem(stem_index)
-            if stem is not None and stofn != stem:
-                # Fails the stem filter
+            stofn, wutg, fl = self.lemma(lemma_index)
+            if lemma is not None and stofn != lemma:
+                # Fails the lemma filter
                 continue
             if utg is not self.NoUtg and wutg != utg:
                 # Fails the utg filter
@@ -371,14 +376,14 @@ class BinCompressed:
         self,
         word: str,
         cat: Optional[str] = None,
-        stem: Optional[str] = None,
+        lemma: Optional[str] = None,
         utg: Union[int, object] = NoUtg,
         beyging_func: Optional[Callable[[str], bool]] = None,
     ) -> List[Ksnid]:
 
         """ Returns a list of BÍN meanings for the given word form,
             eventually constrained to the requested word category,
-            stem, utg number and/or the given beyging_func filter function,
+            lemma, utg number and/or the given beyging_func filter function,
             which is called with the beyging field as a parameter. """
 
         # Category set
@@ -390,14 +395,14 @@ class BinCompressed:
         else:
             cats = frozenset([cat])
         result: List[Ksnid] = []
-        for stem_index, meaning_index, ksnid_index in self._raw_lookup(word):
+        for lemma_index, meaning_index, ksnid_index in self._raw_lookup(word):
             ordfl, beyging = self.meaning(meaning_index)
             if cats is not None and ordfl not in cats:
                 # Fails the word category constraint
                 continue
-            stofn, wutg, fl = self.stem(stem_index)
-            if stem is not None and stofn != stem:
-                # Fails the stem filter
+            stofn, wutg, fl = self.lemma(lemma_index)
+            if lemma is not None and stofn != lemma:
+                # Fails the lemma filter
                 continue
             if utg is not self.NoUtg and wutg != utg:
                 # Fails the utg filter
@@ -422,9 +427,9 @@ class BinCompressed:
         indefinite: bool = False,
         all_forms: bool = False,
         cat: Optional[str] = None,
-        stem: Optional[str] = None,
+        lemma: Optional[str] = None,
         utg: Any = NoUtg,
-        beyging_filter: Optional[Callable[[str], bool]] = None
+        beyging_filter: Optional[Callable[[str], bool]] = None,
     ) -> Set[MeaningTuple]:
 
         """ Returns a set of meanings, in the requested case, derived
@@ -432,7 +437,7 @@ class BinCompressed:
             by word category and by the other arguments given. The
             beyging_filter argument, if present, should be a function that
             filters on the beyging field of each candidate BÍN meaning.
-            Note that the word form is case-sensitive. """
+            The word form is case-sensitive. """
 
         # Note that singular=True means that we force the result to be
         # singular even if the original word given is plural.
@@ -443,7 +448,6 @@ class BinCompressed:
         # definite and indefinite forms, are always returned.
 
         result: Set[MeaningTuple] = set()
-        case_latin = case.encode("latin-1")
         # Category set
         if cat is None:
             cats = None
@@ -495,70 +499,179 @@ class BinCompressed:
             # from, except for the case
             return simplify_beyging(beyging) == wanted_beyging
 
-        for stem_index, meaning_index, _ in self._raw_lookup(word):
+        for lemma_index, meaning_index, _ in self._raw_lookup(word):
             # Check the category filter, if present
             ordfl, beyging = self.meaning(meaning_index)
             if cats is not None:
                 if ordfl not in cats:
                     # Not the category we're looking for
                     continue
-            stofn, wutg, _ = self.stem(stem_index)
-            if stem is not None and stem != stofn:
-                # Not the stem we're looking for
+            stofn, wutg, _ = self.lemma(lemma_index)
+            if lemma is not None and lemma != stofn:
+                # Not the lemma we're looking for
                 continue
             if utg is not self.NoUtg and utg != wutg:
-                # Not the utg we're looking for (note that None is a valid utg)
+                # Not the utg we're looking for
                 continue
             # Go through the variants of this
-            # stem, for the requested case
+            # lemma, for the requested case
             wanted_beyging = simplify_beyging(beyging)
-            for c_latin in self.case_variants(stem_index, case=case_latin):
+            for c_latin in self.lemma_forms(lemma_index):
                 # TODO: Encoding and decoding back and forth is not terribly efficient
                 c = c_latin.decode("latin-1")
                 # Make sure we only include each result once.
                 # Also note that we need to check again for the word
                 # category constraint because different inflection
-                # forms may be identical to forms of other stems
+                # forms may be identical to forms of other lemmas
                 # and categories.
                 result.update(
                     m
                     for m in self.lookup(
-                        c, cat=ordfl, stem=stofn, utg=wutg, beyging_func=beyging_func,
+                        c, cat=ordfl, lemma=stofn, utg=wutg, beyging_func=beyging_func,
                     )
                 )
         return result
 
+    def lookup_variant(
+        self,
+        word: str,
+        cat: str,
+        to_beyging: Union[str, Tuple[str, ...]],
+        lemma: Optional[str] = None,
+        utg: Union[int, object] = NoUtg,
+        beyging_filter: Optional[Callable[[str], bool]] = None,
+    ) -> List[MeaningTuple]:
+
+        """ Returns a list of BÍN meaning tuples for word forms
+            where the beyging substring given has been substituted for
+            the original string in the same grammatical feature. The
+            list can be optionally constrained to a particular lemma and
+            utg number. """
+
+        if isinstance(to_beyging, str):
+            to_beyging = (to_beyging,)
+
+        def make_target(b: str) -> str:
+            """ Create a target beyging string by substituting the
+                desired to_beyging in its proper place in the source """
+            for t in to_beyging:
+                if t in ALL_BIN_CASES:
+                    b = re.sub(r"NF|ÞF|ÞGF|EF", t, b)
+                elif t in ALL_BIN_NUMBERS:
+                    b = re.sub(r"ET|FT", t, b)
+                elif t == "gr":
+                    # Add definite article indicator if not already present
+                    if not b.endswith("gr"):
+                        b += "gr"
+                elif t == "nogr":
+                    # Remove definite article indicator
+                    b = b.replace("gr", "")
+                elif t in ALL_BIN_GENDERS:
+                    b = re.sub(r"KVK|KK|HK", t, b)
+                elif t in ALL_BIN_PERSONS:
+                    b = re.sub(r"1P|2P|3P", t, b)
+                elif t in ALL_BIN_DEGREES:
+                    b = re.sub(r"ESB|EVB|FSB|FVB|MST|VB|SB", t, b)
+                elif t in ALL_BIN_TENSES:
+                    b = re.sub(r"-ÞT|-NT", "-" + t, b)
+                elif t in ALL_BIN_VOICES:
+                    b = re.sub(r"GM|MM", t, b)
+                elif t in ALL_BIN_MOODS:
+                    if t == "LHNT":
+                        # If the present participle is desired, there can be
+                        # no other features present in the beyging string
+                        return "LHNT"
+                    if t == "BH":
+                        # For the imperative mood, there is no tense
+                        # and no person in the beyging string
+                        b = re.sub(r"-NT|-ÞT|-1P|-2P|-3P", "", b)
+                    # Note that we don't replace the LHÞT feature;
+                    # it is too complex and different to be replaceable
+                    # with anything else
+                    b = re.sub(r"-NH|-FH|-VH|-BH", "-" + t, b)
+                else:
+                    assert False, "Unknown BÍN 'beyging' feature: " + t
+            return b
+
+        # Category set
+        cats: FrozenSet[str]
+        if cat == "no":
+            # Allow a cat of "no" to mean a noun of any gender
+            cats = ALL_GENDERS
+        else:
+            cats = frozenset([cat])
+        result: Set[MeaningTuple] = set()
+        for lemma_index, meaning_index, _ in self._raw_lookup(word):
+            ordfl, beyging = self.meaning(meaning_index)
+            if ordfl not in cats:
+                # Fails the word category constraint
+                continue
+            stofn, wutg, fl = self.lemma(lemma_index)
+            if lemma is not None and stofn != lemma:
+                # Fails the lemma filter
+                continue
+            if utg is not self.NoUtg and wutg != utg:
+                # Fails the utg filter
+                continue
+            if beyging_filter is not None and not beyging_filter(beyging):
+                # The user-defined filter fails
+                continue
+            target_beyging = make_target(beyging)
+            if any(t not in target_beyging for t in to_beyging if t != "nogr"):
+                # This target beyging string does not contain
+                # our desired variants and is therefore not relevant
+                continue
+            for form_latin in self.lemma_forms(lemma_index):
+                for lix, mix, _ in self._raw_lookup(form_latin):
+                    if lix != lemma_index:
+                        continue
+                    # Found a word form of the same lemma
+                    _, this_beyging = self.meaning(mix)
+                    if this_beyging == target_beyging:
+                        # Found a word form with the target beyging string
+                        result.add(
+                            (
+                                stofn,
+                                wutg,
+                                ordfl,
+                                fl,
+                                form_latin.decode("latin-1"),
+                                this_beyging,
+                            )
+                        )
+        return list(result)
+
     def raw_nominative(self, word: str) -> Set[MeaningTuple]:
-        """ Returns a set of all nominative forms of the stems of the given word form.
+        """ Returns a set of all nominative forms of the lemmas of the given word form.
             Note that the word form is case-sensitive. """
         result: Set[MeaningTuple] = set()
-        for stem_index, _, _ in self._raw_lookup(word):
-            for c_latin in self.case_variants(stem_index):
+        for lemma_index, _, _ in self._raw_lookup(word):
+            for c_latin in self.lemma_forms(lemma_index):
                 c = c_latin.decode("latin-1")
                 # Make sure we only include each result once
                 result.update(m for m in self.lookup(c) if "NF" in m[5])
         return result
 
     def nominative(self, word: str, **options: Any) -> Set[MeaningTuple]:
-        """ Returns a set of all nominative forms of the stems of the given word form,
+        """ Returns a set of all nominative forms of the lemmas of the given word form,
             subject to the constraints in **options.
             Note that the word form is case-sensitive. """
         return self.lookup_case(word, "NF", **options)
 
     def accusative(self, word: str, **options: Any) -> Set[MeaningTuple]:
-        """ Returns a set of all accusative forms of the stems of the given word form,
+        """ Returns a set of all accusative forms of the lemmas of the given word form,
             subject to the given constraints on the beyging field.
             Note that the word form is case-sensitive. """
         return self.lookup_case(word, "ÞF", **options)
 
     def dative(self, word: str, **options: Any) -> Set[MeaningTuple]:
-        """ Returns a set of all dative forms of the stems of the given word form,
+        """ Returns a set of all dative forms of the lemmas of the given word form,
             subject to the given constraints on the beyging field.
             Note that the word form is case-sensitive. """
         return self.lookup_case(word, "ÞGF", **options)
 
     def genitive(self, word: str, **options: Any) -> Set[MeaningTuple]:
-        """ Returns a set of all genitive forms of the stems of the given word form,
+        """ Returns a set of all genitive forms of the lemmas of the given word form,
             subject to the given constraints on the beyging field.
             Note that the word form is case-sensitive. """
         return self.lookup_case(word, "EF", **options)

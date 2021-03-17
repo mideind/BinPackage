@@ -253,7 +253,7 @@ class Bin:
             # Only allows meanings from open word categories
             # (nouns, verbs, adjectives, adverbs)
             m = self.open_cats(m)
-        # Add the prefix to the remaining word stems
+        # Add the prefix to the remaining word lemmas
         return prefix_meanings(m, prefix)
 
     def _lookup(
@@ -413,7 +413,7 @@ class Bin:
         if m_word is not None:
             # This is an adjective: find its forms
             # in the requested case ("Gul gata", "Stjáni blái")
-            mm = case_func(m_word.ordmynd, cat="lo", stem=m_word.stofn)
+            mm = case_func(m_word.ordmynd, cat="lo", lemma=m_word.stofn)
             if "VB" in m_word.beyging:
                 mm = [m for m in mm if "VB" in m.beyging]
             elif "SB" in m_word.beyging:
@@ -437,19 +437,19 @@ class Bin:
                 # Composite word (and not something like 'Vestur-Þýskaland', which
                 # is in BÍN including the hyphen): use the meaning of its last part
                 cw = m_word.ordmynd.split("-")
-                prefix = "-".join(cw[0:-1])
+                prefix = "".join(cw[0:-1])
                 # No need to think about upper or lower case here,
                 # since the last part of a compound word is always in BÍN as-is
                 mm = case_func(
-                    cw[-1], cat=m_word.ordfl, stem=m_word.stofn.split("-")[-1]
+                    cw[-1], cat=m_word.ordfl, lemma=m_word.stofn.split("-")[-1]
                 )
-                # Add the prefix to the remaining word stems
+                # Add the prefix to the remaining word lemmas
                 mm = prefix_meanings(mm, prefix, insert_hyphen=False)
             else:
-                mm = case_func(w, cat=m_word.ordfl, stem=m_word.stofn)
+                mm = case_func(w, cat=m_word.ordfl, lemma=m_word.stofn)
                 if not mm and w[0].isupper() and not w.isupper():
                     # Did not find an uppercase version: try a lowercase one
-                    mm = case_func(w.lower(), cat=m_word.ordfl, stem=m_word.stofn)
+                    mm = case_func(w.lower(), cat=m_word.ordfl, lemma=m_word.stofn)
         if mm:
             # Likely successful: return the word after casting it
             if "ET" in m_word.beyging:
@@ -475,11 +475,13 @@ class Bin:
 
     def __contains__(self, w: str) -> bool:
         """ Returns True if the given word form is found in BÍN """
+        # Note that this does not fall back to the word compounder
         assert self._bc is not None
         return self._bc.contains(w)
 
     def contains(self, w: str) -> bool:
         """ Returns True if the given word form is found in BÍN """
+        # Note that this does not fall back to the word compounder
         assert self._bc is not None
         return self._bc.contains(w)
 
@@ -535,7 +537,7 @@ class Bin:
             forms in particular cases. """
         assert self._bc is not None
         mset = self._bc.lookup_case(
-            lemma, case.upper(), stem=lemma, cat=cat, all_forms=True
+            lemma, case.upper(), lemma=lemma, cat=cat, all_forms=True
         )
         return self._map_meanings(mset)
 
@@ -550,25 +552,25 @@ class Bin:
 
     def lookup_nominative(self, w: str, **options: Any) -> List[BinMeaning]:
         """ Return meaning tuples for all word forms in nominative
-            case for all { kk, kvk, hk, lo } category stems of the given word """
+            case for all { kk, kvk, hk, lo } category lemmas of the given word """
         assert self._bc is not None
         return self._map_meanings(self._bc.nominative(w, **options))
 
     def lookup_accusative(self, w: str, **options: Any) -> List[BinMeaning]:
         """ Return meaning tuples for all word forms in accusative
-            case for all { kk, kvk, hk, lo } category stems of the given word """
+            case for all { kk, kvk, hk, lo } category lemmas of the given word """
         assert self._bc is not None
         return self._map_meanings(self._bc.accusative(w, **options))
 
     def lookup_dative(self, w: str, **options: Any) -> List[BinMeaning]:
         """ Return meaning tuples for all word forms in dative
-            case for all { kk, kvk, hk, lo } category stems of the given word """
+            case for all { kk, kvk, hk, lo } category lemmas of the given word """
         assert self._bc is not None
         return self._map_meanings(self._bc.dative(w, **options))
 
     def lookup_genitive(self, w: str, **options: Any) -> List[BinMeaning]:
         """ Return meaning tuples for all word forms in genitive
-            case for all { kk, kvk, hk, lo } category stems of the given word """
+            case for all { kk, kvk, hk, lo } category lemmas of the given word """
         assert self._bc is not None
         return self._map_meanings(self._bc.genitive(w, **options))
 
@@ -669,7 +671,7 @@ class GreynirBin(Bin):
             # for compatibility
             elif mt[2] == "rt":
                 m[2] = "lo"
-            # Apply a fix if we have one for this particular (stem, ordfl) combination
+            # Apply a fix if we have one for this particular (lemma, ordfl) combination
             assert self.bin_errata is not None
             m[3] = self.bin_errata.get((mt[0], cast(str, m[2])), mt[3])
             result.append(BinMeaning._make(m))
@@ -702,8 +704,8 @@ class GreynirBin(Bin):
             return []
         stem_prefs = StemPreferences.DICT.get(w)
         if stem_prefs is not None:
-            # We have a preferred stem for this word form:
-            # cut off meanings based on other stems
+            # We have a preferred lemma for this word form:
+            # cut off meanings based on other lemmas
             worse, _ = stem_prefs
             m = [mm for mm in m if mm.stofn not in worse]
 

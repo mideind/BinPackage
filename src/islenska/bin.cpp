@@ -66,8 +66,8 @@ private:
       BYTE abSignature[16];
       UINT32 nMappingsOffset;
       UINT32 nFormsOffset;
-      UINT32 nStemsOffset;
-      UINT32 nCaseVariantsOffset;
+      UINT32 nLemmasOffset;
+      UINT32 nTemplatesOffset;
       UINT32 nMeaningsOffset;
       UINT32 nAlphabetOffset;
       UINT32 nSubcatsOffset;

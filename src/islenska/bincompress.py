@@ -283,7 +283,7 @@ class BinCompressed:
         result.append(lemma)
         return result
 
-    def _mapping_cffi(self, word: AnyStr) -> Optional[int]:
+    def _mapping_cffi(self, word: Union[str, bytes]) -> Optional[int]:
         """ Call the C++ mapping() function that has been wrapped using CFFI """
         try:
             if isinstance(word, str):

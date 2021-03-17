@@ -122,6 +122,8 @@ if basepath.endswith(os.sep + "tools"):
     basepath = basepath[0:-6]
     sys.path.append(basepath)
 
+quiet = os.environ.get("CI", "") > ""
+
 MAXLEN = 64
 KEY_FUNC = None  # Module-wide sort key function
 
@@ -464,11 +466,12 @@ class _BinaryDawgPacker:
         # occur in the source text and need to be encoded
         self._vocabulary = "".join(sorted(list(vocabulary), key=KEY_FUNC))
         assert len(self._vocabulary) < 128
-        print(
-            "Vocabulary is '{0}' ({1} characters)".format(
-                self._vocabulary, len(self._vocabulary)
+        if not quiet:
+            print(
+                "Vocabulary is '{0}' ({1} characters)".format(
+                    self._vocabulary, len(self._vocabulary)
+                )
             )
-        )
         # Since we use the most significant bit (0x80) to store
         # the final flag, the vocabulary must contain less than 128 characters
         self._encoding = {char: byte for byte, char in enumerate(self._vocabulary)}
@@ -594,7 +597,8 @@ class DawgBuilder:
             self._key = None  # Sortkey for self._nxt
             fpath = os.path.abspath(os.path.join(relpath, fname))
             self._fin = codecs.open(fpath, mode="r", encoding="utf-8")
-            print("Opened input file {0}".format(fpath))
+            if not quiet:
+                print("Opened input file {0}".format(fpath))
             self._init()
 
         def _init(self):
@@ -660,9 +664,11 @@ class DawgBuilder:
                 self._fin.close()
                 self._fin = None
             self._len = len(self._list)
-            print("Starting sort of {0} elements".format(self._len))
+            if not quiet:
+                print("Starting sort of {0} elements".format(self._len))
             self._list.sort(key=KEY_FUNC)
-            print("Sort completed")
+            if not quiet:
+                print("Sort completed")
             self.read_word()
 
         def read_word(self):
@@ -778,8 +784,9 @@ class DawgBuilder:
                 lastkey = key
             if incount % 5000 == 0:
                 # Progress indicator
-                print("{0}...".format(incount), end="\r")
-                sys.stdout.flush()
+                if not quiet:
+                    print("{0}...".format(incount), end="\r")
+                    sys.stdout.flush()
             # Advance to the next word in the file we read from
             smallest.read_word()
         # Done merging: close all files
@@ -788,18 +795,20 @@ class DawgBuilder:
             f.close()
         # Complete and clean up
         self._dawg.finish()
-        print(
-            "Finished loading {0} words, output {1} words, "
-            "{2} duplicates skipped, {3} removed".format(
-                incount, outcount, duplicates, removed
+        if not quiet:
+            print(
+                "Finished loading {0} words, output {1} words, "
+                "{2} duplicates skipped, {3} removed".format(
+                    incount, outcount, duplicates, removed
+                )
             )
-        )
 
     def _output_binary(self, relpath, output):
         """ Write the DAWG to a flattened binary file with extension '.dawg.bin' """
         assert self._dawg is not None
         fname = os.path.abspath(os.path.join(relpath, output + ".dawg.bin"))
-        print("Writing binary file '{0}'...".format(fname))
+        if not quiet:
+            print("Writing binary file '{0}'...".format(fname))
         f = io.BytesIO()
         # Create a packer to flatten the tree onto a binary stream
         p = _BinaryDawgPacker(f, self._dawg.vocabulary)
@@ -823,19 +832,22 @@ class DawgBuilder:
         # inputs is a list of input file names
         # output is an output file name without file type suffix (extension)
         # relpath is a relative path to the input and output files
-        print("DawgBuilder starting...")
+        if not quiet:
+            print("DawgBuilder starting...")
         if (not inputs) or (not output):
             # Nothing to do
             print("No inputs or no output: Nothing to do")
             return
         self._load(relpath, inputs, removals, filter_func)
         self._output_binary(relpath, output)
-        print("DawgBuilder done")
+        if not quiet:
+            print("DawgBuilder done")
 
 
 def generate_dawgs():
     """ Build all required DAWGs """
-    print("Starting DAWG build for BinPackage")
+    if not quiet:
+        print("Starting DAWG build for BinPackage")
     resources_path = os.path.join(basepath, "src", "islenska", "resources")
     db = DawgBuilder()
 
@@ -848,7 +860,8 @@ def generate_dawgs():
         resources_path,  # Subfolder of input and output files
     )
     t1 = time.time()
-    print("Build took {0:.2f} seconds".format(t1 - t0))
+    if not quiet:
+        print("Build took {0:.2f} seconds".format(t1 - t0))
 
     t0 = time.time()
     db.build(
@@ -859,7 +872,8 @@ def generate_dawgs():
         resources_path,  # Subfolder of input and output files
     )
     t1 = time.time()
-    print("Build took {0:.2f} seconds".format(t1 - t0))
+    if not quiet:
+        print("Build took {0:.2f} seconds".format(t1 - t0))
 
     t0 = time.time()
     db.build(
@@ -870,9 +884,11 @@ def generate_dawgs():
         resources_path,  # Subfolder of input and output files
     )
     t1 = time.time()
-    print("Build took {0:.2f} seconds".format(t1 - t0))
+    if not quiet:
+        print("Build took {0:.2f} seconds".format(t1 - t0))
 
-    print("DAWG builder run complete")
+    if not quiet:
+        print("DAWG builder run complete")
 
 
 if __name__ == "__main__":

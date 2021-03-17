@@ -38,8 +38,9 @@ jobs:
     - name: Build compressed.bin
       run: |
         wget -q -O src/islenska/resources/KRISTINsnid.csv.zip https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip
-        unzip src/islenska/resources/KRISTINsnid.csv.zip
-        # rm src/islenska/resources/KRISTINsnid.csv.zip
+        unzip -d src/islenska/resources/ src/islenska/resources/KRISTINsnid.csv.zip
+        rm src/islenska/resources/KRISTINsnid.csv.zip
+        rm src/islenska/resources/KRISTINsnid.csv.sha256sum
         python tools/binpack.py
     - name: Test with pytest
       run: |

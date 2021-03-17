@@ -282,7 +282,7 @@ class _Dawg:
         """ Collapse and optimize the edges in the parent dict """
         # Iterate through the letter position and
         # attempt to collapse all "simple" branches from it
-        for letter, node in edges.items():
+        for letter, node in list(edges.items()):
             if node:
                 self._collapse_branch(edges, letter, node)
 

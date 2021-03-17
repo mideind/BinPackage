@@ -536,6 +536,91 @@ def test_forms():
     assert "kattanna" in om
 
 
+def test_variants() -> None:
+    bc = BinCompressed()
+
+    m = bc.lookup_variant("borgarstjórnin", "no", "EF")
+    assert all(mm[4]=="borgarstjórnarinnar" for mm in m)
+    m = bc.lookup_variant("borgarstjórnin", "kvk", "EF")
+    assert all(mm[4]=="borgarstjórnarinnar" for mm in m)
+    m = bc.lookup_variant("borgarstjórnin", "hk", "EF")
+    assert m == []
+    m = bc.lookup_variant("borgarstjórnin", "no", ("EF", "nogr"))
+    assert all(mm[4]=="borgarstjórnar" for mm in m)
+    m = bc.lookup_variant("borgarstjórnin", "kvk", ("EF", "nogr"))
+    assert all(mm[4]=="borgarstjórnar" for mm in m)
+    m = bc.lookup_variant("borgarstjórnin", "hk", ("EF", "nogr"))
+    assert m == []
+    m = bc.lookup_variant("borgarstjórnin", "no", ("EF", "FT"))
+    assert all(mm[4]=="borgarstjórnanna" for mm in m)
+    m = bc.lookup_variant("borgarstjórnin", "kvk", ("EF", "FT"))
+    assert all(mm[4]=="borgarstjórnanna" for mm in m)
+    m = bc.lookup_variant("borgarstjórnin", "kk", ("EF", "FT"))
+    assert m == []
+    m = bc.lookup_variant("borgarstjórn", "no", ("EF", "gr"))
+    assert all(mm[4]=="borgarstjórnarinnar" for mm in m)
+    m = bc.lookup_variant("borgarstjórn", "kvk", ("EF", "gr"))
+    assert all(mm[4]=="borgarstjórnarinnar" for mm in m)
+    m = bc.lookup_variant("borgarstjórn", "kk", ("EF", "gr"))
+    assert m == []
+    m = bc.lookup_variant("borgarstjórn", "no", ("EF", "FT", "gr"))
+    assert all(mm[4]=="borgarstjórnanna" for mm in m)
+    m = bc.lookup_variant("borgarstjórn", "kvk", ("EF", "FT", "gr"))
+    assert all(mm[4]=="borgarstjórnanna" for mm in m)
+    m = bc.lookup_variant("borgarstjórn", "kk", ("EF", "FT", "gr"))
+    assert m == []
+    m = bc.lookup_variant("borgarstjórn", "no", ("EF", "FT", "nogr"))
+    assert all(mm[4]=="borgarstjórna" for mm in m)
+    m = bc.lookup_variant("borgarstjórn", "kvk", ("EF", "FT", "nogr"))
+    assert all(mm[4]=="borgarstjórna" for mm in m)
+    m = bc.lookup_variant("borgarstjórn", "kk", ("EF", "FT", "nogr"))
+    assert m == []
+
+    m = bc.lookup_variant("fór", "so", ("VH", "ÞT"), "fara")
+    assert all(mm[4]=="færi" for mm in m)
+    m = bc.lookup_variant("fór", "so", ("VH", "NT"), "fara")
+    assert all(mm[4]=="fari" for mm in m)
+    m = bc.lookup_variant("fór", "so", ("VH", "FT", "NT", "1P"), "fara", beyging_filter=lambda b: "OP" not in b)
+    assert all(mm[4]=="förum" for mm in m)
+    m = bc.lookup_variant("fór", "so", ("VH", "FT", "ÞT", "1P"), "fara", beyging_filter=lambda b: "OP" not in b)
+    assert all(mm[4]=="færum" for mm in m)
+    m = bc.lookup_variant("fór", "so", ("NT",), "fara")
+    assert all(mm[4]=="fer" for mm in m)
+    m = bc.lookup_variant("fór", "so", ("MM",), "fara")
+    assert all(mm[4]=="fórst" for mm in m)
+    m = bc.lookup_variant("fór", "so", ("MM","NT"), "fara")
+    assert all(mm[4]=="ferst" for mm in m)
+    m = bc.lookup_variant("fór", "so", ("MM","NT","2P","FT"), "fara", beyging_filter=lambda b: "OP" not in b)
+    assert all(mm[4]=="farist" for mm in m)
+    m = bc.lookup_variant("skrifar", "so", ("ÞT", "1P"))
+    assert all(mm[4]=="skrifaði" for mm in m)
+    m = bc.lookup_variant("skrifar", "so", ("ÞT", "2P"))
+    assert all(mm[4]=="skrifaðir" for mm in m)
+    m = bc.lookup_variant("skrifuðu", "so", ("FH", "ET", "NT"))
+    assert all(mm[4]=="skrifar" for mm in m)
+    m = bc.lookup_variant("skrifuðu", "so", "LHNT")
+    assert all(mm[4]=="skrifandi" for mm in m)
+
+    m = bc.lookup_variant("fallegur", "lo", "MST")
+    assert all(mm[4]=="fallegri" for mm in m)
+    m = bc.lookup_variant("fallegur", "lo", ("MST", "HK"))
+    assert all(mm[4]=="fallegra" for mm in m)
+    m = bc.lookup_variant("fallegur", "lo", ("MST", "KVK"))
+    assert all(mm[4]=="fallegri" for mm in m)
+    m = bc.lookup_variant("fallegur", "lo", "EVB")
+    assert all(mm[4]=="fallegasti" for mm in m)
+    m = bc.lookup_variant("fallegur", "lo", "ESB")
+    assert all(mm[4]=="fallegastur" for mm in m)
+    m = bc.lookup_variant("fallegur", "lo", ("EVB", "KVK"))
+    assert all(mm[4]=="fallegasta" for mm in m)
+    m = bc.lookup_variant("fallegur", "lo", ("ESB", "KVK"))
+    assert all(mm[4]=="fallegust" for mm in m)
+    m = bc.lookup_variant("fallegur", "lo", ("EVB", "HK"))
+    assert all(mm[4]=="fallegasta" for mm in m)
+    m = bc.lookup_variant("fallegur", "lo", ("ESB", "HK"))
+    assert all(mm[4]=="fallegast" for mm in m)
+
+
 if __name__ == "__main__":
 
     test_lookup()

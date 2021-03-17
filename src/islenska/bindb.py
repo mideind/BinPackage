@@ -266,7 +266,7 @@ class Bin:
 
         # Start with a straightforward, cached lookup of the word as-is
         lower_w = w
-        m = lookup(w)
+        m: List[BinMeaning] = lookup(w)
 
         if auto_uppercase and w.islower():
             # Lowercase word:
@@ -330,7 +330,7 @@ class Bin:
             # Not found: Check whether this might be an adjective
             # ending in 'legur'/'leg'/'legt'/'legir'/'legar' etc.
             llw = len(lower_w)
-            m: List[BinMeaning] = []
+            m = []
             for aend, beyging in AdjectiveTemplate.ENDINGS:
                 if lower_w.endswith(aend) and llw > len(aend):
                     prefix = lower_w[0 : llw - len(aend)]

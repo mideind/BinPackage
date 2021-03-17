@@ -83,7 +83,7 @@ import pkg_resources
 
 # Import the CFFI wrapper for the bin.cpp C++ module (see also build_bin.py)
 # pylint: disable=no-name-in-module
-from ._bin import lib as lib_unknown, ffi as ffi_unknown
+from ._bin import lib as lib_unknown, ffi as ffi_unknown  # type: ignore
 
 # Go through shenanigans to satisfy Pylance/Mypy
 bin_cffi = cast(Any, lib_unknown)
@@ -286,8 +286,10 @@ class BinCompressed:
     def _mapping_cffi(self, word: AnyStr) -> Optional[int]:
         """ Call the C++ mapping() function that has been wrapped using CFFI """
         try:
-            w = word.encode("latin-1") if isinstance(word, str) else word
-            m: int = bin_cffi.mapping(self._mmap_ptr, w)
+            if isinstance(word, str):
+                word = word.encode("latin-1")
+            assert isinstance(word, bytes)
+            m: int = bin_cffi.mapping(self._mmap_ptr, word)
             return None if m == 0xFFFFFFFF else m
         except UnicodeEncodeError:
             # The word contains a non-latin-1 character:

@@ -400,12 +400,12 @@ class BinCompressor:
         self._subcats = Indexer()  # fl
         self._alphabet: Set[int] = set()
         self._alphabet_bytes = bytes()
-        # map form index -> { (stem_ix, meaning_ix, ksnid_ix) }
+        # map form index -> { (lemma_ix, meaning_ix, ksnid_ix) }
         self._lookup_form: Dict[int, Set[Tuple[int, int, int]]] = defaultdict(set)
         # map lemma index -> set of all associated word forms
-        self._stem_forms: Dict[int, Set[bytes]] = defaultdict(set)
+        self._lemma_forms: Dict[int, Set[bytes]] = defaultdict(set)
         # Count of lemma word categories
-        self._stem_cat_count: Dict[str, int] = defaultdict(int)
+        self._lemma_cat_count: Dict[str, int] = defaultdict(int)
         # Word form templates
         self._templates: Dict[bytes, int] = dict()
         # Running utg index counter
@@ -422,7 +422,7 @@ class BinCompressor:
         """ Read the given .csv text files in turn and add them to the
             compressed data structures """
         cnt = 0
-        stem_cnt = -1
+        lemma_cnt = -1
         max_wix = 0
         start_time = time.time()
         last_stofn = ""
@@ -492,10 +492,10 @@ class BinCompressor:
                         max_wix = wix
                     # Add a (lemma index, utg, subcat index) tuple
                     six = self._lemmas.add((lemma, wix, cix))
-                    if six > stem_cnt:
+                    if six > lemma_cnt:
                         # New lemma, not seen before: count its category (ordfl)
-                        self._stem_cat_count[m.ordfl] += 1
-                        stem_cnt = six
+                        self._lemma_cat_count[m.ordfl] += 1
+                        lemma_cnt = six
                     # Form index
                     fix = self._forms.add(form)
                     # Combined (ordfl, meaning) index
@@ -506,7 +506,7 @@ class BinCompressor:
                     # Add this word form to the set of word forms
                     # of its lemma, if it is different from the lemma
                     if lemma != form:
-                        self._stem_forms[six].add(form)
+                        self._lemma_forms[six].add(form)
                     cnt += 1
                     # Progress indicator
                     if cnt % 10000 == 0:
@@ -525,9 +525,9 @@ class BinCompressor:
     def print_stats(self) -> None:
         """ Print a few key statistics about the dictionary """
         print("Forms are {0}".format(len(self._forms)))
-        print("Stems are {0}".format(len(self._lemmas)))
+        print("Lemmas are {0}".format(len(self._lemmas)))
         print("They are distributed as follows:")
-        for key, val in self._stem_cat_count.items():
+        for key, val in self._lemma_cat_count.items():
             print("   {0:6s} {1:8d}".format(key, val))
         print("Subcategories are {0}".format(len(self._subcats)))
         print("Meanings are {0}".format(len(self._meanings)))
@@ -599,7 +599,7 @@ class BinCompressor:
             for six in set(vv[0] for vv in values):
                 # Look at all word forms of this lemma
                 lemma = self._lemmas[six][0]
-                for canonical in [lemma] + list(self._stem_forms.get(six, [])):
+                for canonical in [lemma] + list(self._lemma_forms.get(six, [])):
                     for s, m, _ in self._lookup_form[self._forms[canonical]]:
                         if s == six:
                             b = self._meanings[m][1]
@@ -822,12 +822,12 @@ class BinCompressor:
             num_meanings = len(self._lookup_form[fix])
             assert num_meanings > 0
             # Bucket the meanings by lemma index
-            stem_meanings: DefaultDict[int, List[Tuple[int, int]]] = defaultdict(list)
+            lemma_meanings: DefaultDict[int, List[Tuple[int, int]]] = defaultdict(list)
             for six, mix, kix in self._lookup_form[fix]:
-                stem_meanings[six].append((mix, kix))
+                lemma_meanings[six].append((mix, kix))
             # Index of the meaning being written
             ix = 0
-            for six, mlist in stem_meanings.items():
+            for six, mlist in lemma_meanings.items():
                 # Allocate bits for the lemma index
                 assert six < LEMMA_MAX
                 for mix, kix in mlist:
@@ -878,7 +878,7 @@ class BinCompressor:
             assert 0 <= cix < 2 ** SUBCAT_BITS
             bits = (utg << SUBCAT_BITS) | cix
             has_template = False
-            if ix in self._stem_forms:
+            if ix in self._lemma_forms:
                 # We have a set of word forms for this lemma
                 # (that differ from the lemma itself)
                 bits |= 0x80000000
@@ -889,7 +889,7 @@ class BinCompressor:
             # Write the inflection template, compressed, if the lemma
             # has multiple associated word forms
             if has_template:
-                b = bytes(compress_set(self._stem_forms[ix], base=lemma))
+                b = bytes(compress_set(self._lemma_forms[ix], base=lemma))
                 # Have we seen this inflection template before?
                 template_offset = self._templates.get(b)
                 if template_offset is None:

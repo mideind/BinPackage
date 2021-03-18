@@ -96,6 +96,16 @@ and one verb (*laga*).
 BinPackage is written in [Python 3](https://www.python.org/)
 and requires Python 3.6 or later. It runs on CPython and [PyPy](http://pypy.org/).
 
+The Python code calls a small C++ library to speed up lookup of word forms in the
+compressed binary structure. This means that if a pre-compiled wheel is not
+available on PyPI for your platform, you may need a set of development tools installed
+on your machine, before you install BinPackage using `pip`:
+
+```bash
+$ # The following works on Debian/Ubuntu Linux
+$ sudo apt-get install python3-dev libffi-dev
+```
+
 ## Installation and setup
 
 You must have Python >= 3.6 installed on your machine.
@@ -109,7 +119,7 @@ $ venv/bin/activate
 C:\> venv\scripts\activate
 ```
 
-Then, install BinPackage from the Python Package Index (PyPi),
+Then, install BinPackage from the Python Package Index (PyPI),
 where the package is called `islenska`:
 
 ```bash
@@ -119,19 +129,38 @@ $ pip install islenska
 Now, you are ready to `import islenska` or `from islenska import Bin`
 in your Python code.
 
+----
+
 If you want to install the package in editable source code mode,
 do as follows:
 
 ```bash
+$ # Clone the GitHub repository
 $ git clone https://github.com/mideind/BinPackage
 $ cd BinPackage
+$ # Install the package in editable mode
 $ pip install -e .  # Note the dot!
+$ cd src/islenska/resources
+$ # Fetch the newest BÍN data (KRISTINsnid.csv.zip)
+$ wget -O KRISTINsnid.csv.zip https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip
+$ # Unzip the data
+$ unzip KRISTINsnid.csv.zip
+$ rm KRISTINsnid.csv.zip
+$ cd ../../..
+$ # Run the compressor to generate src/islenska/resources/compressed.bin
+$ python tools/binpack.py
+$ # Run the DAWG builder for the prefix and suffix files
+$ python tools/dawgbuilder.py
+$ # Now you're ready to go
 ```
 
 This will clone the GitHub repository into the BinPackage directory,
-and install the package into
-your environment from the source files. Now you can edit the source and
-get immediate feedback on your changes in the code.
+and install the package into your Python environment from the source files.
+Then, the newest BÍN data is fetched via `wget`
+from *Stofnun Árna Magnússonar* and compressed into a binary file.
+Finally, the Directed Acyclic Word Graph builder is run to
+create DAWGs for word prefixes and suffixes, used by the compound word
+algorithm.
 
 ## File details
 
@@ -180,7 +209,7 @@ available in the project's GitHub repository.
 BinPackage is Copyright (C) 2021 [Miðeind ehf.](https://mideind.is)
 The original author of this software is *Vilhjálmur Þorsteinsson*.
 
-<img src="img/MideindLogoVert400.png" alt="Miðeind ehf." width="100" height="100" align="left" style="margin-right:20px; margin-top: 10px; margin-bottom: 10px;">
+<img src="img/MideindLogoVert400.png" alt="Miðeind ehf." width="118" height="100" align="left" style="margin-right:20px; margin-top: 10px; margin-bottom: 10px;">
 
 This software is licensed under the **MIT License**:
 

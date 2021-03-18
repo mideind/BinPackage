@@ -7,10 +7,10 @@
 ![GitHub](https://img.shields.io/github/license/mideind/BinPackage)
 ![Python 3.6+](https://img.shields.io/badge/python-3.6-blue.svg)
 
-<img src="static/img/greynir-logo-large.png" alt="Greynir" width="200" height="200" align="right" style="margin-left:20px; margin-bottom: 20px;">
+<img src="img/greynir-logo-large.png" alt="Greynir" width="200" height="200" align="right" style="margin-left:20px; margin-bottom: 20px;">
 
-*BinPackage* is a Python package that embeds the entire Database of Modern Icelandic
-Inflection (Beygingarlýsing íslensks nútímamáls, BÍN) and allows various
+*BinPackage* is a Python package that embeds the entire *Database of Modern Icelandic*
+*Inflection* (*Beygingarlýsing íslensks nútímamáls*, *BÍN*) and allows various
 queries of the data.
 
 The database contains over 6,5 million entries, over 3,1 million unique word forms,
@@ -25,7 +25,7 @@ linguistic acceptability and alternate spelling forms.
 
 ## Examples
 
-Querying for word forms:
+### Querying for word forms:
 
 ```python
 >>> from islenska import Bin
@@ -60,17 +60,30 @@ lemma (`stofn`), the category, subcategory and id number (`hk/alm/1198`),
 the word form (`ordmynd`) and the inflection paradigm (`GM-VH-NT-3P-FT`).
 The inflection paradigm strings are [documented on the BÍN website](https://bin.arnastofnun.is/gogn/k-snid).
 
-What category or categories does a word form belong to?
+### What category or categories does a word form belong to?
 
 ```python
 >>> from islenska import Bin
 >>> b = Bin()
->>> set(m.ordfl for m in b.lookup("laga")[1])
+>>> b.lookup_cats("laga")
 >>> {'hk', 'so', 'kk'}
 ```
 
 Here, we see that the word form *laga* can be a neutral (`'hk'`) or masculine (`'kk'`) noun,
 or a verb (`'so'`).
+
+### What are the possible lemmas of a word?
+
+```python
+>>> from islenska import Bin
+>>> b = Bin()
+>>> b.lookup_lemmas_and_cats("laga")
+>>> {('lag', 'hk'), ('lög', 'hk'), ('laga', 'so'), ('lagi', 'kk'), ('lögur', 'kk')}
+```
+
+Here we see, perhaps unexpectedly, that the word form *laga* has five possible lemmas:
+four nouns (*lag*, *lög*, *lagi* and *lögur*, neutral and masculine respectively),
+and one verb (*laga*).
 
 ## Implementation
 
@@ -79,26 +92,21 @@ and requires Python 3.6 or later. It runs on CPython and [PyPy](http://pypy.org/
 
 ## File details
 
-* `main.py`: WSGI web server application and main module for command-line invocation
-* `routes/*.py`: Routes for the web application
-* `query.py`: Natural language query processor
-* `queries/*.py`: Question answering modules
-* `db/*.py`: Database models and functions via SQLAlchemy
-* `scraper.py`: Web scraper, collecting articles from a set of pre-selected websites (roots)
-* `scrapers/*.py`: Scraper code for various websites
-* `settings.py`: Management of global settings and configuration data
-* `config/Greynir.conf`: Editable configuration file
-* `fetcher.py`: Utility classes for fetching articles given their URLs
-* `nertokenizer.py`: A layer on top of the tokenizer for named entity recognition
-* `processor.py`: Information extraction from parse trees and token streams
-* `article.py`: Representation of an article through its life cycle
-* `tree.py`: Representation of parse trees for processing
-* `vectors/builder.py`: Article indexer and LSA topic vector builder
-* `doc.py`: Extract plain text from various document formats
-* `geo.py`: Geography and location-related utility functions
-* `speech.py`: Speech synthesis-related utility functions
-* `tools/*.py`: Various command line tools
-* `util.py`: Various utility functions
+The following files are located in the `src/islenska` directory:
+
+* `bindb.py`: The main `Bin` class; high-level interfaces into BinPackage.
+* `bincompress.py`: The lower-level `BinCompressed` class, interacting directly with
+  the compressed data in a binary buffer in memory.
+* `basics.py`: Basic data structures, such as the `BinMeaning` NamedTuple.
+* `dawgdictionary.py`: Classes that handle compound words.
+* `bin.h`, `bin.cpp`: C++ code for fast lookup of word forms, called from Python via CFFI.
+* `tools/binpack.py`: A command-line tool that reads vocabulary data in .CSV form and outputs
+  a compressed binary file, `compressed.bin`.
+* `tools/dawgbuilder.py`: A command-line tool that reads information about word prefixes and suffixes
+  and creates corresponding directed acyclic word graph (DAWG) structures for
+  the word compounding logic.
+* `resources/prefixes.txt`, `resources/suffixes.txt`: Text files containing
+  valid Icelandic word prefixes and suffixes, respectively.
 
 ## Installation and setup
 

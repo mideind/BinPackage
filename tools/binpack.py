@@ -146,6 +146,10 @@ else:
     # Running from the base directory (.)
     _path += "/src/islenska"
 
+# If running under a CI environment (such as GitHub Actions),
+# limit output to the essentials
+quiet = os.environ.get("CI", "").strip() > ""
+
 
 class _Node:
 
@@ -513,8 +517,9 @@ class BinCompressor:
                     if lemma != form:
                         self._lemma_forms[six].add(form)
                     # Progress indicator
-                    if cnt % 10000 == 0:
-                        print(cnt, end="\r")
+                    if not quiet:
+                        if cnt % 10000 == 0:
+                            print(cnt, end="\r")
         print("{0} done\n".format(cnt))
         print("Time: {0:.1f} seconds".format(time.time() - start_time))
         print("Highest utg (wix) is {0}".format(max_wix))
@@ -530,14 +535,16 @@ class BinCompressor:
         """ Print a few key statistics about the dictionary """
         print("Forms are {0}".format(len(self._forms)))
         print("Lemmas are {0}".format(len(self._lemmas)))
-        print("They are distributed as follows:")
-        for key, val in self._lemma_cat_count.items():
-            print("   {0:6s} {1:8d}".format(key, val))
+        if not quiet:
+            print("They are distributed as follows:")
+            for key, val in self._lemma_cat_count.items():
+                print("   {0:6s} {1:8d}".format(key, val))
         print("Subcategories are {0}".format(len(self._subcats)))
         print("Meanings are {0}".format(len(self._meanings)))
         print("Ksnid-strings are {0}".format(len(self._ksnid_strings)))
-        print("The alphabet is '{0!r}'".format(self._alphabet_bytes))
-        print("It contains {0} characters".format(len(self._alphabet_bytes)))
+        if not quiet:
+            print("The alphabet is '{0!r}'".format(self._alphabet_bytes))
+            print("It contains {0} characters".format(len(self._alphabet_bytes)))
 
     def lookup(self, form: str) -> List[MeaningTuple]:
         """ Test lookup of SHsnid tuples from uncompressed data """
@@ -982,4 +989,5 @@ b.print_stats()
 
 filename = os.path.join(_path, "resources", BIN_COMPRESSED_FILE)
 b.write_binary(filename)
+
 print("Done; the compressed vocabulary was written to {0}".format(filename))

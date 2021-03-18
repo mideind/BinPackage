@@ -122,7 +122,9 @@ if basepath.endswith(os.sep + "tools"):
     basepath = basepath[0:-6]
     sys.path.append(basepath)
 
-quiet = os.environ.get("CI", "") > ""
+# If running under a CI environment (such as GitHub Actions),
+# limit output to the essentials
+quiet = os.environ.get("CI", "").strip() > ""
 
 MAXLEN = 64
 KEY_FUNC = None  # Module-wide sort key function
@@ -597,8 +599,7 @@ class DawgBuilder:
             self._key = None  # Sortkey for self._nxt
             fpath = os.path.abspath(os.path.join(relpath, fname))
             self._fin = codecs.open(fpath, mode="r", encoding="utf-8")
-            if not quiet:
-                print("Opened input file {0}".format(fpath))
+            print("Reading input file {0}".format(fpath))
             self._init()
 
         def _init(self):
@@ -795,20 +796,18 @@ class DawgBuilder:
             f.close()
         # Complete and clean up
         self._dawg.finish()
-        if not quiet:
-            print(
-                "Finished loading {0} words, output {1} words, "
-                "{2} duplicates skipped, {3} removed".format(
-                    incount, outcount, duplicates, removed
-                )
+        print(
+            "Finished loading {0} words, output {1} words, "
+            "{2} duplicates skipped, {3} removed".format(
+                incount, outcount, duplicates, removed
             )
+        )
 
     def _output_binary(self, relpath, output):
         """ Write the DAWG to a flattened binary file with extension '.dawg.bin' """
         assert self._dawg is not None
         fname = os.path.abspath(os.path.join(relpath, output + ".dawg.bin"))
-        if not quiet:
-            print("Writing binary file '{0}'...".format(fname))
+        print("Writing binary file '{0}'...".format(fname))
         f = io.BytesIO()
         # Create a packer to flatten the tree onto a binary stream
         p = _BinaryDawgPacker(f, self._dawg.vocabulary)
@@ -846,8 +845,7 @@ class DawgBuilder:
 
 def generate_dawgs():
     """ Build all required DAWGs """
-    if not quiet:
-        print("Starting DAWG build for BinPackage")
+    print("Starting DAWG build for BinPackage")
     resources_path = os.path.join(basepath, "src", "islenska", "resources")
     db = DawgBuilder()
 
@@ -860,8 +858,7 @@ def generate_dawgs():
         resources_path,  # Subfolder of input and output files
     )
     t1 = time.time()
-    if not quiet:
-        print("Build took {0:.2f} seconds".format(t1 - t0))
+    print("Build took {0:.2f} seconds".format(t1 - t0))
 
     t0 = time.time()
     db.build(
@@ -872,8 +869,7 @@ def generate_dawgs():
         resources_path,  # Subfolder of input and output files
     )
     t1 = time.time()
-    if not quiet:
-        print("Build took {0:.2f} seconds".format(t1 - t0))
+    print("Build took {0:.2f} seconds".format(t1 - t0))
 
     t0 = time.time()
     db.build(
@@ -884,11 +880,9 @@ def generate_dawgs():
         resources_path,  # Subfolder of input and output files
     )
     t1 = time.time()
-    if not quiet:
-        print("Build took {0:.2f} seconds".format(t1 - t0))
+    print("Build took {0:.2f} seconds".format(t1 - t0))
 
-    if not quiet:
-        print("DAWG builder run complete")
+    print("DAWG builder run complete")
 
 
 if __name__ == "__main__":

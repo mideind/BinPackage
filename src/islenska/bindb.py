@@ -501,20 +501,39 @@ class Bin:
     ) -> ResultTuple:
         """ Given a word form, look up all its possible meanings.
             This is the main query function of the Bin class. """
-        assert self._bc is not None
         return self._lookup(w, at_sentence_start, auto_uppercase, self._meanings_func)
 
-    def lookup_lemma(
-        self, w: str, at_sentence_start: bool = False, auto_uppercase: bool = False
-    ) -> ResultTuple:
-        """ Given a word lemma, look up all its possible meanings """
+    def lookup_cats(self, w: str, at_sentence_start: bool = False) -> Set[str]:
+        """ Given a word form, look up all its possible categories
+            ('kk', 'kvk', 'hk', 'so', 'lo', ...). """
+        _, m = self._lookup(w, at_sentence_start, False, self._meanings_func)
+        return set(mm.ordfl for mm in m)
+
+    def lookup_lemmas_and_cats(
+        self, w: str, at_sentence_start: bool = False
+    ) -> Set[Tuple[str, str]]:
+        """ Given a word form, look up all its possible lemmas and categories """
+        _, m = self._lookup(w, at_sentence_start, False, self._meanings_func)
+        return set((mm.stofn, mm.ordfl) for mm in m)
+
+    def lookup_forms(self, lemma: str, cat: str, case: str) -> List[BinMeaning]:
+        """ Lookup all base forms of a particular lemma, in the indicated case.
+            This is mainly used to retrieve inflection forms of nouns, where
+            we want to retrieve singular and plural, definite and indefinite
+            forms in particular cases. """
+        assert self._bc is not None
+        mset = self._bc.lookup_case(
+            lemma, case.upper(), lemma=lemma, cat=cat, all_forms=True
+        )
+        return self._map_meanings(mset)
+
+    def lemma_meanings(self, lemma: str) -> ResultTuple:
+        """ Given a lemma, look up all its possible meanings """
         # Note: we consider middle voice infinitive verbs to be lemmas,
         # i.e. 'eignast' is recognized as a lemma as well as 'eigna'.
         # This is done for consistency, as some middle voice verbs have
         # their own separate lemmas in BÍN, such as 'ábyrgjast'.
-        final_w, meanings = self.lookup(
-            w, at_sentence_start=at_sentence_start, auto_uppercase=auto_uppercase
-        )
+        final_w, meanings = self.lookup(lemma)
 
         def match(m: BinMeaning) -> bool:
             """ Return True for meanings that are canonical as lemmas """
@@ -529,17 +548,6 @@ class Bin:
             return _LEMMA_FILTERS.get(m.ordfl, lambda _: True)(m.beyging)
 
         return final_w, [m for m in meanings if match(m)]
-
-    def lookup_forms(self, lemma: str, cat: str, case: str) -> List[BinMeaning]:
-        """ Lookup all base forms of a particular lemma, in the indicated case.
-            This is mainly used to retrieve inflection forms of nouns, where
-            we want to retrieve singular and plural, definite and indefinite
-            forms in particular cases. """
-        assert self._bc is not None
-        mset = self._bc.lookup_case(
-            lemma, case.upper(), lemma=lemma, cat=cat, all_forms=True
-        )
-        return self._map_meanings(mset)
 
     @lru_cache(maxsize=CACHE_SIZE)
     def lookup_raw_nominative(self, w: str) -> List[BinMeaning]:

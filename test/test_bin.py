@@ -288,57 +288,57 @@ def test_bin() -> None:
 def test_bindb() -> None:
     db = GreynirBin()
     # Test the lemma lookup functionality
-    w, m = db.lookup_lemma("eignast")
+    w, m = db.lemma_meanings("eignast")
     assert w == "eignast"
     assert len(m) > 0
     assert m[0].stofn == "eigna"
-    w, m = db.lookup_lemma("ábyrgjast")
+    w, m = db.lemma_meanings("ábyrgjast")
     assert w == "ábyrgjast"
     assert len(m) > 0
     assert m[0].stofn == "ábyrgjast"
-    w, m = db.lookup_lemma("ábyrgja")
+    w, m = db.lemma_meanings("ábyrgja")
     assert w == "ábyrgja"
     assert len(m) > 0
     assert m[0].stofn == "á-byrgja"
-    w, m = db.lookup_lemma("ábyrgir")
+    w, m = db.lemma_meanings("ábyrgir")
     assert w == "ábyrgir"
     assert len(m) == 0
-    w, m = db.lookup_lemma("stór")
+    w, m = db.lemma_meanings("stór")
     assert w == "stór"
     assert len(m) > 0
     assert m[0].stofn == "stór"
-    w, m = db.lookup_lemma("stórar")
+    w, m = db.lemma_meanings("stórar")
     assert w == "stórar"
     assert len(m) == 0
-    w, m = db.lookup_lemma("sig")
+    w, m = db.lemma_meanings("sig")
     assert w == "sig"
     assert len(m) > 0
     assert any(mm.ordfl == "abfn" for mm in m)
-    w, m = db.lookup_lemma("sér")
+    w, m = db.lemma_meanings("sér")
     assert w == "sér"
     assert len(m) > 0
     assert not any(mm.ordfl == "abfn" for mm in m)
-    w, m = db.lookup_lemma("hann")
+    w, m = db.lemma_meanings("hann")
     assert w == "hann"
     assert len(m) > 0
     assert any(mm.ordfl == "pfn" for mm in m)
-    w, m = db.lookup_lemma("hán")
+    w, m = db.lemma_meanings("hán")
     assert w == "hán"
     assert len(m) > 0
     assert any(mm.ordfl == "pfn" for mm in m)
-    w, m = db.lookup_lemma("háns")
+    w, m = db.lemma_meanings("háns")
     assert w == "háns"
     assert len(m) == 0
-    w, m = db.lookup_lemma("hinn")
+    w, m = db.lemma_meanings("hinn")
     assert w == "hinn"
     assert len(m) > 0
     assert any(mm.ordfl == "gr" for mm in m)
-    w, m = db.lookup_lemma("einn")
+    w, m = db.lemma_meanings("einn")
     assert w == "einn"
     assert len(m) > 0
     assert any(mm.ordfl == "lo" for mm in m)
     assert any(mm.ordfl == "fn" for mm in m)
-    w, m = db.lookup_lemma("núll")
+    w, m = db.lemma_meanings("núll")
     assert w == "núll"
     assert len(m) > 0
     assert any(mm.ordfl == "töl" for mm in m)
@@ -366,6 +366,42 @@ def test_compounds() -> None:
     assert m
     assert m[0].stofn == "Félags- og barnamála-ráðherra"
     assert m[0].ordmynd == "Félags- og barnamála-ráðherra"
+
+    cats = db.lookup_cats("færi")
+    assert set(cats) == {"hk", "lo", "so"}
+
+    lc = db.lookup_lemmas_and_cats("færi")
+    assert set(lc) == {("færi", "hk"), ("fær", "lo"), ("fara", "so"), ("færa", "so")}
+
+    cats = db.lookup_cats("borgarstjórnarmeirihlutinn")
+    assert set(cats) == {"kk"}
+
+    cats = db.lookup_lemmas_and_cats("borgarstjórnarmeirihlutinn")
+    assert set(cats) == {("borgarstjórnar-meirihluti", "kk")}
+
+    cats = db.lookup_cats("xyz")
+    assert set(cats) == set()
+
+    lc = db.lookup_lemmas_and_cats("xyz")
+    assert set(lc) == set()
+
+    cats = db.lookup_cats("Vestur-Þýskalands")
+    assert set(cats) == {"hk"}
+
+    lc = db.lookup_lemmas_and_cats("Vestur-Þýskalands")
+    assert set(lc) == {("Vestur-Þýskaland", "hk")}
+
+    cats = db.lookup_cats("Fjármála- og efnahagsráðherranna")
+    assert set(cats) == {"kk"}
+
+    lc = db.lookup_lemmas_and_cats("Fjármála- og efnahagsráðherranna")
+    assert set(lc) == {("Fjármála- og efnahags-ráðherra", "kk")}
+
+    cats = db.lookup_cats("fjármála- og efnahagsráðherranna")
+    assert set(cats) == {"kk"}
+
+    lc = db.lookup_lemmas_and_cats("fjármála- og efnahagsráðherranna")
+    assert set(lc) == {("fjármála- og efnahags-ráðherra", "kk")}
 
 
 def test_compatibility() -> None:

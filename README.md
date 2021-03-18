@@ -25,7 +25,9 @@ linguistic acceptability and alternate spelling forms.
 
 ## Examples
 
-### Querying for word forms:
+### Querying for word forms
+
+*Uppfletting beygingarmynda*
 
 ```python
 >>> from islenska import Bin
@@ -60,7 +62,9 @@ lemma (`stofn`), the category, subcategory and id number (`hk/alm/1198`),
 the word form (`ordmynd`) and the inflection paradigm (`GM-VH-NT-3P-FT`).
 The inflection paradigm strings are [documented on the BÍN website](https://bin.arnastofnun.is/gogn/k-snid).
 
-### What category or categories does a word form belong to?
+### Word categories
+
+*Orðflokkar*
 
 ```python
 >>> from islenska import Bin
@@ -69,10 +73,12 @@ The inflection paradigm strings are [documented on the BÍN website](https://bin
 >>> {'hk', 'so', 'kk'}
 ```
 
-Here, we see that the word form *laga* can be a neutral (`'hk'`) or masculine (`'kk'`) noun,
-or a verb (`'so'`).
+Here, we see that the word form *laga* can be a neutral (`'hk'`) or
+masculine (`'kk'`) noun, or a verb (`'so'`).
 
-### What are the possible lemmas of a word?
+### Lemmas
+
+*Lemmur*
 
 ```python
 >>> from islenska import Bin
@@ -90,28 +96,10 @@ and one verb (*laga*).
 BinPackage is written in [Python 3](https://www.python.org/)
 and requires Python 3.6 or later. It runs on CPython and [PyPy](http://pypy.org/).
 
-## File details
-
-The following files are located in the `src/islenska` directory:
-
-* `bindb.py`: The main `Bin` class; high-level interfaces into BinPackage.
-* `bincompress.py`: The lower-level `BinCompressed` class, interacting directly with
-  the compressed data in a binary buffer in memory.
-* `basics.py`: Basic data structures, such as the `BinMeaning` NamedTuple.
-* `dawgdictionary.py`: Classes that handle compound words.
-* `bin.h`, `bin.cpp`: C++ code for fast lookup of word forms, called from Python via CFFI.
-* `tools/binpack.py`: A command-line tool that reads vocabulary data in .CSV form and outputs
-  a compressed binary file, `compressed.bin`.
-* `tools/dawgbuilder.py`: A command-line tool that reads information about word prefixes and suffixes
-  and creates corresponding directed acyclic word graph (DAWG) structures for
-  the word compounding logic.
-* `resources/prefixes.txt`, `resources/suffixes.txt`: Text files containing
-  valid Icelandic word prefixes and suffixes, respectively.
-
 ## Installation and setup
 
 You must have Python >= 3.6 installed on your machine.
-If you are using a virtual Python environment, activate it first:
+If you are using a Python virtual environment (`virtualenv`), activate it first:
 
 ```bash
 $ venv/bin/activate
@@ -121,33 +109,60 @@ $ venv/bin/activate
 C:\> venv\scripts\activate
 ```
 
-Then, install BinPackage using Pip:
+Then, install BinPackage from the Python Package Index (PyPi),
+where the package is called `islenska`:
 
 ```bash
 $ pip install islenska
 ```
 
-Now, you are ready to `import islenska` or `from islenska import Bin` in your Python code.
+Now, you are ready to `import islenska` or `from islenska import Bin`
+in your Python code.
 
-## Using BinPackage
+If you want to install the package in editable source code mode,
+do as follows:
 
-Once you have followed the setup and installation instructions above, change to the 
-Greynir repository and activate the virtual environment:
-
+```bash
+$ git clone https://github.com/mideind/BinPackage
+$ cd BinPackage
+$ pip install -e .  # Note the dot!
 ```
-cd Greynir
-venv/bin/activate
-```
 
-You should now be able to run Greynir.
+This will clone the GitHub repository into the BinPackage directory,
+and install the package into
+your environment from the source files. Now you can edit the source and
+get immediate feedback on your changes in the code.
+
+## File details
+
+The following files are located in the `src/islenska` directory within
+BinPackage:
+
+* `bindb.py`: The main `Bin` class; high-level interfaces into BinPackage.
+* `bincompress.py`: The lower-level `BinCompressed` class, interacting directly with
+  the compressed data in a binary buffer in memory.
+* `basics.py`: Basic data structures, such as the `BinMeaning` NamedTuple.
+* `dawgdictionary.py`: Classes that handle compound words.
+* `bin.h`, `bin.cpp`: C++ code for fast lookup of word forms, called from Python via CFFI.
+* `tools/binpack.py`: A command-line tool that reads vocabulary data in .CSV
+  form and outputs a compressed binary file, `compressed.bin`.
+* `tools/dawgbuilder.py`: A command-line tool that reads information about word prefixes and suffixes
+  and creates corresponding directed acyclic word graph (DAWG) structures for
+  the word compounding logic.
+* `resources/prefixes.txt`, `resources/suffixes.txt`: Text files containing
+  valid Icelandic word prefixes and suffixes, respectively.
 
 ## Copyright and licensing
 
-BinPackage embeds the **Database of Modern Icelandic Inflection**
-(**Beygingarlýsing íslensks nútímamáls**), abbreviated *BÍN*.
+BinPackage embeds the
+**[Database of Modern Icelandic Inflection](https://bin.arnastofnun.is/)**
+(**[Beygingarlýsing íslensks nútímamáls](https://bin.arnastofnun.is/)**),
+abbreviated *BÍN*.
 
 The BÍN source data are publicly available under the CC-BY-4.0 license,
-as further detailed here in English and here in Icelandic.
+as further detailed
+[here in English](https://bin.arnastofnun.is/DMII/LTdata/conditions/) and
+[here in Icelandic](https://bin.arnastofnun.is/gogn/mimisbrunnur/).
 
 In accordance with the BÍN license terms, credit is hereby given as follows:
 
@@ -157,13 +172,15 @@ In accordance with the BÍN license terms, credit is hereby given as follows:
 ----
 
 BinPackage includes certain additions and modifications to the original
-BÍN source data. These are explained in the source code file tools/binpack.py,
+BÍN source data. These are explained in the source code file `tools/binpack.py`,
 available in the project's GitHub repository.
 
 ----
 
 BinPackage is Copyright (C) 2021 [Miðeind ehf.](https://mideind.is)
 The original author of this software is *Vilhjálmur Þorsteinsson*.
+
+<img src="img/MideindLogoVert400.png" alt="Miðeind ehf." width="100" height="100" align="left" style="margin-right:20px; margin-top: 10px; margin-bottom: 10px;">
 
 This software is licensed under the **MIT License**:
 
@@ -184,8 +201,6 @@ THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-Miðeind ehf.
-
 If you would like to use this software in ways that are incompatible with the
-standard MIT license, contact Miðeind ehf. to negotiate custom arrangements.
+standard MIT license, [contact Miðeind ehf.](mailto:mideind@mideind.is) to negotiate custom arrangements.
 

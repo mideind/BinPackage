@@ -430,6 +430,7 @@ class BinCompressor:
             print("Reading file '{0}'...\n".format(fname))
             with open(fname, "r") as f:
                 for line in f:
+                    cnt += 1
                     line = line.strip()
                     if not line or line[0] == "#":
                         # Empty line or comment: skip
@@ -464,6 +465,10 @@ class BinCompressor:
                         if m.utg > self._utg:
                             # Keep track of the highest utg number from BÍN
                             self._utg = m.utg
+                    # Avoid bugs in BÍN
+                    if not m.stofn or not m.ordmynd or m.ordmynd in {"num", "ir", "irnir", "i", "ina"}:
+                        print(f"Missing or invalid data in line {cnt} in file {fname} (lemma '{m.stofn}')")
+                        continue
                     # Skip this if the lemma is capitalized differently
                     # than the word form (which is a bug in BÍN)
                     if m.stofn[0].isupper() != m.ordmynd[0].isupper():
@@ -507,7 +512,6 @@ class BinCompressor:
                     # of its lemma, if it is different from the lemma
                     if lemma != form:
                         self._lemma_forms[six].add(form)
-                    cnt += 1
                     # Progress indicator
                     if cnt % 10000 == 0:
                         print(cnt, end="\r")

@@ -13,9 +13,10 @@ __pycache__/
 *.so
 *.exe
 
-# Training data files
+# Compressed data files
 *.gz
 *.zip
+*.sha256sum
 
 # Experimental Python stuff
 test.py

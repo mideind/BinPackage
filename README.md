@@ -18,8 +18,13 @@ and about 300 thousand distinct lemmas. It has been compressed from a 400+ megab
 CSV file to a ~80 megabyte indexed binary structure that is mapped directly into memory
 for fast lookup and efficient memory usage.
 
-BinPackage allows querying for word forms, as well as lemmas and grammatical variants,
-yielding information about word categories (noun, verb, ...), subcategories (person names,
+This means that `pip install islenska` is all you need to have most of the
+vocabulary of the Icelandic language at your disposal via Python. Batteries
+included; no external databases or middleware required.
+
+BinPackage allows querying for word forms, as well as lemmas and grammatical variants.
+This includes information about word categories (noun, verb, ...),
+subcategories (person names,
 place names, ...), inflection paradigms and various annotations, such as degrees of
 linguistic acceptability and alternate spelling forms.
 
@@ -56,7 +61,24 @@ linguistic acceptability and alternate spelling forms.
 ])
 ```
 
-`Bin.lookup()` returns a tuple containing the original lookup word
+`Bin.lookup()` returns the original lookup word
+and a list of its possible meanings. Each meaning tuple contains the
+lemma (`stofn`), the category, subcategory and id number (`hk/alm/1198`),
+the word form (`ordmynd`) and the inflection paradigm (`GM-VH-NT-3P-FT`).
+The inflection paradigm strings are [documented on the BÍN website](https://bin.arnastofnun.is/gogn/k-snid).
+
+### Detailed word query
+
+*Uppfletting ítarlegra upplýsinga*
+
+```python
+>>> from islenska import Bin
+>>> b = Bin()
+>>> b.lookup_ksnid("allskonar")
+**TBD**
+```
+
+`Bin.lookup_ksnid()` returns the original lookup word
 and a list of its possible meanings. Each meaning tuple contains the
 lemma (`stofn`), the category, subcategory and id number (`hk/alm/1198`),
 the word form (`ordmynd`) and the inflection paradigm (`GM-VH-NT-3P-FT`).
@@ -73,7 +95,7 @@ The inflection paradigm strings are [documented on the BÍN website](https://bin
 >>> {'hk', 'so', 'kk'}
 ```
 
-Here, we see that the word form *laga* can be a neutral (`'hk'`) or
+Here, we see that the word form *laga* can mean a neutral (`'hk'`) or
 masculine (`'kk'`) noun, or a verb (`'so'`).
 
 ### Lemmas

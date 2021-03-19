@@ -87,6 +87,9 @@ SUBCAT_BITS = 8
 COMMON_KIX_0 = 0
 COMMON_KIX_1 = 1
 
+# Special Ksnid string used for synthetic word forms, having 'birting'='G'
+KSNID_GREYNIR = "1;;;;G;1;;;"
+
 LFU_DEFAULT = 512
 
 # Type variables for keys and values
@@ -134,6 +137,20 @@ _meaning_repr: Callable[[BinMeaning], str] = lambda self: (
 
 setattr(BinMeaning, "__str__", _meaning_repr)
 setattr(BinMeaning, "__repr__", _meaning_repr)
+
+
+def make_bin_meaning(
+    stofn: str,
+    utg: int,
+    ordfl: str,
+    fl: str,
+    ordmynd: str,
+    beyging: str,
+    copy_from: Optional[BinMeaning] = None,
+) -> BinMeaning:
+    """ Constructor for BinMeaning instances """
+    return BinMeaning(stofn, utg, ordfl, fl, ordmynd, beyging)
+
 
 # Type variable for the Ksnid class
 _Ksnid = TypeVar("_Ksnid", bound="Ksnid")
@@ -213,7 +230,7 @@ class Ksnid:
         fl: str,
         form: str,
         beyging: str,
-        ksnid: str,
+        ksnid: str = KSNID_GREYNIR,
     ) -> _Ksnid:
         """ Create a Ksnid instance from the given parameters """
         m = cls()
@@ -242,6 +259,37 @@ class Ksnid:
         m.millivisun = int(millivisun or "0")
         m.beinkunn = int(beinkunn)
         return m
+
+    @classmethod
+    def make(
+        cls: Type[_Ksnid],
+        stofn: str,
+        utg: int,
+        ordfl: str,
+        fl: str,
+        form: str,
+        beyging: str,
+        copy_from: Optional["_Ksnid"] = None,
+    ) -> _Ksnid:
+        """ Create a Ksnid instance from the given parameters """
+        m = cls.from_parameters(stofn, utg, ordfl, fl, form, beyging)
+        if copy_from is not None:
+            m.einkunn = copy_from.einkunn
+            m.malsnid = copy_from.malsnid
+            m.malfraedi = copy_from.malfraedi
+            m.millivisun = copy_from.millivisun
+            m.birting = copy_from.birting
+            m.beinkunn = copy_from.beinkunn
+            m.bmalsnid = copy_from.bmalsnid
+            m.bgildi = copy_from.bgildi
+            m.aukafletta = copy_from.aukafletta
+        return m
+
+    def to_bin_meaning(self) -> BinMeaning:
+        """ Copy this instance to a BinMeaning instance """
+        return BinMeaning(
+            self.stofn, self.utg, self.ordfl, self.fl, self.ordmynd, self.beyging
+        )
 
 
 class LFU_Cache(Generic[_K, _V]):

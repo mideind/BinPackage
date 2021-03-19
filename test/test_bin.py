@@ -30,9 +30,9 @@
 
 """
 
-from typing import Iterable, Optional, Callable, List
+from typing import Optional, Callable, List
 
-from islenska import Bin, BinMeaning
+from islenska import Bin, BinMeaning, BinFilterFunc
 from islenska.bincompress import BinCompressed
 from islenska.bindb import GreynirBin
 
@@ -404,6 +404,25 @@ def test_compounds() -> None:
     assert set(lc) == {("fjármála- og efnahags-ráðherra", "kk")}
 
 
+def test_key() -> None:
+    db = Bin()
+    w, m = db.lookup("Farmiðasala")
+    assert w == "farmiðasala"
+    assert all(mm.stofn in ("far-miðasala", "far-miðasali") for mm in m)
+    w, m = db.lookup("farmiðasala")
+    assert w == "farmiðasala"
+    assert all(mm.stofn in ("far-miðasala", "far-miðasali") for mm in m)
+    w, m = db.lookup("lízt")
+    assert w == "líst"
+    assert all(mm.stofn == "líta" for mm in m)
+    w, m = db.lookup("Fjármála- og efnahagsráðherrans")
+    assert w == "Fjármála- og efnahagsráðherrans"
+    assert all(mm.stofn == "Fjármála- og efnahags-ráðherra" for mm in m)
+    w, m = db.lookup("Ytri-Hnausum")
+    assert w == "Ytri-Hnausum"
+    assert all(mm.stofn == "Ytri-Hnaus" for mm in m)
+
+
 def test_compatibility() -> None:
     db_bin = Bin()
     db_greynir = GreynirBin()
@@ -503,7 +522,7 @@ def test_casting() -> None:
     assert db.cast_to_dative("Kattarhestur") == "Kattarhesti"
     assert db.cast_to_genitive("Kattarhestur") == "Kattarhests"
 
-    f: Callable[[Iterable[BinMeaning]], List[BinMeaning]] = lambda mm: [
+    f: BinFilterFunc = lambda mm: [
         m for m in mm if "2" not in m.beyging
     ]
     assert db.cast_to_accusative("fjórir", meaning_filter_func=f) == "fjóra"
@@ -518,7 +537,7 @@ def test_casting() -> None:
     assert db.cast_to_dative("Vestur-Þýskaland") == "Vestur-Þýskalandi"
     assert db.cast_to_genitive("Vestur-Þýskaland") == "Vestur-Þýskalands"
 
-    f = lambda mm: sorted(mm, key=lambda m: "2" in m.beyging or "3" in m.beyging)
+    f: BinFilterFunc = lambda mm: sorted(mm, key=lambda m: "2" in m.beyging or "3" in m.beyging)
     assert db.cast_to_accusative("Kópavogur", meaning_filter_func=f) == "Kópavog"
     assert db.cast_to_dative("Kópavogur", meaning_filter_func=f) == "Kópavogi"
     assert db.cast_to_genitive("Kópavogur", meaning_filter_func=f) == "Kópavogs"

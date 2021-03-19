@@ -35,7 +35,7 @@
 from .version import __version__
 
 from .basics import BinMeaning, Ksnid
-from .bindb import Bin
+from .bindb import Bin, BinFilterFunc, BinMeaningList, BinMeaningIterable
 
 __author__ = "Miðeind ehf."
 __copyright__ = "(C) 2021 Miðeind ehf."

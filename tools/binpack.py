@@ -113,7 +113,20 @@
 
 """
 
-from typing import Any, DefaultDict, Set, Tuple, Dict, List, Optional, Iterable, IO
+from typing import (
+    Any,
+    DefaultDict,
+    Generic,
+    Hashable,
+    Set,
+    Tuple,
+    Dict,
+    List,
+    Optional,
+    Iterable,
+    IO,
+    TypeVar,
+)
 
 import os
 import io
@@ -329,37 +342,56 @@ class Trie:
         return self._cnt
 
 
-class Indexer:
+_V = TypeVar("_V", bound=Hashable)
 
-    """ A thin dict wrapper that maps unique keys to indices,
-        and is invertible, i.e. can be converted to a index->key map """
+
+class Indexer(Generic[_V]):
+
+    """ A thin dict wrapper that maps unique values to indices and vice versa.
+        The values must be hashable. """
 
     def __init__(self) -> None:
-        self._d: Dict[Any, Any] = dict()
+        self._d: Dict[_V, int] = dict()
+        self._inv_d: Dict[int, _V] = dict()
 
-    def add(self, s: Any) -> int:
+    def add(self, s: _V) -> int:
+        """ Add a value to the indexer, if not already present. In any case,
+            return the integer index of the value. """
         try:
             return self._d[s]
         except KeyError:
             ix = len(self._d)
             self._d[s] = ix
+            self._inv_d[ix] = s
             return ix
-
-    def invert(self) -> None:
-        """ Invert the index, so it is index->key instead of key->index """
-        self._d = {v: k for k, v in self._d.items()}
 
     def __len__(self) -> int:
         return len(self._d)
 
-    def __getitem__(self, key: Any) -> Any:
-        return self._d[key]
+    def __getitem__(self, key: int) -> _V:
+        return self._inv_d[key]
 
-    def get(self, key: Any, default: Any = None) -> Any:
-        return self._d.get(key, default)
+    def get(self, key: int, default: Optional[_V] = None) -> Optional[_V]:
+        return self._inv_d.get(key, default)
 
     def __str__(self) -> str:
         return str(self._d)
+
+
+class LemmaIndexer(Indexer[Tuple[bytes, int, int]]):
+    pass
+
+
+class MeaningsIndexer(Indexer[Tuple[bytes, bytes]]):
+    pass
+
+
+class KsnidIndexer(Indexer[bytes]):
+    pass
+
+
+class SubcatIndexer(Indexer[bytes]):
+    pass
 
 
 class BinCompressor:
@@ -398,10 +430,10 @@ class BinCompressor:
 
     def __init__(self) -> None:
         self._forms = Trie()  # ordmynd
-        self._lemmas = Indexer()  # stofn
-        self._meanings = Indexer()  # beyging
-        self._ksnid_strings = Indexer()  # ksnid additional fields
-        self._subcats = Indexer()  # fl
+        self._lemmas = LemmaIndexer()  # stofn
+        self._meanings = MeaningsIndexer()  # beyging
+        self._ksnid_strings = KsnidIndexer()  # ksnid additional fields
+        self._subcats = SubcatIndexer()  # fl
         self._alphabet: Set[int] = set()
         self._alphabet_bytes = bytes()
         # map form index -> { (lemma_ix, meaning_ix, ksnid_ix) }
@@ -430,6 +462,8 @@ class BinCompressor:
         max_wix = 0
         start_time = time.time()
         last_stofn = ""
+        # Map utg number to lemma number
+        utg_to_lemma: Dict[int, int] = dict()
         for fname in fnames:
             print("Reading file '{0}'...\n".format(fname))
             with open(fname, "r") as f:
@@ -460,9 +494,11 @@ class BinCompressor:
                                 last_stofn = m.stofn
                             # Assign a Greynir utg number
                             m.utg = self._utg
-                        # !!! TODO: Keep track of Greynir additions that
-                        # !!! have a proper utg number, e.g. plural forms
-                        # !!! that don't exist in BÍN
+                        else:
+                            # This is a Greynir addition to an existing
+                            # BÍN entry (probably a plural form):
+                            # mark it with birting='G'
+                            m.birting = "G"
                     else:
                         # Newer (KRISTINsnid) format file
                         m = Ksnid.from_tuple(t)
@@ -470,8 +506,15 @@ class BinCompressor:
                             # Keep track of the highest utg number from BÍN
                             self._utg = m.utg
                     # Avoid bugs in BÍN
-                    if not m.stofn or not m.ordmynd or m.ordmynd in {"num", "ir", "irnir", "i", "ina"}:
-                        print(f"Missing or invalid data in line {cnt} in file {fname} (lemma '{m.stofn}')")
+                    if (
+                        not m.stofn
+                        or not m.ordmynd
+                        or m.ordmynd in {"num", "ir", "irnir", "i", "ina"}
+                    ):
+                        print(
+                            f"Missing or invalid data in line {cnt} "
+                            f"in file {fname} (lemma '{m.stofn}')"
+                        )
                         continue
                     # Skip this if the lemma is capitalized differently
                     # than the word form (which is a bug in BÍN)
@@ -494,13 +537,33 @@ class BinCompressor:
                     meaning = m.beyging.encode("latin-1")
                     ksnid = m.ksnid_string.encode("latin-1")
                     self._alphabet |= set(form)
-                    wix = m.utg
                     # Subcategory (fl) index
                     cix = self._subcats.add(fl)
+                    # Utg number (unique lemma id)
+                    wix = m.utg
                     if wix > max_wix:
                         max_wix = wix
+                    if wix in utg_to_lemma:
+                        # We have seen this utg number before: make some sanity checks
+                        p_six = utg_to_lemma[wix]
+                        p_lemma, p_wix, p_cix = self._lemmas[p_six]
+                        assert p_wix == wix
+                        if p_lemma != lemma:
+                            print(
+                                f"Warning: utg {wix} refers to different lemmas, i.e. "
+                                f"{lemma.decode('latin-1')}/{cix} and "
+                                f"{p_lemma.decode('latin-1')}/{p_cix}"
+                            )
+                            print("Skipping this record")
+                            continue
+                        if cix != p_cix:
+                            # Different subcategory index: replace it to conform
+                            # with the previously seen one
+                            cix = p_cix
                     # Add a (lemma index, utg, subcat index) tuple
                     six = self._lemmas.add((lemma, wix, cix))
+                    # When putting something into memory, remember where you put it
+                    utg_to_lemma[wix] = six
                     if six > lemma_cnt:
                         # New lemma, not seen before: count its category (ordfl)
                         self._lemma_cat_count[m.ordfl] += 1
@@ -523,11 +586,6 @@ class BinCompressor:
         print("{0} done\n".format(cnt))
         print("Time: {0:.1f} seconds".format(time.time() - start_time))
         print("Highest utg (wix) is {0}".format(max_wix))
-        # Invert the indices so that values can be looked up by integer index
-        self._lemmas.invert()
-        self._meanings.invert()
-        self._ksnid_strings.invert()
-        self._subcats.invert()
         # Convert alphabet set to contiguous byte array, sorted by ordinal
         self._alphabet_bytes = bytes(sorted(self._alphabet))
 
@@ -553,8 +611,7 @@ class BinCompressor:
             values = self._lookup_form[self._forms[form_latin]]
             # Obtain the lemma and meaning tuples corresponding to the word form
             result = [
-                (self._lemmas[six], self._meanings[mix])
-                for six, mix, _ in values
+                (self._lemmas[six], self._meanings[mix]) for six, mix, _ in values
             ]
             # Convert to Unicode and return a 5-tuple
             # (stofn, utg, ordfl, fl, ordmynd, beyging)
@@ -979,6 +1036,7 @@ print("Welcome to the BinPackage compressed vocabulary file generator")
 b = BinCompressor()
 b.read(
     [
+        # Note: KRISTINsnid.csv must be the first file in the list
         os.path.join(_path, "resources", "KRISTINsnid.csv"),
         os.path.join(_path, "resources", "ord.add.csv"),
         os.path.join(_path, "resources", "ord.auka.csv"),

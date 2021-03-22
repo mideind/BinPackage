@@ -76,7 +76,8 @@ _T = TypeVar("_T", BinMeaning, Ksnid)
 ResultTuple = Tuple[str, List[_T]]
 LookupFunc = Callable[[str], List[_T]]
 
-# A constructor that constructs either BinMeaning or Ksnid instances
+# A constructor that constructs either BinMeaning or Ksnid instances,
+# optionally copying data from an existing instance
 MeaningCtor = Callable[[str, int, str, str, str, str, Optional[_T]], _T]
 
 TupleLookupFunc = Callable[[str], ResultTuple[_T]]
@@ -116,24 +117,24 @@ _OPEN_CATS = frozenset(("so", "kk", "hk", "kvk", "lo"))  # Open word categories
 
 # A dictionary of functions, one for each word category, that return
 # True for declension (beyging) strings of canonical/lemma forms
-_LEMMA_FILTERS: Dict[str, Callable[[str], bool]] = dict(
+_LEMMA_FILTERS: Dict[str, Callable[[str], bool]] = {
     # Nouns: Nominative, singular
-    kk=lambda b: b == "NFET",
-    kvk=lambda b: b == "NFET",
-    hk=lambda b: b == "NFET",
+    "kk": lambda b: b == "NFET",
+    "kvk": lambda b: b == "NFET",
+    "hk": lambda b: b == "NFET",
     # Pronouns: Masculine, nominative, singular
-    fn=lambda b: b == "KK-NFET" or b == "KK_NFET" or b == "fn_KK_NFET",
+    "fn": lambda b: b == "KK-NFET" or b == "KK_NFET" or b == "fn_KK_NFET",
     # Personal pronouns: Nominative, singular
-    pfn=lambda b: b == "NFET",
+    "pfn": lambda b: b == "NFET",
     # Definite article: Masculine, nominative, singular
-    gr=lambda b: b == "KK-NFET" or b == "KK_NFET",
+    "gr": lambda b: b == "KK-NFET" or b == "KK_NFET",
     # Verbs: infinitive
-    so=lambda b: b == "GM-NH",
+    "so": lambda b: b == "GM-NH",
     # Adjectives: Masculine, singular, first degree, strong declension
-    lo=lambda b: b == "FSB-KK-NFET" or b == "KK-NFET",
+    "lo": lambda b: b == "FSB-KK-NFET" or b == "KK-NFET",
     # Number words: Masculine, nominative case; or no inflection
-    to=lambda b: b.startswith("KK_NF") or b == "OBEYGJANLEGT",
-)
+    "to": lambda b: b.startswith("KK_NF") or b == "OBEYGJANLEGT",
+}
 
 
 class Bin:
@@ -169,10 +170,11 @@ class Bin:
         uppercase_suffix: bool = False
     ) -> List[_T]:
         """ Return a meaning list with a prefix added to the
-            stofn and ordmynd attributes. If insert_hyphen is True, we
-            insert a hyphen between the prefix and the suffix, both in the
-            stofn and in the ordmynd fields. If uppercase is additionally True, we
-            uppercase the suffix. """
+            stofn and ordmynd attributes of each entry in the list.
+            If insert_hyphen is True, we insert a hyphen between
+            the prefix and the suffix, both in the stofn and in
+            the ordmynd fields. If uppercase is additionally True,
+            we uppercase the suffix. """
         if not prefix:
             # No prefix: nothing to do
             return list(mlist)
@@ -193,7 +195,7 @@ class Bin:
             for r in mlist
         ]
 
-    def _map_meanings(self, mtlist: Iterable[MeaningTuple]) -> BinMeaningList:
+    def _filter_meanings(self, mtlist: Iterable[MeaningTuple]) -> BinMeaningList:
         """ Default mapping function to make BinMeaning instances
             from MeaningTuples coming from BinCompressed """
         assert self._bc is not None
@@ -206,7 +208,7 @@ class Bin:
             if mt[1] < max_utg
         ]
 
-    def _map_meanings_ksnid(self, klist: Iterable[Ksnid]) -> KsnidList:
+    def _filter_ksnid(self, klist: Iterable[Ksnid]) -> KsnidList:
         """ Default mapping function to make Ksnid instances
             from MeaningTuples coming from BinCompressed """
         assert self._bc is not None
@@ -215,22 +217,23 @@ class Bin:
             k
             for k in klist
             # Only return entries with utg numbers below the Greynir-specific mark,
+            # and that don't have 'birting' set to 'G',
             # i.e. skip entries that are Greynir-specific
-            if k.utg < max_utg
+            if k.utg < max_utg and k.birting != "G"
         ]
 
-    def _meanings_ksnid_func(self, key: str) -> KsnidList:
+    def _ksnid_cache_lookup(self, key: str) -> KsnidList:
         """ Attempt to lookup a word in the cache, calling
-            self._meanings() on a cache miss """
-        return self._ksnid_cache.lookup(key, self._meanings_ksnid)
+            self.ksnid_lookup() on a cache miss """
+        return self._ksnid_cache.lookup(key, self._ksnid_lookup)
 
-    def _meanings_func(self, key: str) -> BinMeaningList:
-        """ Attempt to lookup a word in the cache, calling
-            self._meanings() on a cache miss """
-        klist = self._meanings_ksnid_func(key)
+    def _meanings_cache_lookup(self, key: str) -> BinMeaningList:
+        """ Attempt to lookup a word in the cache,
+            returning a list of BinMeanings """
+        klist = self._ksnid_cache_lookup(key)
         return [k.to_bin_meaning() for k in klist]
 
-    def _meanings_ksnid(self, w: str) -> KsnidList:
+    def _ksnid_lookup(self, w: str) -> KsnidList:
         """ Low-level fetch of the BIN meanings of a given word.
             The output of this function is cached. """
         # Route the lookup request to the compressed binary file
@@ -240,7 +243,7 @@ class Bin:
         # Otherwise, map the query results to a BinMeaning tuple
         if not mtlist:
             return cast(KsnidList, [])
-        return self._map_meanings_ksnid(mtlist)
+        return self._filter_ksnid(mtlist)
 
     def _compound_meanings(
         self,
@@ -400,7 +403,9 @@ class Bin:
                 if lower_w.endswith(aend) and llw > len(aend):
                     prefix = lower_w[0 : llw - len(aend)]
                     # Construct an adjective descriptor
-                    m.append(ctor(prefix + "legur", 0, "lo", "alm", lower_w, beyging, None))
+                    m.append(
+                        ctor(prefix + "legur", 0, "lo", "alm", lower_w, beyging, None)
+                    )
             if lower_w.endswith("lega") and llw > 4:
                 # For words ending with "lega", add a possible adverb meaning
                 m.append(ctor(lower_w, 0, "ao", "alm", lower_w, "OBEYGJANLEGT", None))
@@ -516,7 +521,9 @@ class Bin:
                     cw[-1], cat=m_word.ordfl, lemma=m_word.stofn.split("-")[-1]
                 )
                 # Add the prefix to the remaining word lemmas
-                mm = Bin._prefix_meanings(mm, prefix, make_bin_meaning, insert_hyphen=False)
+                mm = Bin._prefix_meanings(
+                    mm, prefix, make_bin_meaning, insert_hyphen=False
+                )
             else:
                 mm = case_func(w, cat=m_word.ordfl, lemma=m_word.stofn)
                 if not mm and w[0].isupper() and not w.isupper():
@@ -574,7 +581,11 @@ class Bin:
         """ Given a word form, look up all its possible meanings.
             This is the main query function of the Bin class. """
         return self._lookup(
-            w, at_sentence_start, auto_uppercase, self._meanings_func, make_bin_meaning
+            w,
+            at_sentence_start,
+            auto_uppercase,
+            self._meanings_cache_lookup,
+            make_bin_meaning,
         )
 
     def lookup_ksnid(
@@ -582,18 +593,14 @@ class Bin:
     ) -> ResultTuple[Ksnid]:
         """ Given a word form, look up all its possible meanings in Ksnid form. """
         return self._lookup(
-            w,
-            at_sentence_start,
-            auto_uppercase,
-            self._meanings_ksnid_func,
-            Ksnid.make,
+            w, at_sentence_start, auto_uppercase, self._ksnid_cache_lookup, Ksnid.make,
         )
 
     def lookup_cats(self, w: str, at_sentence_start: bool = False) -> Set[str]:
         """ Given a word form, look up all its possible categories
             ('kk', 'kvk', 'hk', 'so', 'lo', ...). """
         _, m = self._lookup(
-            w, at_sentence_start, False, self._meanings_func, make_bin_meaning
+            w, at_sentence_start, False, self._ksnid_cache_lookup, Ksnid.make,
         )
         return set(mm.ordfl for mm in m)
 
@@ -602,7 +609,7 @@ class Bin:
     ) -> Set[Tuple[str, str]]:
         """ Given a word form, look up all its possible lemmas and categories """
         _, m = self._lookup(
-            w, at_sentence_start, False, self._meanings_func, make_bin_meaning
+            w, at_sentence_start, False, self._ksnid_cache_lookup, Ksnid.make,
         )
         return set((mm.stofn, mm.ordfl) for mm in m)
 
@@ -615,7 +622,7 @@ class Bin:
         mset = self._bc.lookup_case(
             lemma, case.upper(), lemma=lemma, cat=cat, all_forms=True
         )
-        return self._map_meanings(mset)
+        return self._filter_meanings(mset)
 
     def lemma_meanings(self, lemma: str) -> ResultTuple[BinMeaning]:
         """ Given a lemma, look up all its possible meanings """
@@ -646,31 +653,31 @@ class Bin:
             field. For new code, lookup_nominative() is likely to be a
             more efficient choice. """
         assert self._bc is not None
-        return self._map_meanings(self._bc.raw_nominative(w))
+        return self._filter_meanings(self._bc.raw_nominative(w))
 
     def lookup_nominative(self, w: str, **options: Any) -> BinMeaningList:
         """ Return meaning tuples for all word forms in nominative
             case for all { kk, kvk, hk, lo } category lemmas of the given word """
         assert self._bc is not None
-        return self._map_meanings(self._bc.nominative(w, **options))
+        return self._filter_meanings(self._bc.nominative(w, **options))
 
     def lookup_accusative(self, w: str, **options: Any) -> BinMeaningList:
         """ Return meaning tuples for all word forms in accusative
             case for all { kk, kvk, hk, lo } category lemmas of the given word """
         assert self._bc is not None
-        return self._map_meanings(self._bc.accusative(w, **options))
+        return self._filter_meanings(self._bc.accusative(w, **options))
 
     def lookup_dative(self, w: str, **options: Any) -> BinMeaningList:
         """ Return meaning tuples for all word forms in dative
             case for all { kk, kvk, hk, lo } category lemmas of the given word """
         assert self._bc is not None
-        return self._map_meanings(self._bc.dative(w, **options))
+        return self._filter_meanings(self._bc.dative(w, **options))
 
     def lookup_genitive(self, w: str, **options: Any) -> BinMeaningList:
         """ Return meaning tuples for all word forms in genitive
             case for all { kk, kvk, hk, lo } category lemmas of the given word """
         assert self._bc is not None
-        return self._map_meanings(self._bc.genitive(w, **options))
+        return self._filter_meanings(self._bc.genitive(w, **options))
 
     def cast_to_accusative(
         self, w: str, *, meaning_filter_func: Optional[BinFilterFunc] = None
@@ -741,7 +748,7 @@ class GreynirBin(Bin):
             GreynirBin.bin_deletions = BinDeletions.SET
             GreynirBin.bin_errata = BinErrata.DICT
 
-    def _map_meanings(self, mtlist: Iterable[MeaningTuple]) -> BinMeaningList:
+    def _filter_meanings(self, mtlist: Iterable[MeaningTuple]) -> BinMeaningList:
         """ Override the default straight-through translation of
             a MeaningTuple from BinCompressed over to a BinMeaning
             returned from Bin/GreynirBin """
@@ -773,7 +780,7 @@ class GreynirBin(Bin):
             result.append(BinMeaning._make(m))
         return result
 
-    def _map_meanings_ksnid(self, klist: Iterable[Ksnid]) -> KsnidList:
+    def _filter_ksnid(self, klist: Iterable[Ksnid]) -> KsnidList:
         """ Overridden mapping function to adapt Ksnid instances
             for compatibility with previous versions of BÍN, as used in Greynir """
         result: KsnidList = []
@@ -820,11 +827,11 @@ class GreynirBin(Bin):
         prio += 1 if "2P" in m.beyging else 0
         return prio
 
-    def _meanings_ksnid(self, w: str) -> KsnidList:
-        """ Override the Bin _meanings_ksnid() function to order the
+    def _ksnid_lookup(self, w: str) -> KsnidList:
+        """ Override the Bin _ksnid_lookup() function to order the
             returned meanings by priority. The output of this
             function is cached. """
-        m = super()._meanings_ksnid(w)
+        m = super()._ksnid_lookup(w)
         if not m:
             return []
         stem_prefs = StemPreferences.DICT.get(w)

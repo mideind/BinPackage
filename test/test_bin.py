@@ -460,9 +460,9 @@ def test_compatibility() -> None:
     assert len(m) > 0
     _, m = db_greynir.lookup("aftur á bak")
     assert len(m) > 0
-    _, m = db_bin.lookup("fyglunum")
+    _, m = db_bin.lookup("aðdáununum")
     assert len(m) == 0
-    _, m = db_greynir.lookup("fyglunum")
+    _, m = db_greynir.lookup("aðdáununum")
     assert len(m) > 0
 
 
@@ -599,37 +599,37 @@ def test_variants() -> None:
     m = bc.lookup_variant("borgarstjórnin", "kvk", "EF")
     assert all(mm[4]=="borgarstjórnarinnar" for mm in m)
     m = bc.lookup_variant("borgarstjórnin", "hk", "EF")
-    assert m == []
+    assert not m
     m = bc.lookup_variant("borgarstjórnin", "no", ("EF", "nogr"))
     assert all(mm[4]=="borgarstjórnar" for mm in m)
     m = bc.lookup_variant("borgarstjórnin", "kvk", ("EF", "nogr"))
     assert all(mm[4]=="borgarstjórnar" for mm in m)
     m = bc.lookup_variant("borgarstjórnin", "hk", ("EF", "nogr"))
-    assert m == []
+    assert not m
     m = bc.lookup_variant("borgarstjórnin", "no", ("EF", "FT"))
     assert all(mm[4]=="borgarstjórnanna" for mm in m)
     m = bc.lookup_variant("borgarstjórnin", "kvk", ("EF", "FT"))
     assert all(mm[4]=="borgarstjórnanna" for mm in m)
     m = bc.lookup_variant("borgarstjórnin", "kk", ("EF", "FT"))
-    assert m == []
+    assert not m
     m = bc.lookup_variant("borgarstjórn", "no", ("EF", "gr"))
     assert all(mm[4]=="borgarstjórnarinnar" for mm in m)
     m = bc.lookup_variant("borgarstjórn", "kvk", ("EF", "gr"))
     assert all(mm[4]=="borgarstjórnarinnar" for mm in m)
     m = bc.lookup_variant("borgarstjórn", "kk", ("EF", "gr"))
-    assert m == []
+    assert not m
     m = bc.lookup_variant("borgarstjórn", "no", ("EF", "FT", "gr"))
     assert all(mm[4]=="borgarstjórnanna" for mm in m)
     m = bc.lookup_variant("borgarstjórn", "kvk", ("EF", "FT", "gr"))
     assert all(mm[4]=="borgarstjórnanna" for mm in m)
     m = bc.lookup_variant("borgarstjórn", "kk", ("EF", "FT", "gr"))
-    assert m == []
+    assert not m
     m = bc.lookup_variant("borgarstjórn", "no", ("EF", "FT", "nogr"))
     assert all(mm[4]=="borgarstjórna" for mm in m)
     m = bc.lookup_variant("borgarstjórn", "kvk", ("EF", "FT", "nogr"))
     assert all(mm[4]=="borgarstjórna" for mm in m)
     m = bc.lookup_variant("borgarstjórn", "kk", ("EF", "FT", "nogr"))
-    assert m == []
+    assert not m
 
     m = bc.lookup_variant("fór", "so", ("VH", "ÞT"), "fara")
     assert all(mm[4]=="færi" for mm in m)

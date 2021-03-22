@@ -221,6 +221,10 @@ class Ksnid:
         m.beinkunn = int(beinkunn)
         return m
 
+    def __hash__(self) -> int:
+        """ Make Ksnid instances hashable, using their 'primary key' attributes """
+        return (self.stofn, self.utg, self.ordfl, self.ordmynd).__hash__()
+
     @classmethod
     def from_parameters(
         cls: Type[_Ksnid],

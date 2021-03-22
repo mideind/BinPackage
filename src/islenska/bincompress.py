@@ -337,7 +337,7 @@ class BinCompressed:
         word: str,
         cat: Optional[str] = None,
         lemma: Optional[str] = None,
-        utg: Any = NoUtg,
+        utg: Union[int, object] = NoUtg,
         beyging_func: Optional[Callable[[str], bool]] = None,
     ) -> List[MeaningTuple]:
 
@@ -542,12 +542,12 @@ class BinCompressed:
         lemma: Optional[str] = None,
         utg: Union[int, object] = NoUtg,
         beyging_filter: Optional[Callable[[str], bool]] = None,
-    ) -> List[MeaningTuple]:
+    ) -> Set[MeaningTuple]:
 
         """ Returns a list of BÍN meaning tuples for word forms
-            where the beyging substring given has been substituted for
-            the original string in the same grammatical feature. The
-            list can be optionally constrained to a particular lemma and
+            where the beyging substring(s) given have been substituted for
+            the original string(s) in the same grammatical feature(s).
+            The list can be optionally constrained to a particular lemma and
             utg number. """
 
         if isinstance(to_beyging, str):
@@ -592,7 +592,7 @@ class BinCompressed:
                     # with anything else
                     b = re.sub(r"-NH|-FH|-VH|-BH", "-" + t, b)
                 else:
-                    assert False, "Unknown BÍN 'beyging' feature: " + t
+                    raise ValueError(f"Unknown BÍN 'beyging' feature: '{t}'")
             return b
 
         # Category set
@@ -641,7 +641,7 @@ class BinCompressed:
                                 this_beyging,
                             )
                         )
-        return list(result)
+        return result
 
     def raw_nominative(self, word: str) -> Set[MeaningTuple]:
         """ Returns a set of all nominative forms of the lemmas of the given word form.

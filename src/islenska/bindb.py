@@ -74,7 +74,6 @@ from .bincompress import BinCompressed
 _T = TypeVar("_T", BinMeaning, Ksnid)
 
 ResultTuple = Tuple[str, List[_T]]
-LookupFunc = Callable[[str], List[_T]]
 
 # A constructor that constructs either BinMeaning or Ksnid instances,
 # optionally copying data from an existing instance
@@ -88,6 +87,10 @@ BinMeaningList = List[BinMeaning]
 BinMeaningIterable = Iterable[BinMeaning]
 KsnidList = List[Ksnid]
 KsnidIterable = Iterable[Ksnid]
+
+class LookupFunc(Protocol[_T]):
+    def __call__(self, key: str, compound: bool = False) -> List[_T]:
+        ...
 
 # Annotate the case-casting function signature via a callback protocol
 # See https://www.python.org/dev/peps/pep-0544/#callback-protocols
@@ -147,11 +150,26 @@ class Bin:
     # Singleton LFU cache for word meaning lookup
     _ksnid_cache: LFU_Cache[str, KsnidList] = LFU_Cache(maxsize=CACHE_SIZE_MEANINGS)
 
-    def __init__(self) -> None:
+    def __init__(self, **options: bool) -> None:
         """ Initialize BIN database wrapper instance """
         if self._bc is None:
             self.__class__._bc = BinCompressed()
         Settings.read("config/BinPackage.conf")
+        # Set option flags
+        self._add_negation = options.pop("add_negation", True)
+        self._add_legur = options.pop("add_legur", True)
+        self._add_compounds = options.pop("add_compounds", True)
+        self._replace_z = options.pop("replace_z", True)
+        if options.pop("only_bin", False):
+            # If only_bin is set, disable all additions/modifications
+            self._add_negation = False
+            self._add_legur = False
+            self._add_compounds = False
+            self._replace_z = False
+        if options:
+            raise ValueError(
+                "Option(s) not understood: {0}".format(" ,".join(options.keys()))
+            )
 
     @classmethod
     def cleanup(cls) -> None:
@@ -219,19 +237,8 @@ class Bin:
             # Only return entries with utg numbers below the Greynir-specific mark,
             # and that don't have 'birting' set to 'G',
             # i.e. skip entries that are Greynir-specific
-            if k.utg < max_utg and k.birting != "G"
+            if (k.utg < max_utg and k.birting != "G") or k.birting == "S"
         ]
-
-    def _ksnid_cache_lookup(self, key: str) -> KsnidList:
-        """ Attempt to lookup a word in the cache, calling
-            self.ksnid_lookup() on a cache miss """
-        return self._ksnid_cache.lookup(key, self._ksnid_lookup)
-
-    def _meanings_cache_lookup(self, key: str) -> BinMeaningList:
-        """ Attempt to lookup a word in the cache,
-            returning a list of BinMeanings """
-        klist = self._ksnid_cache_lookup(key)
-        return [k.to_bin_meaning() for k in klist]
 
     def _ksnid_lookup(self, w: str) -> KsnidList:
         """ Low-level fetch of the BIN meanings of a given word.
@@ -244,6 +251,21 @@ class Bin:
         if not mtlist:
             return cast(KsnidList, [])
         return self._filter_ksnid(mtlist)
+
+    def _ksnid_cache_lookup(self, key: str, compound: bool=False) -> KsnidList:
+        """ Attempt to lookup a word in the cache, calling
+            self.ksnid_lookup() on a cache miss """
+        klist = self._ksnid_cache.lookup(key, self._ksnid_lookup)
+        # If we're looking for compound suffixes (compound=True), we
+        # allow items where birting == 'S' (coming from ord.suffix.csv)
+        return [k for k in klist if compound or k.birting != "S"]
+
+    def _meanings_cache_lookup(self, key: str, compound: bool=False) -> BinMeaningList:
+        """ Attempt to lookup a word in the cache,
+            returning a list of BinMeanings """
+        klist = self._ksnid_cache_lookup(key, compound=compound)
+        # Convert the cached ksnid list to a list of BinMeaning (SHsnid) tuples
+        return [k.to_bin_meaning() for k in klist]
 
     def _compound_meanings(
         self,
@@ -293,10 +315,11 @@ class Bin:
             return w, m
         return_w = w
         cw = Wordbase.slice_compound_word(w)
-        if not cw and lower_w != w:
+        if len(cw) < 2 and lower_w != w:
             # If not able to slice in original case, try lower case
             cw = Wordbase.slice_compound_word(lower_w)
-            if cw:
+            if len(cw) >= 2:
+                # Success
                 return_w = lower_w
         if not cw:
             # No way to find a compound meaning: give up
@@ -304,8 +327,11 @@ class Bin:
         # This looks like a compound word:
         # use the meaning of its last part
         prefix = "-".join(cw[0:-1])
-        # Lookup the potential meanings of the last part
-        m = lookup_func(cw[-1])
+        # Lookup the potential meanings of the last part, setting
+        # the compound flag if we actually have a compound word
+        m = lookup_func(cw[-1], compound=bool(prefix))
+        if not m:
+            return return_w, []
         if lower_w != w and not at_sentence_start:
             # If this is an uppercase word in the middle of a
             # sentence, allow only nouns as possible interpretations
@@ -394,7 +420,7 @@ class Bin:
             # Most common path out of this function
             return w, m
 
-        if not m and _ADJECTIVE_TEST in lower_w:
+        if not m and self._add_legur and _ADJECTIVE_TEST in lower_w:
             # Not found: Check whether this might be an adjective
             # ending in 'legur'/'leg'/'legt'/'legir'/'legar' etc.
             llw = len(lower_w)
@@ -410,13 +436,13 @@ class Bin:
                 # For words ending with "lega", add a possible adverb meaning
                 m.append(ctor(lower_w, 0, "ao", "alm", lower_w, "OBEYGJANLEGT", None))
 
-        if not m:
+        if not m and self._add_compounds:
             # Still nothing: check compound words
             w, m = self._compound_meanings(
                 w, lower_w, at_sentence_start, lookup_func, ctor
             )
 
-        if not m and lower_w.startswith("ó"):
+        if not m and self._add_negation and lower_w.startswith("ó"):
             # Check whether an adjective without the 'ó' prefix is found in BÍN
             # (i.e. create 'óhefðbundinn' from 'hefðbundinn')
             suffix = lower_w[1:]
@@ -437,7 +463,7 @@ class Bin:
                         if r.ordfl == "lo"
                     ]
 
-        if not m and "z" in w:
+        if not m and self._replace_z and "z" in w:
             # Special case: the word contains a 'z' and may be using
             # older Icelandic spelling ('lízt', 'íslenzk'). Try to assign
             # a meaning by substituting an 's' instead, or 'st' instead of

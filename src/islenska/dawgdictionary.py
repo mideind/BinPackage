@@ -116,7 +116,7 @@ class Wordbase:
             return cls._dawg_suffixes
 
     @classmethod
-    def slice_compound_word(cls, word: str) -> Optional[List[str]]:
+    def slice_compound_word(cls, word: str) -> List[str]:
         """ Get best combination of word parts if such a combination exists """
         # We get back a list of lists, i.e. all possible compound word combinations
         # where each combination is a list of word parts. 
@@ -137,7 +137,7 @@ class Wordbase:
                     # Valid combination: return it
                     return combination
         # No legal combination found
-        return None
+        return []
 
 
 class FindNavigator:

@@ -492,6 +492,10 @@ class BinCompressor:
                                 # New lemma: increment the utg number
                                 self._utg += 1
                                 last_stofn = m.stofn
+                            if m.utg == -1:
+                                # This is a suffix only, coming from
+                                # ord.suffix.csv: mark it with birting='S'
+                                m.birting = "S"
                             # Assign a Greynir utg number
                             m.utg = self._utg
                         else:
@@ -1041,6 +1045,7 @@ b.read(
         os.path.join(_path, "resources", "ord.add.csv"),
         os.path.join(_path, "resources", "ord.auka.csv"),
         os.path.join(_path, "resources", "systematic_additions.csv"),
+        os.path.join(_path, "resources", "ord.suffixes.csv"),
     ]
 )
 b.print_stats()

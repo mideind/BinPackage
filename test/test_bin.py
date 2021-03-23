@@ -464,10 +464,73 @@ def test_compatibility() -> None:
     assert len(m) == 0
     _, m = db_greynir.lookup("aðdáununum")
     assert len(m) > 0
+    _, m = db_bin.lookup("þurrhreinsanirnar")
+    assert len(m) == 0
+    _, m = db_greynir.lookup("þurrhreinsanirnar")
+    assert any(mm.ordfl == "kvk" for mm  in m)
+    _, m = db_greynir.lookup("merkikertisyrðunum")
+    assert all(mm.ordfl == "hk" for mm in m)
+    _, m = db_bin.lookup("merkikertisyrðunum")
+    assert all(mm.ordfl == "hk" for mm in m)
+    _, m = db_greynir.lookup("sexdagsleikanum")
+    assert all(mm.ordfl == "kk" for mm in m)
+    _, m = db_bin.lookup("sexdagsleikanum")
+    assert all(mm.ordfl == "kk" for mm in m)
+    _, m = db_bin.lookup_ksnid("yrðunum")
+    assert len(m) == 0
+    _, m = db_greynir.lookup_ksnid("yrðunum")
+    assert len(m) == 0
+    _, m = db_bin.lookup_ksnid("leikanum")
+    assert len(m) == 0
+    _, m = db_greynir.lookup_ksnid("leikanum")
+    assert len(m) == 0
+    _, m = db_bin.lookup("yrðunum")
+    assert len(m) == 0
+    _, m = db_greynir.lookup("yrðunum")
+    assert len(m) == 0
+    _, m = db_bin.lookup("leikanum")
+    assert len(m) == 0
+    _, m = db_greynir.lookup("leikanum")
+    assert len(m) == 0
+    _, m = db_bin.lookup("kattarkjólsins")
+    assert all(mm.ordfl == "kk" for mm in m)
+    db_bin = Bin(add_compounds=False)
+    _, m = db_bin.lookup("merkikertisyrðunum")
+    assert len(m) == 0
+    _, m = db_bin.lookup("kattarkjólsins")
+    assert len(m) == 0
+    _, m = db_bin.lookup("sexdagsleikanum")
+    assert len(m) == 0
 
 
 def test_legur() -> None:
     db = Bin()
+    _, m = db.lookup("forritunarvillulegur")
+    assert any(mm.ordfl == "lo" and mm.stofn.endswith("legur") for mm in m)
+    _, m = db.lookup("forritunarvilluleg")
+    assert any(mm.ordfl == "lo" and mm.stofn.endswith("legur") for mm in m)
+    _, m = db.lookup("forritunarvillulegt")
+    assert any(mm.ordfl == "lo" and mm.stofn.endswith("legur") for mm in m)
+    _, m = db.lookup("forritunarvillulegir")
+    assert any(mm.ordfl == "lo" and mm.stofn.endswith("legur") for mm in m)
+    _, m = db.lookup("forritunarvillulegar")
+    assert any(mm.ordfl == "lo" and mm.stofn.endswith("legur") for mm in m)
+    _, m = db.lookup("forritunarvillulegu")
+    assert any(mm.ordfl == "lo" and mm.stofn.endswith("legur") for mm in m)
+    db = Bin(add_legur=False)
+    _, m = db.lookup("forritunarvillulegur")
+    assert all(mm.ordfl != "lo" for mm in m)
+    _, m = db.lookup("forritunarvilluleg")
+    assert all(mm.ordfl != "lo" for mm in m)
+    _, m = db.lookup("forritunarvillulegt")
+    assert all(mm.ordfl != "lo" for mm in m)
+    _, m = db.lookup("forritunarvillulegir")
+    assert all(mm.ordfl != "lo" for mm in m)
+    _, m = db.lookup("forritunarvillulegar")
+    assert all(mm.ordfl != "lo" for mm in m)
+    _, m = db.lookup("forritunarvillulegu")
+    assert all(mm.ordfl != "lo" for mm in m)
+    db = GreynirBin()
     _, m = db.lookup("forritunarvillulegur")
     assert any(mm.ordfl == "lo" and mm.stofn.endswith("legur") for mm in m)
     _, m = db.lookup("forritunarvilluleg")

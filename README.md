@@ -13,20 +13,65 @@
 *Inflection* (*Beygingarlýsing íslensks nútímamáls*, *BÍN*) and allows various
 queries of the data.
 
-The database contains over 6,5 million entries, over 3,1 million unique word forms,
+The database contains over 6.5 million entries, over 3.1 million unique word forms,
 and about 300 thousand distinct lemmas. It has been compressed from a 400+ megabyte
 CSV file to a ~80 megabyte indexed binary structure that is mapped directly into memory
 for fast lookup and efficient memory usage.
 
 This means that `pip install islenska` is all you need to have most of the
 vocabulary of the Icelandic language at your disposal via Python. Batteries
-included; no external databases or middleware required.
+are included; no additional databases or middleware are required.
 
 BinPackage allows querying for word forms, as well as lemmas and grammatical variants.
 This includes information about word categories (noun, verb, ...),
 subcategories (person names,
 place names, ...), inflection paradigms and various annotations, such as degrees of
 linguistic acceptability and alternate spelling forms.
+
+BinPackage is fully type-annotated for use with Python static type checkers such
+as `mypy` and `Pylance` / `Pyright`.
+
+## BÍN 101
+
+The BÍN database is available for download in CSV files in two main formats:
+*Sigrúnarsnið* (`SHsnid`) and
+*Kristínarsnið* (`Ksnid`). Sigrúnarsnið is more compact with 6 attributes
+for each word form. Kristínarsnið, documented
+[here](https://bin.arnastofnun.is/gogn/k-snid), is newer and more detailed,
+with up to 15 attributes for each word form.
+
+BinPackage supports both formats, with `Ksnid` being returned from functions
+whose names end with `_ksnid`, and `SHsnid` from others.
+
+SHsnid is represented with a Python `NamedTuple` called `BinMeaning`, which
+has the following attributes:
+
+| Name     | Type  | Content                    |
+|----------|-------|----------------------------|
+| `stofn`  | `str` | The lemma of the word form (*uppflettiorð*) |
+| `utg`    | `int` | The issue number (*útgáfunúmer*) of the lemma, unique for a particular lemma/category combination |
+| `ordfl`  | `str` | The category of the lemma, i.e. `kk`/`kvk`/`hk` for nouns, `lo` for adjectives, `so` for verbs, etc.|
+| `fl`     | `str` | The subcategory of the lemma, i.e. `alm` for general vocabulary, `ism` for Icelandic person names, `örn` for place names (*örnefni*), etc.|
+| `ordmynd` | `str` | The word form |
+| `beyging` | `str` | The inflection paradigm of the word form, for instance `ÞGFETgr` for dative (*þágufall*, `ÞGF`), singular (*eintala*, `ET`), definite (*með greini*, `gr`) |
+
+The inflection paradigms in the `beyging` attribute are documented in detail [here](https://bin.arnastofnun.is/gogn/greiningarstrengir/).
+
+`Ksnid` is represented by instances of the `Ksnid` class. It adds the following
+9 attributes:
+
+| Name     | Type  | Content                    |
+|----------|-------|----------------------------|
+| `einkunn` | `int` | A general linguistic acceptability metric, ranging from 0-5. |
+| `malsnid` | `str` | An indicator of origin and style; e.g. `STAD` for local and `URE` for deprecated. |
+| `malfraedi` | `str` | Grammatical markings, such as `KYN` for dubious gender. |
+| `millivisun` | `int` | Reference to the `utg` number of a related lemma. |
+| `birting` | `str` | `K` for the BÍN *kernel* of most common and accepted word forms, `V` for other published BÍN entries. |
+| `beinkunn` | `int` | An inflectional acceptability metric, ranging from 0-5. |
+| `bmalsnid` | `str` | An indicator of origin and style for this inflectional form. |
+| `bgildi` | `str` | |
+| `aukafletta` | `str` | Another, related lemma, e.g. plural form |
+
 
 ## Examples
 
@@ -62,8 +107,9 @@ linguistic acceptability and alternate spelling forms.
 ```
 
 `Bin.lookup()` returns the original lookup word
-and a list of its possible meanings. Each meaning tuple contains the
-lemma (`stofn`), the category, subcategory and id number (`hk/alm/1198`),
+and a list of its possible meanings in a summary form (*Sigrúnarsnið*).
+Each meaning tuple contains the
+lemma (`stofn`), the category, subcategory and issue number (`hk/alm/1198`),
 the word form (`ordmynd`) and the inflection paradigm (`GM-VH-NT-3P-FT`).
 The inflection paradigm strings are [documented on the BÍN website](https://bin.arnastofnun.is/gogn/k-snid).
 
@@ -74,15 +120,18 @@ The inflection paradigm strings are [documented on the BÍN website](https://bin
 ```python
 >>> from islenska import Bin
 >>> b = Bin()
->>> b.lookup_ksnid("allskonar")
-**TBD**
+>>> w, m = b.lookup_ksnid("allskonar")
+>>> m[0].malfraedi
+'STAFS'
 ```
 
 `Bin.lookup_ksnid()` returns the original lookup word
-and a list of its possible meanings. Each meaning tuple contains the
-lemma (`stofn`), the category, subcategory and id number (`hk/alm/1198`),
-the word form (`ordmynd`) and the inflection paradigm (`GM-VH-NT-3P-FT`).
-The inflection paradigm strings are [documented on the BÍN website](https://bin.arnastofnun.is/gogn/k-snid).
+and a list of its possible meanings in a detailed format called
+*Kristínarsnið* (`ksnid`). The fields of *Kristínarsnið* are
+[documented on the BÍN website](https://bin.arnastofnun.is/gogn/k-snid).
+In the example, we show how the word `allskonar` is marked with the
+tag `STAFS` in the `malfraedi` field, indicating that this spelling
+is nonstandard. A more correct form is `alls konar`, in two words.
 
 ### Word categories
 
@@ -92,7 +141,7 @@ The inflection paradigm strings are [documented on the BÍN website](https://bin
 >>> from islenska import Bin
 >>> b = Bin()
 >>> b.lookup_cats("laga")
->>> {'hk', 'so', 'kk'}
+{'hk', 'so', 'kk'}
 ```
 
 Here, we see that the word form *laga* can mean a neutral (`'hk'`) or
@@ -106,12 +155,63 @@ masculine (`'kk'`) noun, or a verb (`'so'`).
 >>> from islenska import Bin
 >>> b = Bin()
 >>> b.lookup_lemmas_and_cats("laga")
->>> {('lag', 'hk'), ('lög', 'hk'), ('laga', 'so'), ('lagi', 'kk'), ('lögur', 'kk')}
+{('lag', 'hk'), ('lög', 'hk'), ('laga', 'so'), ('lagi', 'kk'), ('lögur', 'kk')}
 ```
 
 Here we see, perhaps unexpectedly, that the word form *laga* has five possible lemmas:
 four nouns (*lag*, *lög*, *lagi* and *lögur*, neutral and masculine respectively),
 and one verb (*laga*).
+
+## Documentation
+
+### Constructor
+
+To create an instance of the Bin class, do as follows:
+
+```python
+>>> from islenska import Bin
+>>> b = Bin()
+```
+
+You can optionally specify the following boolean flags in the `Bin()`
+constructor call:
+
+| Flag              | Default | Meaning                                        |
+|-------------------|---------|------------------------------------------------|
+| `add_negation`    | True    | For adjectives, find forms with the prefix `ó` even if only the non-prefixed version is present in BÍN. Example: find `ófíkinn` because `fíkinn` is in BÍN. |
+| `add_legur`       | True    | For adjectives, find all forms with an "adjective-like" suffix, i.e. `-legur`, `-leg`, etc. even if they are not present in BÍN. Example: `sólarolíulegt`. |
+| `add_compounds`   | True    | Find compound words that can be derived from BinPackage's collection of allowed prefixes and suffixes. The algorithm finds the compound word with the fewest components and the longest suffix. Example: `síamskattarkjóll`. |
+| `replace_z`       | True    | Find words containing `tzt` and `z` by replacing these strings by `st` and `s`, respectively. Example: `veitzt` -> `veist`. |
+| `only_bin`        | False   | Find only word forms that are originally present in BÍN, disabling all of the above described flags. |
+
+As an example, to create an instance that only returns word forms that occur
+in the original BÍN, do like so:
+
+```python
+>>> from islenska import Bin
+>>> b = Bin(only_bin=True)
+```
+
+### Lookup function
+
+To look up word forms, call the `lookup` function:
+
+```python
+>>> w, m = b.lookup("síamskattarkjólanna")
+>>> w
+'síamskattarkjólanna'
+>>> m
+[(stofn='síamskattar-kjóll', kk/alm/0, ordmynd='síamskattar-kjólanna', EFFTgr)]
+```
+
+Here we see that *síamskattarkjólanna* is a composite word, amalgamated
+from *síamskattar* and *kjólanna*, with *kjóll* being the base lemma of the composite
+word. This is a masculine noun (`kk`), of the `alm` (general) subcategory.
+It has an issue number (*útgáfunúmer*) equal to 0 since it is constructed by
+BinPackage, rather than being fetched directly from BÍN. The inflection
+paradigm is `EFFTgr`, i.e. genitive (*eignarfall*, `EF`), plural (*fleirtala*,
+`FT`) and definite (*með greini*, `gr`).
+
 
 ## Implementation
 
@@ -119,7 +219,8 @@ BinPackage is written in [Python 3](https://www.python.org/)
 and requires Python 3.6 or later. It runs on CPython and [PyPy](http://pypy.org/).
 
 The Python code calls a small C++ library to speed up lookup of word forms in the
-compressed binary structure. This means that if a pre-compiled wheel is not
+compressed binary structure into which BÍN has been encoded.
+This means that if a pre-compiled wheel is not
 available on PyPI for your platform, you may need a set of development tools installed
 on your machine, before you install BinPackage using `pip`:
 
@@ -130,7 +231,7 @@ $ sudo apt-get install python3-dev libffi-dev
 
 ## Installation and setup
 
-You must have Python >= 3.6 installed on your machine.
+You must have Python >= 3.6 installed on your machine (CPython or PyPy).
 If you are using a Python virtual environment (`virtualenv`), activate it first:
 
 ```bash

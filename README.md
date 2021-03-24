@@ -1,6 +1,6 @@
 # BinPackage
 
-**The Database of Modern Icelandic Inflection (DMII, BÍN) encapsulated in a Python package**
+**The Database of Icelandic Morphology (DIM, BÍN) encapsulated in a Python package**
 
 [![Python package](https://github.com/mideind/BinPackage/actions/workflows/python-package.yml/badge.svg)](https://github.com/mideind/BinPackage/actions/workflows/python-package.yml)
 
@@ -9,31 +9,33 @@
 
 <img src="img/greynir-logo-large.png" alt="Greynir" width="200" height="200" align="right" style="margin-left:20px; margin-bottom: 20px;">
 
-*BinPackage* is a Python package that embeds the entire *Database of Modern Icelandic*
-*Inflection* (*Beygingarlýsing íslensks nútímamáls*, *BÍN*) and allows various
+*BinPackage* is a Python package that embeds the entire *Database of Icelandic*
+*Morphology* (*Beygingarlýsing íslensks nútímamáls*, *BÍN*) and allows various
 queries of the data.
 
 The database contains over 6.5 million entries, over 3.1 million unique word forms,
 and about 300 thousand distinct lemmas. It has been compressed from a 400+ megabyte
 CSV file to a ~80 megabyte indexed binary structure that is mapped directly into memory
-for fast lookup and efficient memory usage.
+for fast lookup.
 
-This means that `pip install islenska` is all you need to have most of the
+With BinPackage, `pip install islenska` is all you need to have most of the
 vocabulary of the Icelandic language at your disposal via Python. Batteries
-are included; no additional databases or middleware are required.
+are included; no additional databases, downloads or middleware are required.
 
 BinPackage allows querying for word forms, as well as lemmas and grammatical variants.
 This includes information about word categories (noun, verb, ...),
-subcategories (person names,
-place names, ...), inflection paradigms and various annotations, such as degrees of
-linguistic acceptability and alternate spelling forms.
+subcategories (person names, place names, ...), inflection paradigms and
+various annotations, such as degrees of linguistic acceptability and alternate
+spelling forms.
 
-BinPackage is fully type-annotated for use with Python static type checkers such
-as `mypy` and `Pylance` / `Pyright`.
+```
+```
 
-## BÍN 101
+## The basics of BÍN
 
-The BÍN database is available for download in CSV files in two main formats:
+The BÍN database is
+[available for download](https://bin.arnastofnun.is/gogn/mimisbrunnur/)
+under the CC-BY 4.0 license, in CSV files in two main formats:
 *Sigrúnarsnið* (`SHsnid`) and
 *Kristínarsnið* (`Ksnid`). Sigrúnarsnið is more compact with 6 attributes
 for each word form. Kristínarsnið, documented
@@ -46,32 +48,68 @@ whose names end with `_ksnid`, and `SHsnid` from others.
 SHsnid is represented with a Python `NamedTuple` called `BinMeaning`, which
 has the following attributes:
 
-| Name     | Type  | Content                    |
-|----------|-------|----------------------------|
-| `stofn`  | `str` | The lemma of the word form (*uppflettiorð*) |
-| `utg`    | `int` | The issue number (*útgáfunúmer*) of the lemma, unique for a particular lemma/category combination |
-| `ordfl`  | `str` | The category of the lemma, i.e. `kk`/`kvk`/`hk` for nouns, `lo` for adjectives, `so` for verbs, etc.|
-| `fl`     | `str` | The subcategory of the lemma, i.e. `alm` for general vocabulary, `ism` for Icelandic person names, `örn` for place names (*örnefni*), etc.|
-| `ordmynd` | `str` | The word form |
-| `beyging` | `str` | The inflection paradigm of the word form, for instance `ÞGFETgr` for dative (*þágufall*, `ÞGF`), singular (*eintala*, `ET`), definite (*með greini*, `gr`) |
+| Name     | Type  | Content |
+|----------|-------|---------|
+| `stofn`  | `str` | The lemma (headword) of the word form (*uppflettiorð*). |
+| `utg`    | `int` | The issue number (*útgáfunúmer*) of the lemma, unique for a particular lemma/category combination. |
+| `ordfl`  | `str` | The word class, i.e. `kk`/`kvk`/`hk` for (masculine/feminine/neutral) nouns, `lo` for adjectives, `so` for verbs, etc.|
+| `fl`     | `str` | The domain, i.e. `alm` for general vocabulary, `ism` for Icelandic person names, `örn` for place names (*örnefni*), etc.|
+| `ordmynd` | `str` | The inflected word form. |
+| `beyging` | `str` | The grammatical (part-of-speech, PoS) tag of the word form, for instance `ÞGFETgr` for dative (*þágufall*, `ÞGF`), singular (*eintala*, `ET`), definite (*með greini*, `gr`). |
 
-The inflection paradigms in the `beyging` attribute are documented in detail [here](https://bin.arnastofnun.is/gogn/greiningarstrengir/).
+The grammatical tags in the `beyging` attribute are documented in detail [here](https://bin.arnastofnun.is/gogn/greiningarstrengir/).
 
-`Ksnid` is represented by instances of the `Ksnid` class. It adds the following
-9 attributes:
+`Ksnid` is represented by instances of the `Ksnid` class. It adds
+9 attributes, shortly summarized below:
 
-| Name     | Type  | Content                    |
-|----------|-------|----------------------------|
-| `einkunn` | `int` | A general linguistic acceptability metric, ranging from 0-5. |
-| `malsnid` | `str` | An indicator of origin and style; e.g. `STAD` for local and `URE` for deprecated. |
-| `malfraedi` | `str` | Grammatical markings, such as `KYN` for dubious gender. |
-| `millivisun` | `int` | Reference to the `utg` number of a related lemma. |
+| Name     | Type  | Content |
+|----------|-------|---------|
+| `einkunn` | `int` | A general correctness grade, ranging from 0-5. |
+| `malsnid` | `str` | A genre/register indicator; e.g. `STAD` for local and `URE` for deprecated. |
+| `malfraedi` | `str` | Grammatical marking, such as `STAFS` for dubious spelling and `TALA` for rare singular forms. |
+| `millivisun` | `int` | Cross reference to the `utg` number of a related lemma. |
 | `birting` | `str` | `K` for the BÍN *kernel* of most common and accepted word forms, `V` for other published BÍN entries. |
-| `beinkunn` | `int` | An inflectional acceptability metric, ranging from 0-5. |
-| `bmalsnid` | `str` | An indicator of origin and style for this inflectional form. |
-| `bgildi` | `str` | |
-| `aukafletta` | `str` | Another, related lemma, e.g. plural form |
+| `beinkunn` | `int` | An inflectional correctness grade, ranging from 0-5. |
+| `bmalsnid` | `str` | A genre/register indicator for this inflectional form. |
+| `bgildi` | `str` | Indicator for word forms bound to idioms and other special cases. |
+| `aukafletta` | `str` | Alternative lemma, e.g. plural form. |
 
+```
+```
+
+## Word compounding algorithm
+
+Icelandic allows almost unlimited creation of compound words. Examples are
+*síamskattarkjóll* (noun), *sólarolíulegt* (adjective), *öskurgrenja* (verb).
+It is of course impossible for a static database to list all possible
+compound words. To address this problem, BinPackage includes a compound word
+analysis algorithm, which is invoked when looking up any word that is not found
+as-is in BÍN. (If desired, the compounding algorithm can be disabled via an
+optional flag; see documentation below.)
+
+The algorithm relies on a list of recognized word prefixes, stored in
+`src/islenska/resources/prefixes.txt`, and suffixes, stored in
+`src/islenska/resources/suffixes.txt`. These lists have been compressed
+into data structures called Directed Acyclic Word Graphs (DAWGs). BinPackage
+uses these DAWGs to find optimal solutions for the compound word
+problem, where an optimal solution is defined as the prefix+suffix
+combination with (1) the fewest prefixes and (2) the longest suffix.
+
+If an optimal compound exists, its suffix is looked up in BÍN and
+used as an inflectional template for the compound. *Síamskattarkjóll*
+is thus resolved into the prefix *síamskattar* and the suffix *kjóll*,
+with the latter providing the inflection of *síamskattarkjóll* as
+a singular masculine noun in the nominative case.
+
+The compounding algorithm returns the prefixes and suffixes of the
+optimal compound in the `stofn` and `ordmynd` fields of the returned
+BinMeaning og Ksnid instances, separated by hyphens `-`. As an example,
+*síamskattarkjóll* is returned as follows (note the hyphens):
+
+```python
+>>> b.lookup("síamskattarkjóll")
+('síamskattarkjóll', [(stofn='síamskattar-kjóll', kk/alm/0, ordmynd='síamskattar-kjóll', NFET)])
+```
 
 ## Examples
 
@@ -162,6 +200,9 @@ Here we see, perhaps unexpectedly, that the word form *laga* has five possible l
 four nouns (*lag*, *lög*, *lagi* and *lögur*, neutral and masculine respectively),
 and one verb (*laga*).
 
+```
+```
+
 ## Documentation
 
 ### Constructor
@@ -204,14 +245,16 @@ To look up word forms, call the `lookup` function:
 [(stofn='síamskattar-kjóll', kk/alm/0, ordmynd='síamskattar-kjólanna', EFFTgr)]
 ```
 
-Here we see that *síamskattarkjólanna* is a composite word, amalgamated
-from *síamskattar* and *kjólanna*, with *kjóll* being the base lemma of the composite
+Here we see that *síamskattarkjólanna* is a compound word, amalgamated
+from *síamskattar* and *kjólanna*, with *kjóll* being the base lemma of the compound
 word. This is a masculine noun (`kk`), of the `alm` (general) subcategory.
-It has an issue number (*útgáfunúmer*) equal to 0 since it is constructed by
-BinPackage, rather than being fetched directly from BÍN. The inflection
+It has an issue number (*útgáfunúmer*) equal to 0 since it is constructed
+on-the-fly by BinPackage, rather than being fetched directly from BÍN. The inflection
 paradigm is `EFFTgr`, i.e. genitive (*eignarfall*, `EF`), plural (*fleirtala*,
 `FT`) and definite (*með greini*, `gr`).
 
+```
+```
 
 ## Implementation
 
@@ -229,6 +272,12 @@ $ # The following works on Debian/Ubuntu Linux
 $ sudo apt-get install python3-dev libffi-dev
 ```
 
+BinPackage is fully type-annotated for use with Python static type checkers such
+as `mypy` and `Pylance` / `Pyright`.
+
+```
+```
+
 ## Installation and setup
 
 You must have Python >= 3.6 installed on your machine (CPython or PyPy).
@@ -238,7 +287,8 @@ If you are using a Python virtual environment (`virtualenv`), activate it first:
 $ venv/bin/activate
 ```
 ...or, on Windows:
-```
+
+```cmd
 C:\> venv\scripts\activate
 ```
 
@@ -277,13 +327,16 @@ $ python tools/dawgbuilder.py
 $ # Now you're ready to go
 ```
 
-This will clone the GitHub repository into the BinPackage directory,
+This will clone the GitHub repository into the BinPackage directory
 and install the package into your Python environment from the source files.
 Then, the newest BÍN data is fetched via `wget`
 from *Stofnun Árna Magnússonar* and compressed into a binary file.
 Finally, the Directed Acyclic Word Graph builder is run to
 create DAWGs for word prefixes and suffixes, used by the compound word
 algorithm.
+
+```
+```
 
 ## File details
 
@@ -304,10 +357,13 @@ BinPackage:
 * `resources/prefixes.txt`, `resources/suffixes.txt`: Text files containing
   valid Icelandic word prefixes and suffixes, respectively.
 
+```
+```
+
 ## Copyright and licensing
 
 BinPackage embeds the
-**[Database of Modern Icelandic Inflection](https://bin.arnastofnun.is/)**
+**[Database of Icelandic Morphology](https://bin.arnastofnun.is/)**
 (**[Beygingarlýsing íslensks nútímamáls](https://bin.arnastofnun.is/)**),
 abbreviated *BÍN*.
 
@@ -324,8 +380,9 @@ In accordance with the BÍN license terms, credit is hereby given as follows:
 ----
 
 BinPackage includes certain additions and modifications to the original
-BÍN source data. These are explained in the source code file `tools/binpack.py`,
-available in the project's GitHub repository.
+BÍN source data. These are documented above and also explained in detail
+in the source code file `tools/binpack.py`, available in the project's
+GitHub repository.
 
 ----
 

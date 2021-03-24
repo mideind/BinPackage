@@ -113,6 +113,8 @@ ALL_BIN_MOODS = frozenset(("LHNT", "NH", "FH", "VH", "BH"))
 CASES = ("NF", "ÞF", "ÞGF", "EF")
 CASES_LATIN = tuple(case.encode("latin-1") for case in CASES)
 
+BeygingFilter = Callable[[str], bool]
+
 MeaningTuple = Tuple[str, int, str, str, str, str]
 
 # Named tuple for the smaller "Sigrúnarsnið" (SHsnid) vocabulary format
@@ -176,6 +178,14 @@ class Ksnid:
         self.bmalsnid = ""
         self.bgildi = ""
         self.aukafletta = ""
+
+    def __str__(self) -> str:
+        return (
+            f"<Ksnid: ordmynd='{self.ordmynd}', "
+            f"stofn/ordfl/fl/utg='{self.stofn}'/{self.ordfl}/{self.fl}/{self.utg}, "
+            f"beyging={self.beyging}, "
+            f"ksnid='{self.ksnid_string}'>"
+        )
 
     @property
     def ksnid_string(self) -> str:

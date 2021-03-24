@@ -55,7 +55,7 @@ from typing_extensions import Protocol
 
 from functools import lru_cache
 
-from .basics import BinMeaning, Ksnid, LFU_Cache, MeaningTuple, make_bin_meaning
+from .basics import BeygingFilter, BinMeaning, Ksnid, LFU_Cache, MeaningTuple, make_bin_meaning
 from .settings import (
     Settings,
     AdjectiveTemplate,
@@ -88,9 +88,11 @@ BinMeaningIterable = Iterable[BinMeaning]
 KsnidList = List[Ksnid]
 KsnidIterable = Iterable[Ksnid]
 
+
 class LookupFunc(Protocol[_T]):
     def __call__(self, key: str, compound: bool = False) -> List[_T]:
         ...
+
 
 # Annotate the case-casting function signature via a callback protocol
 # See https://www.python.org/dev/peps/pep-0544/#callback-protocols
@@ -120,7 +122,7 @@ _OPEN_CATS = frozenset(("so", "kk", "hk", "kvk", "lo"))  # Open word categories
 
 # A dictionary of functions, one for each word category, that return
 # True for declension (beyging) strings of canonical/lemma forms
-_LEMMA_FILTERS: Dict[str, Callable[[str], bool]] = {
+_LEMMA_FILTERS: Dict[str, BeygingFilter] = {
     # Nouns: Nominative, singular
     "kk": lambda b: b == "NFET",
     "kvk": lambda b: b == "NFET",
@@ -252,7 +254,7 @@ class Bin:
             return cast(KsnidList, [])
         return self._filter_ksnid(mtlist)
 
-    def _ksnid_cache_lookup(self, key: str, compound: bool=False) -> KsnidList:
+    def _ksnid_cache_lookup(self, key: str, compound: bool = False) -> KsnidList:
         """ Attempt to lookup a word in the cache, calling
             self.ksnid_lookup() on a cache miss """
         klist = self._ksnid_cache.lookup(key, self._ksnid_lookup)
@@ -260,7 +262,9 @@ class Bin:
         # allow items where birting == 'S' (coming from ord.suffix.csv)
         return [k for k in klist if compound or k.birting != "S"]
 
-    def _meanings_cache_lookup(self, key: str, compound: bool=False) -> BinMeaningList:
+    def _meanings_cache_lookup(
+        self, key: str, compound: bool = False
+    ) -> BinMeaningList:
         """ Attempt to lookup a word in the cache,
             returning a list of BinMeanings """
         klist = self._ksnid_cache_lookup(key, compound=compound)
@@ -639,7 +643,7 @@ class Bin:
         )
         return set((mm.stofn, mm.ordfl) for mm in m)
 
-    def lookup_forms(self, lemma: str, cat: str, case: str) -> List[BinMeaning]:
+    def lookup_forms(self, lemma: str, cat: str, case: str) -> BinMeaningList:
         """ Lookup all base forms of a particular lemma, in the indicated case.
             This is mainly used to retrieve inflection forms of nouns, where
             we want to retrieve singular and plural, definite and indefinite
@@ -649,6 +653,30 @@ class Bin:
             lemma, case.upper(), lemma=lemma, cat=cat, all_forms=True
         )
         return self._filter_meanings(mset)
+
+    def lookup_variants(
+        self, w: str, cat: str, to_beyging: Union[str, Tuple[str, ...]],
+        *,
+        lemma: Optional[str] = None, utg: Optional[int] = None,
+        beyging_filter: Optional[BeygingFilter] = None
+    ) -> KsnidList:
+        """ Lookup grammatical variants of the given word with the
+            indicated category, converting PoS tags to the one(s) given
+            in the to_beyging parameter. """
+
+        assert self._bc is not None
+        bc: BinCompressed = self._bc
+
+        def variant_lookup(key: str, compound: bool = False) -> KsnidList:
+            """ Create a closure function to send into _lookup(),
+                obtaining the requested inflection variants correctly,
+                also for composite words """
+            mset = bc.lookup_variants(key, cat, to_beyging, lemma, utg, beyging_filter)
+            klist = self._filter_ksnid(mset)
+            return [k for k in klist if compound or k.birting != "S"]
+
+        _, m = self._lookup(w, False, False, variant_lookup, Ksnid.make)
+        return m
 
     def lemma_meanings(self, lemma: str) -> ResultTuple[BinMeaning]:
         """ Given a lemma, look up all its possible meanings """

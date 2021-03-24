@@ -70,7 +70,6 @@ from typing import (
     Tuple,
     List,
     Optional,
-    Callable,
     Union,
     cast,
 )
@@ -90,6 +89,7 @@ bin_cffi = cast(Any, lib_unknown)
 ffi = cast(Any, ffi_unknown)
 
 from .basics import (
+    BeygingFilter,
     MeaningTuple,
     Ksnid,
     ALL_GENDERS,
@@ -122,10 +122,6 @@ class BinCompressed:
     _FNAME = pkg_resources.resource_filename(
         __name__, "resources/" + BIN_COMPRESSED_FILE
     )
-
-    # Unique indicator used to signify no utg field
-    # (needed since None is a valid utg value)
-    NoUtg = object()
 
     def __init__(self) -> None:
         """ We use a memory map, provided by the mmap module, to
@@ -337,8 +333,8 @@ class BinCompressed:
         word: str,
         cat: Optional[str] = None,
         lemma: Optional[str] = None,
-        utg: Union[int, object] = NoUtg,
-        beyging_func: Optional[Callable[[str], bool]] = None,
+        utg: Optional[int] = None,
+        beyging_filter: Optional[BeygingFilter] = None,
     ) -> List[MeaningTuple]:
 
         """ Returns a list of BÍN meanings for the given word form,
@@ -364,10 +360,10 @@ class BinCompressed:
             if lemma is not None and stofn != lemma:
                 # Fails the lemma filter
                 continue
-            if utg is not self.NoUtg and wutg != utg:
+            if utg is not None and wutg != utg:
                 # Fails the utg filter
                 continue
-            if beyging_func is not None and not beyging_func(beyging):
+            if beyging_filter is not None and not beyging_filter(beyging):
                 # Fails the beyging_func filter
                 continue
             # stofn, utg, ordfl, fl, ordmynd, beyging
@@ -379,8 +375,8 @@ class BinCompressed:
         word: str,
         cat: Optional[str] = None,
         lemma: Optional[str] = None,
-        utg: Union[int, object] = NoUtg,
-        beyging_func: Optional[Callable[[str], bool]] = None,
+        utg: Optional[int] = None,
+        beyging_filter: Optional[BeygingFilter] = None,
     ) -> List[Ksnid]:
 
         """ Returns a list of BÍN meanings for the given word form,
@@ -406,10 +402,10 @@ class BinCompressed:
             if lemma is not None and stofn != lemma:
                 # Fails the lemma filter
                 continue
-            if utg is not self.NoUtg and wutg != utg:
+            if utg is not None and wutg != utg:
                 # Fails the utg filter
                 continue
-            if beyging_func is not None and not beyging_func(beyging):
+            if beyging_filter is not None and not beyging_filter(beyging):
                 # Fails the beyging_func filter
                 continue
             ksnid_string = self.ksnid_string(ksnid_index)
@@ -430,8 +426,8 @@ class BinCompressed:
         all_forms: bool = False,
         cat: Optional[str] = None,
         lemma: Optional[str] = None,
-        utg: Any = NoUtg,
-        beyging_filter: Optional[Callable[[str], bool]] = None,
+        utg: Optional[int] = None,
+        beyging_filter: Optional[BeygingFilter] = None,
     ) -> Set[MeaningTuple]:
 
         """ Returns a set of meanings, in the requested case, derived
@@ -512,7 +508,7 @@ class BinCompressed:
             if lemma is not None and lemma != stofn:
                 # Not the lemma we're looking for
                 continue
-            if utg is not self.NoUtg and utg != wutg:
+            if utg is not None and utg != wutg:
                 # Not the utg we're looking for
                 continue
             # Go through the variants of this
@@ -529,20 +525,20 @@ class BinCompressed:
                 result.update(
                     m
                     for m in self.lookup(
-                        c, cat=ordfl, lemma=stofn, utg=wutg, beyging_func=beyging_func,
+                        c, cat=ordfl, lemma=stofn, utg=wutg, beyging_filter=beyging_func,
                     )
                 )
         return result
 
-    def lookup_variant(
+    def lookup_variants(
         self,
         word: str,
         cat: str,
         to_beyging: Union[str, Tuple[str, ...]],
         lemma: Optional[str] = None,
-        utg: Union[int, object] = NoUtg,
-        beyging_filter: Optional[Callable[[str], bool]] = None,
-    ) -> Set[MeaningTuple]:
+        utg: Optional[int] = None,
+        beyging_filter: Optional[BeygingFilter] = None,
+    ) -> Set[Ksnid]:
 
         """ Returns a list of BÍN meaning tuples for word forms
             where the beyging substring(s) given have been substituted for
@@ -602,7 +598,7 @@ class BinCompressed:
             cats = ALL_GENDERS
         else:
             cats = frozenset([cat])
-        result: Set[MeaningTuple] = set()
+        result: Set[Ksnid] = set()
         for lemma_index, meaning_index, _ in self._raw_lookup(word):
             ordfl, beyging = self.meaning(meaning_index)
             if ordfl not in cats:
@@ -612,7 +608,7 @@ class BinCompressed:
             if lemma is not None and stofn != lemma:
                 # Fails the lemma filter
                 continue
-            if utg is not self.NoUtg and wutg != utg:
+            if utg is not None and wutg != utg:
                 # Fails the utg filter
                 continue
             if beyging_filter is not None and not beyging_filter(beyging):
@@ -624,21 +620,23 @@ class BinCompressed:
                 # our desired variants and is therefore not relevant
                 continue
             for form_latin in self.lemma_forms(lemma_index):
-                for lix, mix, _ in self._raw_lookup(form_latin):
+                for lix, mix, kix in self._raw_lookup(form_latin):
                     if lix != lemma_index:
                         continue
                     # Found a word form of the same lemma
                     _, this_beyging = self.meaning(mix)
                     if this_beyging == target_beyging:
                         # Found a word form with the target beyging string
+                        ksnid_string = self.ksnid_string(kix)
                         result.add(
-                            (
+                            Ksnid.from_parameters(
                                 stofn,
                                 wutg,
                                 ordfl,
                                 fl,
                                 form_latin.decode("latin-1"),
                                 this_beyging,
+                                ksnid_string,
                             )
                         )
         return result

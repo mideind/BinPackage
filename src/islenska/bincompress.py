@@ -552,9 +552,12 @@ class BinCompressed:
         def make_target(b: str) -> str:
             """ Create a target beyging string by substituting the
                 desired to_beyging in its proper place in the source """
+            # Remove '2' or '3' at the end of the beyging string,
+            # denoting alternative forms
+            b = re.sub(r"(2|3)$", "", b)
             for t in to_beyging:
                 if t in ALL_BIN_CASES:
-                    b = re.sub(r"NF|ÞF|ÞGF|EF", t, b)
+                    b = re.sub(r"(NF|ÞF|ÞGF|EF)", t, b)
                 elif t in ALL_BIN_NUMBERS:
                     b = re.sub(r"ET|FT", t, b)
                 elif t == "gr":

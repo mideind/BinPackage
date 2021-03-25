@@ -754,6 +754,14 @@ def test_variants() -> None:
     assert len(m) == 1
     assert m[0].ordmynd == "höfuð-borgarstjórnar-meirihlutana"
 
+    m = b.lookup_variants("höndinni", "kvk", ("NF", "nogr"))
+    assert len(m) == 1
+    assert m[0].ordmynd == "hönd"
+
+    m = b.lookup_variants("hendinni", "kvk", ("NF", "nogr"))
+    assert len(m) == 1
+    assert m[0].ordmynd == "hönd"
+
 
 if __name__ == "__main__":
 

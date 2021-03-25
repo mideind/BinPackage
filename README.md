@@ -12,7 +12,7 @@
 *BinPackage* is a Python package that embeds the entire
 [*Database of Icelandic Morphology*](https://bin.arnastofnun.is/DMII/)
 ([*Beygingarlýsing íslensks nútímamáls*](https://bin.arnastofnun.is/), *BÍN*)
-and allows various queries of the data.
+and offers various lookups and queries of the data.
 
 The database, maintained by *Árni Magnússon Institute for Icelandic Studies*
 and edited by chief editor *Kristín Bjarnadóttir*, contains over
@@ -47,8 +47,8 @@ for each word form. Kristínarsnið, documented
 [here](https://bin.arnastofnun.is/gogn/k-snid), is newer and more detailed,
 with up to 15 attributes for each word form.
 
-BinPackage supports both formats, with `Ksnid` being returned from functions
-whose names end with `_ksnid`, and `SHsnid` from others.
+BinPackage supports both formats, with `Ksnid` being returned from several
+functions and `SHsnid` from others, as documented below.
 
 `SHsnid` is represented in BinPackage with a Python `NamedTuple` called
 `BinMeaning`, having the following attributes:
@@ -64,8 +64,8 @@ whose names end with `_ksnid`, and `SHsnid` from others.
 
 The grammatical tags in the `beyging` attribute are documented in detail [here](https://bin.arnastofnun.is/gogn/greiningarstrengir/).
 
-`Ksnid` is represented by instances of the `Ksnid` class. It adds
-9 attributes, shortly summarized below:
+`Ksnid` is represented by instances of the `Ksnid` class. It has the same 6
+attributes as `SHsnid` but adds 9 attributes, shortly summarized below:
 
 | Name     | Type  | Content |
 |----------|-------|---------|
@@ -84,19 +84,19 @@ The grammatical tags in the `beyging` attribute are documented in detail [here](
 
 Icelandic allows almost unlimited creation of compound words. Examples are
 *síamskattarkjóll* (noun), *sólarolíulegt* (adjective), *öskurgrenja* (verb).
-It is of course impossible for a static database to enumerate all possible
-compound words. To address this problem, BinPackage includes a compound word
-analysis algorithm, which is invoked when looking up any word that is not found
-as-is in BÍN. (If desired, the compounding algorithm can be disabled via an
-optional flag; see the documentation below.)
+It is of course impossible for a static database to include all possible
+compound words. To address this problem, BinPackage features a compound word
+recognition algorithm, which is invoked when looking up any word that is not
+found as-is in BÍN. (If desired, the compounding algorithm can be disabled
+via an optional flag; see the documentation below.)
 
-The algorithm relies on a list of recognized word prefixes, stored in
+The algorithm relies on a list of valid word prefixes, stored in
 `src/islenska/resources/prefixes.txt`, and suffixes, stored in
 `src/islenska/resources/suffixes.txt`. These lists have been compressed
 into data structures called Directed Acyclic Word Graphs (DAWGs). BinPackage
 uses these DAWGs to find optimal solutions for the compound word
 problem, where an optimal solution is defined as the prefix+suffix
-combination with (1) the fewest prefixes and (2) the longest suffix.
+combination that has (1) the fewest prefixes and (2) the longest suffix.
 
 If an optimal compound form exists for a word, its suffix is looked up in BÍN
 and used as an inflectional template for the compound. *Síamskattarkjóll*
@@ -147,9 +147,9 @@ optimal compound in the `stofn` and `ordmynd` fields of the returned
 ])
 ```
 
-`Bin.lookup()` returns the original lookup word
-and a list of its possible meanings in `SHsnid` (*Sigrúnarsnið*), i.e.
-as instances of the `BinMeaning` `NamedTuple`.
+`Bin.lookup()` returns the matched search key, usually identical to the
+passed-in word, and a list of its possible meanings in `SHsnid` (*Sigrúnarsnið*),
+i.e. as instances of `BinMeaning`.
 
 Each meaning tuple contains the
 lemma (`stofn`), the word class, domain and issue number (`hk/alm/1198`),
@@ -168,9 +168,8 @@ The tag strings are [documented on the BÍN website](https://bin.arnastofnun.is/
 'STAFS'
 ```
 
-`Bin.lookup_ksnid()` returns the original lookup word
-and a list of its possible meanings in
-*Kristínarsnið* (`Ksnid`). The fields of *Kristínarsnið* are
+`Bin.lookup_ksnid()` returns the matched search key and a list of its possible
+meanings in *Kristínarsnið* (`Ksnid`). The fields of *Kristínarsnið* are
 [documented on the BÍN website](https://bin.arnastofnun.is/gogn/k-snid).
 In the example, we show how the word `allskonar` is marked with the
 tag `STAFS` in the `malfraedi` field, indicating that this spelling
@@ -205,8 +204,36 @@ Here we see, perhaps unexpectedly, that the word form *laga* has five possible l
 four nouns (*lag*, *lög*, *lagi* and *lögur*, neutral and masculine respectively),
 and one verb (*laga*).
 
+### Grammatical variants
 
-## Documentation
+With BinPackage, it is easy to obtain grammatical variants of words: convert
+them between cases, singular and plural, persons, degrees, moods, etc.
+
+```python
+>>> from islenska import Bin
+>>> b = Bin()
+>>> m = b.lookup_variants("Laugavegur", "kk", "ÞGF")
+>>> m[0].ordmynd
+'Laugavegi'
+```
+
+This is all it takes to convert the (masculine, `kk`) street name *Laugavegur*
+to dative case, commonly used in addresses.
+
+```python
+>>> from islenska import Bin
+>>> b = Bin()
+>>> m = b.lookup_variants("fallegur", "lo", ("EVB", "HK", "FT"))
+>>> adj = m[0].ordmynd
+>>> f"Ég sá {adj} norðurljósin"
+'Ég sá fallegustu norðurljósin'
+```
+
+Here, we obtained the superlative degree, weak form (`EVB`, *efsta stig*,
+*veik beyging*), neutral gender (`HK`), plural (`FT`), of the adjective
+*fallegur* and used it in a sentence.
+
+## Detailed documentation
 
 ### `Bin()` constructor
 
@@ -249,9 +276,10 @@ call the `lookup` function:
 [(stofn='síamskattar-kjóll', kk/alm/0, ordmynd='síamskattar-kjólanna', EFFTgr)]
 ```
 
-This function returns the lookup word that was actually used as a search key,
+This function returns the word that was actually used as a search key,
 and a list of `BinMeaning` instances corresponding to the various possible
-meanings of the word.
+meanings of that word. The list is empty if no meanings were found, in which
+case the word is probably not Icelandic or at least not spelled correctly.
 
 Here we see that *síamskattarkjólanna* is a compound word, amalgamated
 from *síamskattar* and *kjólanna*, with *kjóll* being the base lemma of the compound
@@ -276,12 +304,12 @@ Note that here, the returned search key (`w` in the first example above) is
 Another option is `auto_uppercase`, which if set to True, causes the returned
 search key to be in upper case if any upper case meaning exists in BÍN for the
 lookup word. This can be helpful when attempting to normalize
-all-lowercase input, for example from voice recognition systems. Additional
+all-lowercase input, for example from voice recognition systems. (Additional
 disambiguation is typically still needed, since many common words and names do
 exist both in lower case and in upper case, and BinPackage cannot infer which
-form is desired in the output.
+form is desired in the output.)
 
-A final example of when the search key is different from the lookup word:
+A final example of when the returned search key is different from the lookup word:
 
 ```python
 >>>> b.lookup("þýzk")
@@ -295,7 +323,23 @@ A final example of when the search key is different from the lookup word:
 Here, the input contains `z` or `tzt` which is translated to `s` or `st`
 respectively to find a lookup match in BÍN. In this case, the actual matching
 word `þýsk` is returned as the search key instead of `þýzk`. (This behavior
-can be disabled with a flag on the `Bin()` constructor, as described above.)
+can be disabled with the `replace_z` flag on the `Bin()` constructor,
+as described above.)
+
+`lookup()` has the following parameters:
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| w | str | | The word to look up |
+| at_sentence_start | bool | False | `True` if BinPackage should also return lower case forms of the word, if it is given in upper case. |
+| auto_uppercase | bool | False | `True` if BinPackage should use and return upper case search keys, if the word exists in upper case and not in lower case. |
+
+The function returns a `ResultTuple[BinMeaning]` which is a
+`Tuple[str, List[BinMeaning]]`.
+The first element of the tuple is the search key that was matched in BÍN,
+and the second element is the list of potential word meanings, each represented
+by a `BinMeaning` (`SHsnid`) instance.
+
 
 ### `lookup_ksnid()` function
 
@@ -320,9 +364,103 @@ same option flags are available and the logic for returning the search key
 is the same.
 
 The example shows how the word *allskonar* has a grammatical comment
-regarding spelling (`m.malfraedi == 'STAFS'`) and that a cross-reference
-exists to the entry with issue number (`utg`) 496369 - which is the lemma
+regarding spelling (`m.malfraedi == 'STAFS'`) and a cross-reference
+to the entry with issue number (`utg`) 496369 - which is the lemma
 *alls konar*.
+
+`lookup_ksnid()` has the following parameters:
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| w | str | | The word to look up |
+| at_sentence_start | bool | False | `True` if BinPackage should also return lower case forms of the word, if it is given in upper case. |
+| auto_uppercase | bool | False | `True` if BinPackage should use and return upper case search keys, if the word exists in upper case and not in lower case. |
+
+The function returns a `ResultTuple[Ksnid]` which is a `Tuple[str, List[Ksnid]]`.
+The first element of the tuple is the search key that was matched in BÍN,
+and the second element is the list of potential word meanings, each represented
+in a `Ksnid` instance.
+
+
+### `lookup_variants()` function
+
+This function returns grammatical variants of a given word. For instance,
+it can return a noun in a different case, plural instead of singular,
+and/or with or without an attached definite article (*greinir*). It can return
+adjectives in different degrees (*frumstig*, *miðstig*, *efsta stig*), verbs
+in different persons or moods, etc.
+
+Here is a simple example, converting the masculine noun *heftaranum* from dative
+to nominative case (`NF`):
+
+```python
+>>> m = b.lookup_variants("heftaranum", "kk", "NF")
+>>> m[0].ordmynd
+'heftarinn'
+```
+
+Here we add a conversion to plural (`FT`) as well - note that we can pass multiple
+grammatical tags in a tuple:
+
+```python
+>>> m = b.lookup_variants("heftaranum", "kk", ("NF", "FT"))
+>>> m[0].ordmynd
+'heftararnir'
+```
+
+Finally, we specify a conversion to indefinite form (`nogr`):
+
+```python
+>>> m = b.lookup_variants("heftaranum", "kk", ("NF", "FT", "nogr"))
+>>> m[0].ordmynd
+'heftarar'
+```
+
+Definite form is requested via `gr`, and indefinite form via `nogr`.
+
+Let's try modifying a verb from subjunctive (*viðtengingarháttur*) to
+indicative mood (*framsöguháttur*), present tense:
+
+```python
+>>> m = b.lookup_variants("hraðlæsi", "so", ("FH", "NT"))
+>>> for mm in m: print(mm.stofn, mm.ordmynd, mm.beyging)
+hraðlesa hraðles GM-FH-NT-1P-ET
+hraðlesa hraðles GM-FH-NT-3P-ET
+```
+
+Finally, let's describe this functionality in superlative terms:
+
+```python
+>>> adj = b.lookup_variants("frábær", "lo", ("EVB", "KVK"))[0].ordmynd
+>>> f"Þetta er {adj} virknin af öllum"
+'Þetta er frábærasta virknin af öllum'
+```
+
+Note how we ask for a superlative weak form (`EVB`) for a feminine subject (`KVK`),
+getting back the adjective *frábærasta*. We could also ask for the
+strong form (`ESB`), and then for the comparative (*miðstig*, `MST`):
+
+```python
+>>> adj = b.lookup_variants("frábær", "lo", ("ESB", "KVK"))[0].ordmynd
+>>> f"Þessi virkni er {adj} af öllum"
+'Þessi virkni er frábærust af öllum'
+>>> adj = b.lookup_variants("frábær", "lo", ("MST", "KVK"))[0].ordmynd
+>>> f"Þessi virkni er {adj} en allt annað"
+'Þessi virkni er frábærari en allt annað'
+```
+
+`lookup_variants()` has the following parameters:
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| w | str | | The word to use as a base for the lookup |
+| cat | str | | The word class, used to disambiguate the word. `no` (*nafnorð*) can be used to match any of `kk`, `kvk` and `hk`. |
+| to_beyging | Union[str, Tuple[str, ...]] | | One or more requested grammatical features, using the BÍN tag string format. As a special case, `nogr` means indefinite form (no `gr`) for nouns. |
+| lemma | Optional[str] | None | The lemma of the word, optionally used to further disambiguate it |
+| utg | Optional[int] | None | The id number of the word, optionally used to further disambiguate it |
+| beyging_filter | Optional[BeygingFilter] | None | A callable taking a single string parameter and returning a `bool`. The `beyging` attribute of a potential word meaning will be passed to this function, and only included in the result if the function returns `True`. |
+
+The function returns `KsnidList` which is defined as `List[Ksnid]`.
 
 
 ## Implementation

@@ -41,14 +41,10 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from typing import Any
-
-import io
-import re
 import sys
 
 from glob import glob
-from os.path import basename, dirname, join, splitext
+from os.path import basename, join, splitext
 
 from setuptools import find_packages  # type: ignore
 from setuptools import setup  # type: ignore
@@ -58,16 +54,6 @@ if sys.version_info < (3, 6):
     print("BinPackage requires Python >= 3.6")
     sys.exit(1)
 
-
-def read(*names: str, **kwargs: Any) -> str:
-    try:
-        return io.open(
-            join(dirname(__file__), *names),
-            encoding=kwargs.get("encoding", "utf8")
-        ).read()
-    except (IOError, OSError):
-        return ""
-
 # Load version string from file
 __version__ = "[missing]"
 exec(open(join("src", "islenska", "version.py")).read())
@@ -76,11 +62,18 @@ setup(
     name="islenska",
     version=__version__,
     license="MIT",
-    description="The Database of Modern Icelandic Inflection (DMII)",
-    long_description="{0}\n{1}".format(
-        re.compile("^.. start-badges.*^.. end-badges", re.M | re.S)
-            .sub("", read("README.rst")),
-        re.sub(":[a-z]+:`~?(.*?)`", r"``\1``", read("CHANGELOG.rst")),
+    description="The Database of Icelandic Morphology (DIM)",
+    long_description=(
+    """
+        BinPackage is a Python package that embeds the entire Database of
+        Icelandic Morphology (Beygingarlýsing íslensks nútímamáls, BÍN)
+        and offers various lookups and queries of the data.
+
+        The database, maintained by Árni Magnússon Institute for
+        Icelandic Studies and edited by chief editor Kristín Bjarnadóttir,
+        contains over 6.5 million entries, over 3.1 million unique word forms,
+        and about 300 thousand distinct lemmas.
+    """
     ),
     author="Miðeind ehf",
     author_email="mideind@mideind.is",
@@ -114,9 +107,9 @@ setup(
         "Topic :: Utilities",
         "Topic :: Text Processing :: Linguistic",
     ],
-    keywords=["nlp", "icelandic", "language", "vocabulary"],
+    keywords=["nlp", "icelandic", "language", "vocabulary", "dictionary"],
     setup_requires=["cffi>=1.13.0"],
-    install_requires=["cffi>=1.13.0", "tokenizer>=2.4.0", "typing_extensions"],
+    install_requires=["cffi>=1.13.0", "typing_extensions"],
     cffi_modules=[
         "src/islenska/bin_build.py:ffibuilder"
     ],

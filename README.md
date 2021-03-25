@@ -249,11 +249,11 @@ constructor call:
 
 | Flag              | Default | Meaning                                        |
 |-------------------|---------|------------------------------------------------|
-| `add_negation`    | True    | For adjectives, find forms with the prefix `ó` even if only the non-prefixed version is present in BÍN. Example: find `ófíkinn` because `fíkinn` is in BÍN. |
-| `add_legur`       | True    | For adjectives, find all forms with an "adjective-like" suffix, i.e. `-legur`, `-leg`, etc. even if they are not present in BÍN. Example: `sólarolíulegt`. |
-| `add_compounds`   | True    | Find compound words that can be derived from BinPackage's collection of allowed prefixes and suffixes. The algorithm finds the compound word with the fewest components and the longest suffix. Example: `síamskattar-kjóll`. |
-| `replace_z`       | True    | Find words containing `tzt` and `z` by replacing these strings by `st` and `s`, respectively. Example: `veitzt` -> `veist`. |
-| `only_bin`        | False   | Find only word forms that are originally present in BÍN, disabling all of the above described flags. |
+| `add_negation`    | `True`    | For adjectives, find forms with the prefix `ó` even if only the non-prefixed version is present in BÍN. Example: find `ófíkinn` because `fíkinn` is in BÍN. |
+| `add_legur`       | `True`    | For adjectives, find all forms with an "adjective-like" suffix, i.e. `-legur`, `-leg`, etc. even if they are not present in BÍN. Example: `sólarolíulegt`. |
+| `add_compounds`   | `True`    | Find compound words that can be derived from BinPackage's collection of allowed prefixes and suffixes. The algorithm finds the compound word with the fewest components and the longest suffix. Example: `síamskattar-kjóll`. |
+| `replace_z`       | `True`    | Find words containing `tzt` and `z` by replacing these strings by `st` and `s`, respectively. Example: `veitzt` -> `veist`. |
+| `only_bin`        | `False`   | Find only word forms that are originally present in BÍN, disabling all of the above described flags. |
 
 As an example, to create an instance that only returns word forms that occur
 in the original BÍN, do like so:
@@ -330,9 +330,9 @@ as described above.)
 
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| w | str | | The word to look up |
-| at_sentence_start | bool | False | `True` if BinPackage should also return lower case forms of the word, if it is given in upper case. |
-| auto_uppercase | bool | False | `True` if BinPackage should use and return upper case search keys, if the word exists in upper case and not in lower case. |
+| w | `str` | | The word to look up |
+| at_sentence_start | `bool` | `False` | `True` if BinPackage should also return lower case forms of the word, if it is given in upper case. |
+| auto_uppercase | `bool` | `False` | `True` if BinPackage should use and return upper case search keys, if the word exists in upper case. |
 
 The function returns a `ResultTuple[BinMeaning]` which is a
 `Tuple[str, List[BinMeaning]]`.
@@ -372,9 +372,9 @@ to the entry with issue number (`utg`) 496369 - which is the lemma
 
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| w | str | | The word to look up |
-| at_sentence_start | bool | False | `True` if BinPackage should also return lower case forms of the word, if it is given in upper case. |
-| auto_uppercase | bool | False | `True` if BinPackage should use and return upper case search keys, if the word exists in upper case and not in lower case. |
+| w | `str` | | The word to look up |
+| at_sentence_start | `bool` | `False` | `True` if BinPackage should also return lower case forms of the word, if it is given in upper case. |
+| auto_uppercase | `bool` | `False` | `True` if BinPackage should use and return upper case search keys, if the word exists in upper case. |
 
 The function returns a `ResultTuple[Ksnid]` which is a `Tuple[str, List[Ksnid]]`.
 The first element of the tuple is the search key that was matched in BÍN,
@@ -453,12 +453,12 @@ strong form (`ESB`), and then for the comparative (*miðstig*, `MST`):
 
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| w | str | | The word to use as a base for the lookup |
-| cat | str | | The word class, used to disambiguate the word. `no` (*nafnorð*) can be used to match any of `kk`, `kvk` and `hk`. |
-| to_beyging | Union[str, Tuple[str, ...]] | | One or more requested grammatical features, using the BÍN tag string format. As a special case, `nogr` means indefinite form (no `gr`) for nouns. |
-| lemma | Optional[str] | None | The lemma of the word, optionally used to further disambiguate it |
-| utg | Optional[int] | None | The id number of the word, optionally used to further disambiguate it |
-| beyging_filter | Optional[BeygingFilter] | None | A callable taking a single string parameter and returning a `bool`. The `beyging` attribute of a potential word meaning will be passed to this function, and only included in the result if the function returns `True`. |
+| w | `str` | | The word to use as a base for the lookup |
+| cat | `str` | | The word class, used to disambiguate the word. `no` (*nafnorð*) can be used to match any of `kk`, `kvk` and `hk`. |
+| to_beyging | `Union[str, Tuple[str, ...]]` | | One or more requested grammatical features, using the BÍN tag string format. As a special case, `nogr` means indefinite form (no `gr`) for nouns. |
+| lemma | `Optional[str]` | `None` | The lemma of the word, optionally used to further disambiguate it |
+| utg | `Optional[int]` | `None` | The id number of the word, optionally used to further disambiguate it |
+| beyging_filter | `Optional[BeygingFilter]` | `None` | A callable taking a single string parameter and returning a `bool`. The `beyging` attribute of a potential word meaning will be passed to this function, and only included in the result if the function returns `True`. |
 
 The function returns `KsnidList` which is defined as `List[Ksnid]`.
 

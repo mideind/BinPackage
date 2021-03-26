@@ -644,10 +644,11 @@ class Bin:
         return set((mm.stofn, mm.ordfl) for mm in m)
 
     def lookup_forms(self, lemma: str, cat: str, case: str) -> BinMeaningList:
-        """ Lookup all base forms of a particular lemma, in the indicated case.
+        """ Lookup all word forms in the indicated case, of the given lemma.
             This is mainly used to retrieve inflection forms of nouns, where
             we want to retrieve singular and plural, definite and indefinite
-            forms in particular cases. """
+            forms in particular cases. Note that lookup_variants() below is
+            a more flexible alternative to this function. """
         assert self._bc is not None
         mset = self._bc.lookup_case(
             lemma, case.upper(), lemma=lemma, cat=cat, all_forms=True
@@ -679,7 +680,7 @@ class Bin:
         return m
 
     def lemma_meanings(self, lemma: str) -> ResultTuple[BinMeaning]:
-        """ Given a lemma, look up all its possible meanings """
+        """ Given a word, look up all its possible meanings as a lemma """
         # Note: we consider middle voice infinitive verbs to be lemmas,
         # i.e. 'eignast' is recognized as a lemma as well as 'eigna'.
         # This is done for consistency, as some middle voice verbs have

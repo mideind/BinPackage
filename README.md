@@ -57,7 +57,7 @@ functions and `SHsnid` from others, as documented below.
 |----------|-------|---------|
 | `stofn`  | `str` | The lemma (headword) of the word form (*uppflettiorð*). |
 | `utg`    | `int` | The issue number (*útgáfunúmer*) of the lemma, unique for a particular lemma/class combination. |
-| `ordfl`  | `str` | The word class, i.e. `kk`/`kvk`/`hk` for (masculine/feminine/neutral) nouns, `lo` for adjectives, `so` for verbs, etc.|
+| `ordfl`  | `str` | The word class, i.e. `kk`/`kvk`/`hk` for (masculine/feminine/neutral) nouns, `lo` for adjectives, `so` for verbs, `ao` for adverbs, etc.|
 | `fl`     | `str` | The domain, i.e. `alm` for general vocabulary, `ism` for Icelandic person names, `örn` for place names (*örnefni*), etc.|
 | `ordmynd` | `str` | The inflected word form. |
 | `beyging` | `str` | The grammatical (part-of-speech, PoS) tags of the word form, for instance `ÞGFETgr` for dative (*þágufall*, `ÞGF`), singular (*eintala*, `ET`), definite (*með greini*, `gr`). |
@@ -114,9 +114,9 @@ optimal compound in the `stofn` and `ordmynd` fields of the returned
 ('síamskattarkjóll', [(stofn='síamskattar-kjóll', kk/alm/0, ordmynd='síamskattar-kjóll', NFET)])
 ```
 
-## Examples
+# Examples
 
-### Querying for word forms
+## Querying for word forms
 
 *Uppfletting beygingarmynda*
 
@@ -156,7 +156,7 @@ lemma (`stofn`), the word class, domain and issue number (`hk/alm/1198`),
 the inflectional form (`ordmynd`) and the grammatical (PoS) tags (`GM-VH-NT-3P-FT`).
 The tag strings are [documented on the BÍN website](https://bin.arnastofnun.is/gogn/k-snid).
 
-### Detailed word query
+## Detailed word query
 
 *Uppfletting ítarlegra upplýsinga*
 
@@ -175,23 +175,12 @@ In the example, we show how the word `allskonar` is marked with the
 tag `STAFS` in the `malfraedi` field, indicating that this spelling
 is nonstandard. A more correct form is `alls konar`, in two words.
 
-### Word classes
-
-*Orðflokkar*
-
-```python
->>> from islenska import Bin
->>> b = Bin()
->>> b.lookup_cats("laga")
-{'hk', 'so', 'kk'}
-```
-
-Here, we see that the word form *laga* can be interpreted as a
-neutral (`'hk'`) or masculine (`'kk'`) noun, or a verb (`'so'`).
-
-### Lemmas and classes
+## Lemmas and classes
 
 *Lemmur, uppflettiorð; orðflokkar*
+
+BinPackage can find all possible lemmas (headwords) of a word,
+and the classes/categories to which it may belong.
 
 ```python
 >>> from islenska import Bin
@@ -201,13 +190,14 @@ neutral (`'hk'`) or masculine (`'kk'`) noun, or a verb (`'so'`).
 ```
 
 Here we see, perhaps unexpectedly, that the word form *laga* has five possible lemmas:
-four nouns (*lag*, *lög*, *lagi* and *lögur*, neutral and masculine respectively),
-and one verb (*laga*).
+four nouns (*lag*, *lög*, *lagi* and *lögur*, neutral (`hk`) and masculine (`kk`)
+respectively), and one verb (`so`), having the infinitive (*nafnháttur*) *að laga*.
 
-### Grammatical variants
+## Grammatical variants
 
 With BinPackage, it is easy to obtain grammatical variants of words: convert
-them between cases, singular and plural, persons, degrees, moods, etc.
+them between cases, singular and plural, persons, degrees, moods, etc. Let's look
+at an example:
 
 ```python
 >>> from islenska import Bin
@@ -230,12 +220,12 @@ to dative case, commonly used in addresses.
 ```
 
 Here, we obtained the superlative degree, weak form (`EVB`, *efsta stig*,
-*veik beyging*), neutral gender (`HK`), plural (`FT`), of the adjective
+*veik beyging*), neutral gender (`HK`), plural (`FT`), of the adjective (`lo`)
 *fallegur* and used it in a sentence.
 
-## Detailed documentation
+# Documentation
 
-### `Bin()` constructor
+## `Bin()` constructor
 
 To create an instance of the `Bin` class, do as follows:
 
@@ -263,7 +253,7 @@ in the original BÍN, do like so:
 >>> b = Bin(only_bin=True)
 ```
 
-### `lookup()` function
+## `lookup()` function
 
 To look up word forms and return summarized `SHsnid` data (`BinMeaning` tuples),
 call the `lookup` function:
@@ -341,7 +331,7 @@ and the second element is the list of potential word meanings, each represented
 by a `BinMeaning` (`SHsnid`) instance.
 
 
-### `lookup_ksnid()` function
+## `lookup_ksnid()` function
 
 To look up word forms and return full `Ksnid` instances,
 call the `lookup_ksnid()` function:
@@ -382,7 +372,52 @@ and the second element is the list of potential word meanings, each represented
 in a `Ksnid` instance.
 
 
-### `lookup_variants()` function
+## `lookup_cats()` function
+
+To look up the possible classes/categories of a word (*orðflokkar*),
+call the `lookup_cats` function:
+
+```python
+>>> b.lookup_cats("laga")
+{'so', 'hk', 'kk'}
+```
+
+The function returns a `Set[str]` with all possible word classes/categories
+of the word form. If the word is not found in BÍN, or recognized using the
+compounding algorithm, the function returns an empty set.
+
+`lookup_cats()` has the following parameters:
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| w | `str` | | The word to look up |
+| at_sentence_start | `bool` | `False` | `True` if BinPackage should also include lower case forms of the word, if it is given in upper case. |
+
+
+## `lookup_lemmas_and_cats()` function
+
+To look up the possible lemmas/headwords and classes/categories of a word
+(*lemmur og orðflokkar*), call the `lookup_lemmas_and_cats` function:
+
+```python
+>>> b.lookup_lemmas_and_cats("laga")
+{('lagi', 'kk'), ('lögur', 'kk'), ('laga', 'so'), ('lag', 'hk'), ('lög', 'hk')}
+```
+
+The function returns a `Set[Tuple[str, str]]` where each tuple contains
+a lemma/headword and a class/category, respectively.
+If the word is not found in BÍN, or recognized using the
+compounding algorithm, the function returns an empty set.
+
+`lookup_lemmas_and_cats()` has the following parameters:
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| w | `str` | | The word to look up |
+| at_sentence_start | `bool` | `False` | `True` if BinPackage should also include lower case forms of the word, if it is given in upper case. |
+
+
+## `lookup_variants()` function
 
 This function returns grammatical variants of a given word. For instance,
 it can return a noun in a different case, plural instead of singular,
@@ -463,7 +498,42 @@ strong form (`ESB`), and then for the comparative (*miðstig*, `MST`):
 The function returns `KsnidList` which is defined as `List[Ksnid]`.
 
 
-## Implementation
+## `lemma_meanings()` function
+
+To look up all possible meanings of a word as a lemma/headword,
+call the `lemma_meanings` function:
+
+```python
+>>> b.lemma_meanings("þyrla")
+('þyrla',
+  [
+    (stofn='þyrla', kvk/alm/16445, ordmynd='þyrla', NFET),  # Feminine noun
+    (stofn='þyrla', so/alm/425096, ordmynd='þyrla', GM-NH)  # Verb
+  ]
+)
+>>> b.lemma_meanings("þyrlast")
+('þyrlast', [(stofn='þyrla', so/alm/425096, ordmynd='þyrlast', MM-NH)])
+>>> b.lemma_meanings("þyrlan")
+('þyrlan', [])
+```
+
+The function returns a `Tuple[str, List[BinMeaning]]` like `lookup()`,
+but where the `BinMeaning` list
+has been filtered to include only lemmas/headwords. This is the reason why
+`b.lemma_meanings("þyrlan")` returns an empty list in the example above -
+*þyrlan* does not appear in BÍN as a lemma/headword.
+
+Lemmas/headwords of verbs include the middle voice (*miðmynd*) of the
+infinitive, `MM-NH`, as in the example for *þyrlast*.
+
+`lemma_meanings()` has a single parameter:
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| lemma | `str` | | The word to look up as a lemma/headword. |
+
+
+# Implementation
 
 BinPackage is written in [Python 3](https://www.python.org/)
 and requires Python 3.6 or later. It runs on CPython and [PyPy](http://pypy.org/).
@@ -483,7 +553,7 @@ BinPackage is fully type-annotated for use with Python static type checkers such
 as `mypy` and `Pylance` / `Pyright`.
 
 
-## Installation and setup
+# Installation and setup
 
 You must have Python >= 3.6 installed on your machine (CPython or PyPy).
 If you are using a Python virtual environment (`virtualenv`), activate it first:
@@ -561,7 +631,7 @@ BinPackage:
   valid Icelandic word prefixes and suffixes, respectively.
 
 
-## Copyright and licensing
+# Copyright and licensing
 
 BinPackage embeds the
 **[Database of Icelandic Morphology](https://bin.arnastofnun.is/)**

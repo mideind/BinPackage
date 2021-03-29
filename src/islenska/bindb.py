@@ -55,7 +55,14 @@ from typing_extensions import Protocol
 
 from functools import lru_cache
 
-from .basics import BeygingFilter, BinMeaning, Ksnid, LFU_Cache, MeaningTuple, make_bin_meaning
+from .basics import (
+    BeygingFilter,
+    BinMeaning,
+    Ksnid,
+    LFU_Cache,
+    MeaningTuple,
+    make_bin_meaning,
+)
 from .settings import (
     Settings,
     AdjectiveTemplate,
@@ -656,9 +663,13 @@ class Bin:
         return self._filter_meanings(mset)
 
     def lookup_variants(
-        self, w: str, cat: str, to_beyging: Union[str, Tuple[str, ...]],
+        self,
+        w: str,
+        cat: str,
+        to_beyging: Union[str, Tuple[str, ...]],
         *,
-        lemma: Optional[str] = None, utg: Optional[int] = None,
+        lemma: Optional[str] = None,
+        utg: Optional[int] = None,
         beyging_filter: Optional[BeygingFilter] = None
     ) -> KsnidList:
         """ Lookup grammatical variants of the given word with the

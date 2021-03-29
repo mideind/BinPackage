@@ -83,7 +83,11 @@ UTG_BITS = 23
 # Bits allocated for the subcategory index (fl) (currently max 49)
 SUBCAT_BITS = 8
 
-# Indices into the ksnid_strings dictionary for the most common ksnid strings
+# The two most common Ksnid strings
+KSNID_COMMON_0 = "1;;;;V;1;;;"
+KSNID_COMMON_1 = "1;;;;K;1;;;"
+
+# Indices into the ksnid_strings dictionary for the most common Ksnid strings
 COMMON_KIX_0 = 0
 COMMON_KIX_1 = 1
 
@@ -163,21 +167,21 @@ class Ksnid:
     """ A class corresponding to the BÍN KRISTINsnid format """
 
     def __init__(self) -> None:
-        self.stofn = ""
-        self.utg = 0
-        self.ordfl = ""
-        self.fl = ""
-        self.einkunn = 0
-        self.malsnid = ""
-        self.malfraedi = ""
-        self.millivisun = 0
-        self.birting = ""
-        self.ordmynd = ""
-        self.beyging = ""
-        self.beinkunn = 0
-        self.bmalsnid = ""
-        self.bgildi = ""
-        self.aukafletta = ""
+        self.stofn: str = ""
+        self.utg: int = 0
+        self.ordfl: str = ""
+        self.fl: str = ""
+        self.einkunn: int = 0
+        self.malsnid: str = ""
+        self.malfraedi: str = ""
+        self.millivisun: int = 0
+        self.birting: str = ""
+        self.ordmynd: str = ""
+        self.beyging: str = ""
+        self.beinkunn: int = 0
+        self.bmalsnid: str = ""
+        self.bgildi: str = ""
+        self.aukafletta: str = ""
 
     def __str__(self) -> str:
         return (

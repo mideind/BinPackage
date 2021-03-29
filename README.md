@@ -30,7 +30,7 @@ entire vocabulary of the modern Icelandic language at your disposal via Python.
 Batteries are included; no additional databases, downloads or middleware are required.
 
 BinPackage allows querying for word forms, as well as lemmas and grammatical variants.
-This includes information about word classes (noun, verb, ...),
+This includes information about word classes/categories (noun, verb, ...),
 domains (person names, place names, ...), grammatical tags and
 various annotations, such as degrees of linguistic acceptability and alternate
 spelling forms.
@@ -50,6 +50,8 @@ with up to 15 attributes for each word form.
 BinPackage supports both formats, with `Ksnid` being returned from several
 functions and `SHsnid` from others, as documented below.
 
+### SHsnid
+
 `SHsnid` is represented in BinPackage with a Python `NamedTuple` called
 `BinMeaning`, having the following attributes:
 
@@ -57,12 +59,14 @@ functions and `SHsnid` from others, as documented below.
 |----------|-------|---------|
 | `stofn`  | `str` | The lemma (headword) of the word form (*uppflettiorð*). |
 | `utg`    | `int` | The issue number (*útgáfunúmer*) of the lemma, unique for a particular lemma/class combination. |
-| `ordfl`  | `str` | The word class, i.e. `kk`/`kvk`/`hk` for (masculine/feminine/neutral) nouns, `lo` for adjectives, `so` for verbs, `ao` for adverbs, etc.|
+| `ordfl`  | `str` | The word class/category, i.e. `kk`/`kvk`/`hk` for (masculine/feminine/neutral) nouns, `lo` for adjectives, `so` for verbs, `ao` for adverbs, etc.|
 | `fl`     | `str` | The domain, i.e. `alm` for general vocabulary, `ism` for Icelandic person names, `örn` for place names (*örnefni*), etc.|
 | `ordmynd` | `str` | The inflected word form. |
 | `beyging` | `str` | The grammatical (part-of-speech, PoS) tags of the word form, for instance `ÞGFETgr` for dative (*þágufall*, `ÞGF`), singular (*eintala*, `ET`), definite (*með greini*, `gr`). |
 
 The grammatical tags in the `beyging` attribute are documented in detail [here](https://bin.arnastofnun.is/gogn/greiningarstrengir/).
+
+### Ksnid
 
 `Ksnid` is represented by instances of the `Ksnid` class. It has the same 6
 attributes as `SHsnid` but adds 9 attributes, shortly summarized below:
@@ -125,31 +129,31 @@ optimal compound in the `stofn` and `ordmynd` fields of the returned
 >>> b = Bin()
 >>> b.lookup("færi")
 ('færi', [
-(stofn='fara', so/alm/433568, ordmynd='færi', OP-ÞGF-GM-VH-ÞT-1P-ET),
-(stofn='fara', so/alm/433568, ordmynd='færi', OP-ÞGF-GM-VH-ÞT-1P-FT),
-(stofn='fara', so/alm/433568, ordmynd='færi', OP-ÞGF-GM-VH-ÞT-2P-ET),
-(stofn='fara', so/alm/433568, ordmynd='færi', OP-ÞGF-GM-VH-ÞT-2P-FT),
-(stofn='fara', so/alm/433568, ordmynd='færi', OP-ÞGF-GM-VH-ÞT-3P-ET),
-(stofn='fara', so/alm/433568, ordmynd='færi', OP-það-GM-VH-ÞT-3P-ET),
-(stofn='fara', so/alm/433568, ordmynd='færi', OP-ÞGF-GM-VH-ÞT-3P-FT),
-(stofn='fara', so/alm/433568, ordmynd='færi', GM-VH-ÞT-1P-ET),
-(stofn='fara', so/alm/433568, ordmynd='færi', GM-VH-ÞT-3P-ET),
-(stofn='fær', lo/alm/448392, ordmynd='færi', FVB-KK-NFET),
-(stofn='færa', so/alm/434742, ordmynd='færi', GM-FH-NT-1P-ET),
-(stofn='færa', so/alm/434742, ordmynd='færi', GM-VH-NT-1P-ET),
-(stofn='færa', so/alm/434742, ordmynd='færi', GM-VH-NT-3P-ET),
-(stofn='færa', so/alm/434742, ordmynd='færi', GM-VH-NT-3P-FT),
-(stofn='færi', hk/alm/1198, ordmynd='færi', NFET),
-(stofn='færi', hk/alm/1198, ordmynd='færi', ÞFET),
-(stofn='færi', hk/alm/1198, ordmynd='færi', ÞGFET),
-(stofn='færi', hk/alm/1198, ordmynd='færi', NFFT),
-(stofn='færi', hk/alm/1198, ordmynd='færi', ÞFFT)
+  (stofn='fara', so/alm/433568, ordmynd='færi', OP-ÞGF-GM-VH-ÞT-1P-ET),
+  (stofn='fara', so/alm/433568, ordmynd='færi', OP-ÞGF-GM-VH-ÞT-1P-FT),
+  (stofn='fara', so/alm/433568, ordmynd='færi', OP-ÞGF-GM-VH-ÞT-2P-ET),
+  (stofn='fara', so/alm/433568, ordmynd='færi', OP-ÞGF-GM-VH-ÞT-2P-FT),
+  (stofn='fara', so/alm/433568, ordmynd='færi', OP-ÞGF-GM-VH-ÞT-3P-ET),
+  (stofn='fara', so/alm/433568, ordmynd='færi', OP-það-GM-VH-ÞT-3P-ET),
+  (stofn='fara', so/alm/433568, ordmynd='færi', OP-ÞGF-GM-VH-ÞT-3P-FT),
+  (stofn='fara', so/alm/433568, ordmynd='færi', GM-VH-ÞT-1P-ET),
+  (stofn='fara', so/alm/433568, ordmynd='færi', GM-VH-ÞT-3P-ET),
+  (stofn='fær', lo/alm/448392, ordmynd='færi', FVB-KK-NFET),
+  (stofn='færa', so/alm/434742, ordmynd='færi', GM-FH-NT-1P-ET),
+  (stofn='færa', so/alm/434742, ordmynd='færi', GM-VH-NT-1P-ET),
+  (stofn='færa', so/alm/434742, ordmynd='færi', GM-VH-NT-3P-ET),
+  (stofn='færa', so/alm/434742, ordmynd='færi', GM-VH-NT-3P-FT),
+  (stofn='færi', hk/alm/1198, ordmynd='færi', NFET),
+  (stofn='færi', hk/alm/1198, ordmynd='færi', ÞFET),
+  (stofn='færi', hk/alm/1198, ordmynd='færi', ÞGFET),
+  (stofn='færi', hk/alm/1198, ordmynd='færi', NFFT),
+  (stofn='færi', hk/alm/1198, ordmynd='færi', ÞFFT)
 ])
 ```
 
 `Bin.lookup()` returns the matched search key, usually identical to the
-passed-in word, and a list of its possible meanings in `SHsnid` (*Sigrúnarsnið*),
-i.e. as instances of `BinMeaning`.
+passed-in word (here *færi*), and a list of its possible meanings
+in `SHsnid` (*Sigrúnarsnið*), i.e. as instances of `BinMeaning`.
 
 Each meaning tuple contains the
 lemma (`stofn`), the word class, domain and issue number (`hk/alm/1198`),
@@ -245,8 +249,8 @@ constructor call:
 | `replace_z`       | `True`    | Find words containing `tzt` and `z` by replacing these strings by `st` and `s`, respectively. Example: `veitzt` -> `veist`. |
 | `only_bin`        | `False`   | Find only word forms that are originally present in BÍN, disabling all of the above described flags. |
 
-As an example, to create an instance that only returns word forms that occur
-in the original BÍN, do like so:
+As an example, to create a `Bin` instance that only returns word forms that occur
+in the original BÍN database, do like so:
 
 ```python
 >>> from islenska import Bin
@@ -266,7 +270,8 @@ call the `lookup` function:
 [(stofn='síamskattar-kjóll', kk/alm/0, ordmynd='síamskattar-kjólanna', EFFTgr)]
 ```
 
-This function returns the word that was actually used as a search key,
+This function returns a `Tuple[str, List[BinMeaning]]` containing the word that
+was actually used as a search key,
 and a list of `BinMeaning` instances corresponding to the various possible
 meanings of that word. The list is empty if no meanings were found, in which
 case the word is probably not Icelandic or at least not spelled correctly.
@@ -324,8 +329,7 @@ as described above.)
 | at_sentence_start | `bool` | `False` | `True` if BinPackage should also return lower case forms of the word, if it is given in upper case. |
 | auto_uppercase | `bool` | `False` | `True` if BinPackage should use and return upper case search keys, if the word exists in upper case. |
 
-The function returns a `ResultTuple[BinMeaning]` which is a
-`Tuple[str, List[BinMeaning]]`.
+The function returns a `Tuple[str, List[BinMeaning]]` instance.
 The first element of the tuple is the search key that was matched in BÍN,
 and the second element is the list of potential word meanings, each represented
 by a `BinMeaning` (`SHsnid`) instance.
@@ -366,7 +370,7 @@ to the entry with issue number (`utg`) 496369 - which is the lemma
 | at_sentence_start | `bool` | `False` | `True` if BinPackage should also return lower case forms of the word, if it is given in upper case. |
 | auto_uppercase | `bool` | `False` | `True` if BinPackage should use and return upper case search keys, if the word exists in upper case. |
 
-The function returns a `ResultTuple[Ksnid]` which is a `Tuple[str, List[Ksnid]]`.
+The function returns a `Tuple[str, List[Ksnid]]` instance.
 The first element of the tuple is the search key that was matched in BÍN,
 and the second element is the list of potential word meanings, each represented
 in a `Ksnid` instance.
@@ -490,12 +494,12 @@ strong form (`ESB`), and then for the comparative (*miðstig*, `MST`):
 |------|------|---------|-------------|
 | w | `str` | | The word to use as a base for the lookup |
 | cat | `str` | | The word class, used to disambiguate the word. `no` (*nafnorð*) can be used to match any of `kk`, `kvk` and `hk`. |
-| to_beyging | `Union[str, Tuple[str, ...]]` | | One or more requested grammatical features, using the BÍN tag string format. As a special case, `nogr` means indefinite form (no `gr`) for nouns. |
+| to_beyging | `Union[str, Tuple[str, ...]]` | | One or more requested grammatical features, using the BÍN tag string format. As a special case, `nogr` means indefinite form (no `gr`) for nouns. The parameter can be a single string or a tuple of several strings.|
 | lemma | `Optional[str]` | `None` | The lemma of the word, optionally used to further disambiguate it |
 | utg | `Optional[int]` | `None` | The id number of the word, optionally used to further disambiguate it |
-| beyging_filter | `Optional[BeygingFilter]` | `None` | A callable taking a single string parameter and returning a `bool`. The `beyging` attribute of a potential word meaning will be passed to this function, and only included in the result if the function returns `True`. |
+| beyging_filter | `Optional[Callable[[str], bool]]` | `None` | A callable taking a single string parameter and returning a `bool`. The `beyging` attribute of a potential word meaning will be passed to this function, and only included in the result if the function returns `True`. |
 
-The function returns `KsnidList` which is defined as `List[Ksnid]`.
+The function returns `List[Ksnid]`.
 
 
 ## `lemma_meanings()` function
@@ -512,7 +516,7 @@ call the `lemma_meanings` function:
   ]
 )
 >>> b.lemma_meanings("þyrlast")
-('þyrlast', [(stofn='þyrla', so/alm/425096, ordmynd='þyrlast', MM-NH)])
+('þyrlast', [(stofn='þyrla', so/alm/425096, ordmynd='þyrlast', MM-NH)])  # Middle voice infinitive
 >>> b.lemma_meanings("þyrlan")
 ('þyrlan', [])
 ```
@@ -540,7 +544,7 @@ and requires Python 3.6 or later. It runs on CPython and [PyPy](http://pypy.org/
 
 The Python code calls a small C++ library to speed up lookup of word forms in the
 compressed binary structure into which BÍN has been encoded.
-This means that if a pre-compiled wheel is not
+This means that if a pre-compiled Python wheel is not
 available on PyPI for your platform, you may need a set of development tools installed
 on your machine, before you install BinPackage using `pip`:
 
@@ -556,7 +560,7 @@ as `mypy` and `Pylance` / `Pyright`.
 # Installation and setup
 
 You must have Python >= 3.6 installed on your machine (CPython or PyPy).
-If you are using a Python virtual environment (`virtualenv`), activate it first:
+If you are using a Python virtual environment (`virtualenv`), activate it first (substituting your environment name for `venv` below):
 
 ```bash
 $ venv/bin/activate
@@ -592,8 +596,8 @@ $ cd src/islenska/resources
 $ # Fetch the newest BÍN data (KRISTINsnid.csv.zip)
 $ wget -O KRISTINsnid.csv.zip https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip
 $ # Unzip the data
-$ unzip KRISTINsnid.csv.zip
-$ rm KRISTINsnid.csv.zip
+$ unzip -q KRISTINsnid.csv.zip
+$ rm KRISTINsnid.csv.*
 $ cd ../../..
 $ # Run the compressor to generate src/islenska/resources/compressed.bin
 $ python tools/binpack.py
@@ -684,3 +688,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 If you would like to use this software in ways that are incompatible with the
 standard MIT license, [contact Miðeind ehf.](mailto:mideind@mideind.is) to negotiate custom arrangements.
 
+# Acknowledgements
+
+Parts of this software were developed under the auspices of the
+Icelandic Government's 5-year Language Technology Programme for Icelandic,
+managed by [Almannarómur](https://almannaromur.is). The LT Programme is described
+[here](https://www.stjornarradid.is/lisalib/getfile.aspx?itemid=56f6368e-54f0-11e7-941a-005056bc530c>)
+(English version [here](https://clarin.is/media/uploads/mlt-en.pdf>)).

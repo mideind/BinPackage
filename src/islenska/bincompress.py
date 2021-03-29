@@ -243,14 +243,24 @@ class BinCompressed:
                 # last word before appending the divergent part?
                 cut = b[p]
                 p += 1
-                if cut == 255:
+                if cut == 0x00:
                     # Done
                     break
+                if cut & 0x80:
+                    # Long form: the cut is in the lower 7 bits and the
+                    # length is in the following byte
+                    cut &= 0x7F
+                    lw_new = b[p]
+                    p += 1
+                else:
+                    # The cut is in the upper 4 bits, and (len - cut) in the lower 3
+                    diff = (cut & 0x03) - (cut & 0x04)
+                    cut >>= 3
+                    lw_new = cut + diff
                 # Calculate the number of common characters between
                 # this word and the last one
                 common = lw - cut
-                lw = b[p]
-                p += 1
+                lw = lw_new
                 # Assemble this word and append it to our result
                 w = last_w[0:common] + b[p : p + lw]
                 p += lw

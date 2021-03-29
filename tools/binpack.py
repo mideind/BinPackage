@@ -29,10 +29,10 @@
         TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
         SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-    This module compresses the BÍN dictionary from a ~300 MB uncompressed
+    This module compresses the BÍN dictionary from a ~400 MB uncompressed
     form into a compact binary representation. A radix trie data structure
     is used to store a mapping from word forms to integer indices.
-    These indices are then used to look up word lemmas, categories and meanings.
+    These indices are then used to look up lemmas, categories and meanings.
 
     The data format is a tradeoff between storage space and retrieval
     speed. The resulting binary image is designed to be read into memory as
@@ -41,8 +41,9 @@
     is shared between running processes.
 
     binpack.py reads the files KRISTINsnid.csv (as fetched from BÍN), ord.auka.csv
-    (additional vocabulary), and ord.add.csv (generated from config/Vocab.conf
-    by the program utils/vocab.py in the Greynir repository). Additionally,
+    (additional vocabulary), ord.add.csv (generated from config/Vocab.conf
+    by the program utils/vocab.py in the Greynir repository) and ord.suffixes.csv
+    (containing inflection templates for word suffixes). Additionally,
     errata from the config/BinErrata.conf file are applied during
     the compression process. These additions and modifications are not a part of
     the original BÍN source data.
@@ -59,24 +60,29 @@
     The sections are:
 
         mapping section: a mapping from word forms to meanings. Each word
-        form has an index, and this section maps from that index to a list
-        of (lemma index, meaning index, ksnid string index) tuples.
+        form has an index (cf. the forms section below), and this section maps
+        from that index to a list of (lemma index, meaning index,
+        ksnid string index) tuples.
 
-        forms section: a compact radix trie that maps word forms to indices
+        forms section: a compact radix trie that maps word forms from
+        strings (compressed into a 127-bit alphabet) to indices
         into the mapping section.
 
         lemmas section: a mapping of lemma indices to
         (lemma string, utg number, category index) tuples. Also, if the lemma
-        has case variants (a list of suffixes that maps the lemma to each case),
-        the index of the variant list is stored here as well.
+        has grammatical variants (a list of suffixes that maps the lemma to
+        each grammatical form), the index of the variant suffix template
+        is stored here as well.
 
-        variants section: a mapping of case variant indexes to case variant
-        specifications. A case variant specification describes how to obtain
-        the case variants of a given lemma string, i.e. lemma -> nf,þf,þgf,ef forms.
+        variants section: a mapping of grammatical variant indexes to variant
+        templates (specifications). A variant template describes
+        how to obtain the grammatical variants of a given lemma string, i.e.
+        a mapping of lemma -> { set of all word variants }
 
         alphabet section: a mapping of character indexes to characters.
         This is used to compress word form strings into 7 bits per character
-        instead of 8, keeping the high bit available to denote end-of-string.
+        instead of 8 (using latin-1 encoding), keeping the high bit available
+        to denote end-of-string.
 
         meanings section: a mapping of BÍN meaning indexes to BÍN beyging
         strings (such as 'NFETgr').
@@ -85,9 +91,9 @@
         The ksnid strings contain additional data from the KRISTINsnid.csv
         file.
 
-        subcats section: a mapping of subcategory indices to subcategory strings
-        ('fl' field in BÍN). Subcategories are strings such as 'föð', 'móð',
-        'örn', etc.
+        subcats section: a mapping of domain (subcategory) indices to domain
+        strings ('fl' field in BÍN). Domains are strings such as
+        'föð', 'móð', 'örn', etc.
 
     ************************************************************************
 
@@ -107,9 +113,11 @@
         Stofnun Árna Magnússonar í íslenskum fræðum.
         Höfundur og ritstjóri Kristín Bjarnadóttir.
 
-    This module makes certain additions and modifications to the original
-    BÍN source data during the generation of the compressed file.
-    These are described in the comments above and in the code below.
+    This module makes certain additions and modifications to the
+    original BÍN source data during the generation of the compressed file,
+    while attempting to mark such modifications so that full upwards compatibility
+    with the original data is maintained. These additions and modifications are
+    described in the comments above and in the code below.
 
 """
 
@@ -125,7 +133,7 @@ from typing import (
     Optional,
     Iterable,
     IO,
-    TypeVar,
+    TypeVar, Union,
 )
 
 import os
@@ -135,7 +143,7 @@ import struct
 from collections import defaultdict
 
 from islenska.basics import (
-    Ksnid,
+    BinMeaning, Ksnid,
     MeaningTuple,
     BIN_COMPRESSOR_VERSION,
     BIN_COMPRESSED_FILE,
@@ -146,6 +154,8 @@ from islenska.basics import (
     UTG_BITS,
     SUBCAT_BITS,
     UINT32,
+    KSNID_COMMON_0,
+    KSNID_COMMON_1,
     COMMON_KIX_0,
     COMMON_KIX_1,
 )
@@ -398,10 +408,11 @@ class BinCompressor:
 
     """ This class generates a compressed binary file from plain-text
         dictionary data. The input plain-text file is assumed to be coded
-        in UTF-8 and have five columns, delimited by semicolons (';'), i.e.:
+        in UTF-8 and have either six (SHsnid) or fifteen (Ksnid) columns,
+        delimited by semicolons (';'), i.e. (for SHsnid):
 
         (Icelandic) stofn;utg;ordfl;fl;ordmynd;beyging
-        (English)   lemma;version;category;subcategory;form;meaning
+        (English)   lemma;issue;class;domain;form;inflection
 
         The compression is not particularly intensive, as there is a
         tradeoff between the compression level and lookup speed. The
@@ -410,8 +421,8 @@ class BinCompressor:
         unpacking into higher-level data structures. See the BinCompressed
         class for the lookup code.
 
-        Note that all text strings and characters in the binary BLOB
-        are in Latin-1 encoding, and Latin-1 ordinal numbers are
+        Note that text strings and characters in the binary BLOB are
+        processed in Latin-1 encoding, and Latin-1 ordinal numbers are
         used directly as sort keys.
 
         To help the packing of common Trie nodes (single-character ones),
@@ -449,10 +460,56 @@ class BinCompressor:
         # The starting utg index of Greynir additions
         self._begin_greynir_utg = 0
         # The indices of the most common ksnid_strings
-        common_kix_0 = self._ksnid_strings.add("1;;;;V;1;;;".encode("latin-1"))
+        common_kix_0 = self._ksnid_strings.add(KSNID_COMMON_0.encode("latin-1"))
         assert COMMON_KIX_0 == common_kix_0
-        common_kix_1 = self._ksnid_strings.add("1;;;;K;1;;;".encode("latin-1"))
+        common_kix_1 = self._ksnid_strings.add(KSNID_COMMON_1.encode("latin-1"))
         assert COMMON_KIX_1 == common_kix_1
+
+    @staticmethod
+    def fix_bugs(m: Union[BinMeaning, Ksnid]) -> bool:
+        """ Fix known bugs in BÍN. Return False if the record should
+            be skipped entirely; otherwise True. """
+        if (
+            not m.stofn
+            or not m.ordmynd
+            or m.ordmynd in {"num", "ir", "irnir", "i", "ina"}
+        ):
+            return False
+        elif m.stofn == "sem að" and m.utg == 495372:
+            # Fix BÍN bug
+            m.stofn = "sem"
+            m.ordmynd = "sem"
+        elif m.stofn == "hvort að" and m.utg == 495365:
+            # Fix BÍN bug
+            m.stofn = "hvort"
+            m.ordmynd = "hvort"
+        elif m.stofn == "dínamítsprenging" and m.utg == 508550:
+            m.ordmynd = m.ordmynd.replace("dýnamít", "dínamít")
+        elif m.stofn == "fullleiksviðslegur" and m.utg == 509413:
+            if not m.ordmynd.startswith("full"):
+                m.ordmynd = "full" + m.ordmynd
+        elif m.stofn == "fullmenntaskólalegur" and m.utg == 509414:
+            if not m.ordmynd.startswith("full"):
+                m.ordmynd = "full" + m.ordmynd
+        elif m.stofn == "fulltæfulegur" and m.utg == 509415:
+            if not m.ordmynd.startswith("full"):
+                m.ordmynd = "full" + m.ordmynd
+        elif m.stofn == "fullviðkvæmnislegur" and m.utg == 509416:
+            if not m.ordmynd.startswith("full"):
+                m.ordmynd = "full" + m.ordmynd
+        elif m.stofn == "illinnheimtanlegur" and m.utg == 509831:
+            if not m.ordmynd.startswith("ill"):
+                m.ordmynd = "ill" + m.ordmynd
+        elif m.stofn == "Norður-Landeyjar" and m.utg == 488593:
+            if m.ordmynd.startswith("Norð-Vestur"):
+                m.ordmynd = m.ordmynd.replace("Norð-Vestur", "Norður")
+            elif m.ordmynd.startswith("Norð-vestur"):
+                m.ordmynd = m.ordmynd.replace("Norð-vestur", "Norður")
+        # Skip this if the lemma is capitalized differently
+        # than the word form (which is a bug in BÍN)
+        if m.stofn[0].isupper() != m.ordmynd[0].isupper():
+            return False
+        return True
 
     def read(self, fnames: Iterable[str]) -> None:
         """ Read the given .csv text files in turn and add them to the
@@ -465,7 +522,7 @@ class BinCompressor:
         # Map utg number to lemma number
         utg_to_lemma: Dict[int, int] = dict()
         for fname in fnames:
-            print("Reading file '{0}'...\n".format(fname))
+            print("Reading file '{0}'...".format(fname))
             with open(fname, "r") as f:
                 for line in f:
                     cnt += 1
@@ -510,28 +567,11 @@ class BinCompressor:
                             # Keep track of the highest utg number from BÍN
                             self._utg = m.utg
                     # Avoid bugs in BÍN
-                    if (
-                        not m.stofn
-                        or not m.ordmynd
-                        or m.ordmynd in {"num", "ir", "irnir", "i", "ina"}
-                    ):
+                    if not self.fix_bugs(m):
+                        fn = fname.split("/")[-1]
                         print(
-                            f"Missing or invalid data in line {cnt} "
-                            f"in file {fname} (lemma '{m.stofn}')"
-                        )
-                        continue
-                    # Skip this if the lemma is capitalized differently
-                    # than the word form (which is a bug in BÍN)
-                    if m.stofn[0].isupper() != m.ordmynd[0].isupper():
-                        print(
-                            "Deleting {lemma} {utg} {ordfl} {fl} {form} {meaning}".format(
-                                lemma=m.stofn,
-                                utg=m.utg,
-                                ordfl=m.ordfl,
-                                fl=m.fl,
-                                form=m.ordmynd,
-                                meaning=m.beyging,
-                            )
+                            f"Skipping invalid data (lemma '{m.stofn}', utg {m.utg}, "
+                            f"ordmynd '{m.ordmynd}'), line {cnt} in {fn}"
                         )
                         continue
                     lemma = m.stofn.encode("latin-1")
@@ -589,7 +629,8 @@ class BinCompressor:
                             print(cnt, end="\r")
         print("{0} done\n".format(cnt))
         print("Time: {0:.1f} seconds".format(time.time() - start_time))
-        print("Highest utg (wix) is {0}".format(max_wix))
+        if not quiet:
+            print("Highest utg (wix) is {0}".format(max_wix))
         # Convert alphabet set to contiguous byte array, sorted by ordinal
         self._alphabet_bytes = bytes(sorted(self._alphabet))
 
@@ -851,17 +892,26 @@ class BinCompressor:
                 while i < llast and i < lw and last_w[i] == w[i]:
                     i += 1
                 # Write the number of characters to cut off from the end
-                b.append(llast - i)
+                cut = llast - i
                 # Remember the last word
                 last_w = w
                 # Cut the common chars off
                 w = w[i:]
                 # Write the divergent part
-                b.append(len(w))
+                # We use 4 bits for the cut and 3 bits for the difference between
+                # the cut and the length. If this doesn't fit, we set the high bit
+                # and store the cut and the length in two bytes.
+                diff = len(w) - cut
+                if cut <= 15 and (-4 <= diff <= 3):
+                    b.append(cut << 3 | (diff & 0x07))
+                else:
+                    assert cut <= 127
+                    b.append(cut | 0x80)
+                    b.append(len(w))
                 b += w
                 llast = lw
             # End of list marker
-            b.append(255)
+            b.append(0x00)
             return b
 
         def fixup(ptr: int) -> None:

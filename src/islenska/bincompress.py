@@ -559,15 +559,28 @@ class BinCompressed:
         if isinstance(to_beyging, str):
             to_beyging = (to_beyging,)
 
+        def xform(t: str) -> str:
+            """ Transform to_beyging strings to allow lower case and
+                Greynir-style person variants """
+            if t in {"gr", "nogr"}:
+                # Don't uppercase the definite article variant
+                return t
+            if t in {"p1", "p2", "p3"}:
+                # Allow Greynir-style person variants
+                return t[1] + "P"
+            return t.upper()
+
+        to_beyging_list = [xform(t) for t in to_beyging]
+
         def make_target(b: str) -> str:
             """ Create a target beyging string by substituting the
                 desired to_beyging in its proper place in the source """
             # Remove '2' or '3' at the end of the beyging string,
             # denoting alternative forms
             b = re.sub(r"(2|3)$", "", b)
-            for t in to_beyging:
+            for t in to_beyging_list:
                 if t in ALL_BIN_CASES:
-                    b = re.sub(r"(NF|ÞF|ÞGF|EF)", t, b)
+                    b = re.sub(r"ÞGF|NF|ÞF|EF", t, b)
                 elif t in ALL_BIN_NUMBERS:
                     b = re.sub(r"ET|FT", t, b)
                 elif t == "gr":
@@ -582,7 +595,7 @@ class BinCompressed:
                 elif t in ALL_BIN_PERSONS:
                     b = re.sub(r"1P|2P|3P", t, b)
                 elif t in ALL_BIN_DEGREES:
-                    b = re.sub(r"ESB|EVB|FSB|FVB|MST|VB|SB", t, b)
+                    b = re.sub(r"ESB|EVB|EST|FSB|FVB|FST|MST|VB|SB", t, b)
                 elif t in ALL_BIN_TENSES:
                     b = re.sub(r"-ÞT|-NT", "-" + t, b)
                 elif t in ALL_BIN_VOICES:
@@ -628,7 +641,7 @@ class BinCompressed:
                 # The user-defined filter fails
                 continue
             target_beyging = make_target(beyging)
-            if any(t not in target_beyging for t in to_beyging if t != "nogr"):
+            if any(t not in target_beyging for t in to_beyging_list if t != "nogr"):
                 # This target beyging string does not contain
                 # our desired variants and is therefore not relevant
                 continue

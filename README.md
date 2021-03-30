@@ -14,16 +14,18 @@
 ([*Beygingarlýsing íslensks nútímamáls*](https://bin.arnastofnun.is/), *BÍN*)
 and offers various lookups and queries of the data.
 
-The database, maintained by *Árni Magnússon Institute for Icelandic Studies*
+The database, maintained by
+[*The Árni Magnússon Institute for Icelandic Studies*](https://arnastofnun.is)
 and edited by chief editor *Kristín Bjarnadóttir*, contains over
 6.5 million entries, over 3.1 million unique word forms,
-and about 300 thousand distinct lemmas.
+and about 300,000 distinct lemmas.
 
 [*Miðeind ehf*](https://mideind.is), the publisher of BinPackage,
 has encapsulated the database in an easy-to-install Python package, compressing it
 from a 400+ megabyte CSV file into an ~80 megabyte indexed binary structure.
-This structure is then mapped directly into memory for fast lookup. An algorithm
-for handling compound words is an important additional feature of the package.
+The package maps this structure directly into memory (via `mmap`) for fast lookup.
+An algorithm for handling compound words is an important additional feature
+of the package.
 
 With BinPackage, `pip install islenska` is all you need to have almost the
 entire vocabulary of the modern Icelandic language at your disposal via Python.
@@ -69,7 +71,8 @@ The grammatical tags in the `beyging` attribute are documented in detail [here](
 ### Ksnid
 
 `Ksnid` is represented by instances of the `Ksnid` class. It has the same 6
-attributes as `SHsnid` but adds 9 attributes, shortly summarized below:
+attributes as `SHsnid` but adds 9 attributes, shortly summarized below
+(full documentation [here](https://bin.arnastofnun.is/gogn/k-snid)):
 
 | Name     | Type  | Content |
 |----------|-------|---------|
@@ -91,19 +94,18 @@ Icelandic allows almost unlimited creation of compound words. Examples are
 It is of course impossible for a static database to include all possible
 compound words. To address this problem, BinPackage features a compound word
 recognition algorithm, which is invoked when looking up any word that is not
-found as-is in BÍN. (If desired, the compounding algorithm can be disabled
-via an optional flag; see the documentation below.)
+found as-is in BÍN.
 
 The algorithm relies on a list of valid word prefixes, stored in
 `src/islenska/resources/prefixes.txt`, and suffixes, stored in
 `src/islenska/resources/suffixes.txt`. These lists have been compressed
-into data structures called Directed Acyclic Word Graphs (DAWGs). BinPackage
+into data structures called *Directed Acyclic Word Graphs* (DAWGs). BinPackage
 uses these DAWGs to find optimal solutions for the compound word
 problem, where an optimal solution is defined as the prefix+suffix
 combination that has (1) the fewest prefixes and (2) the longest suffix.
 
 If an optimal compound form exists for a word, its suffix is looked up in BÍN
-and used as an inflectional template for the compound. *Síamskattarkjóll*
+and used as an inflection template for the compound. *Síamskattarkjóll*
 is thus resolved into the prefix *síamskattar* and the suffix *kjóll*,
 with the latter providing the inflection of *síamskattarkjóll* as
 a singular masculine noun in the nominative case.
@@ -117,6 +119,9 @@ optimal compound in the `stofn` and `ordmynd` fields of the returned
 >>> b.lookup("síamskattarkjóll")
 ('síamskattarkjóll', [(stofn='síamskattar-kjóll', kk/alm/0, ordmynd='síamskattar-kjóll', NFET)])
 ```
+
+If desired, the compounding algorithm can be disabled
+via an optional flag; see the documentation below.
 
 # Examples
 
@@ -549,7 +554,7 @@ available on PyPI for your platform, you may need a set of development tools ins
 on your machine, before you install BinPackage using `pip`:
 
 ```bash
-$ # The following works on Debian/Ubuntu Linux
+$ # The following works on Debian/Ubuntu GNU/Linux
 $ sudo apt-get install python3-dev libffi-dev
 ```
 

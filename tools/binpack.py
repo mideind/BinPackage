@@ -69,7 +69,7 @@
         into the mapping section.
 
         lemmas section: a mapping of lemma indices to
-        (lemma string, utg number, category index) tuples. Also, if the lemma
+        (lemma string, einkenni number, category index) tuples. Also, if the lemma
         has grammatical variants (a list of suffixes that maps the lemma to
         each grammatical form), the index of the variant suffix template
         is stored here as well.
@@ -84,7 +84,7 @@
         instead of 8 (using latin-1 encoding), keeping the high bit available
         to denote end-of-string.
 
-        meanings section: a mapping of BÍN meaning indexes to BÍN beyging
+        meanings section: a mapping of BÍN meaning indexes to BÍN mark
         strings (such as 'NFETgr').
 
         ksnid section: a mapping of ksnid string indices to ksnid strings.
@@ -92,7 +92,7 @@
         file.
 
         subcats section: a mapping of domain (subcategory) indices to domain
-        strings ('fl' field in BÍN). Domains are strings such as
+        strings ('hluti' field in BÍN). Domains are strings such as
         'föð', 'móð', 'örn', etc.
 
     ************************************************************************
@@ -411,7 +411,7 @@ class BinCompressor:
         in UTF-8 and have either six (SHsnid) or fifteen (Ksnid) columns,
         delimited by semicolons (';'), i.e. (for SHsnid):
 
-        (Icelandic) stofn;utg;ordfl;fl;ordmynd;beyging
+        (Icelandic) fletta;einkenni;ordfl;hluti;mynd;mark
         (English)   lemma;issue;class;domain;form;inflection
 
         The compression is not particularly intensive, as there is a
@@ -440,11 +440,11 @@ class BinCompressor:
     """
 
     def __init__(self) -> None:
-        self._forms = Trie()  # ordmynd
-        self._lemmas = LemmaIndexer()  # stofn
-        self._meanings = MeaningsIndexer()  # beyging
+        self._forms = Trie()  # mynd
+        self._lemmas = LemmaIndexer()  # fletta
+        self._meanings = MeaningsIndexer()  # mark
         self._ksnid_strings = KsnidIndexer()  # ksnid additional fields
-        self._subcats = SubcatIndexer()  # fl
+        self._subcats = SubcatIndexer()  # hluti
         self._alphabet: Set[int] = set()
         self._alphabet_bytes = bytes()
         # map form index -> { (lemma_ix, meaning_ix, ksnid_ix) }
@@ -455,9 +455,9 @@ class BinCompressor:
         self._lemma_cat_count: Dict[str, int] = defaultdict(int)
         # Word form templates
         self._templates: Dict[bytes, int] = dict()
-        # Running utg index counter
+        # Running einkenni index counter
         self._utg = 0
-        # The starting utg index of Greynir additions
+        # The starting einkenni index of Greynir additions
         self._begin_greynir_utg = 0
         # The indices of the most common ksnid_strings
         common_kix_0 = self._ksnid_strings.add(KSNID_COMMON_0.encode("latin-1"))
@@ -470,44 +470,44 @@ class BinCompressor:
         """ Fix known bugs in BÍN. Return False if the record should
             be skipped entirely; otherwise True. """
         if (
-            not m.stofn
-            or not m.ordmynd
-            or m.ordmynd in {"num", "ir", "irnir", "i", "ina"}
+            not m.fletta
+            or not m.mynd
+            or m.mynd in {"num", "ir", "irnir", "i", "ina"}
         ):
             return False
-        elif m.stofn == "sem að" and m.utg == 495372:
+        elif m.fletta == "sem að" and m.einkenni == 495372:
             # Fix BÍN bug
-            m.stofn = "sem"
-            m.ordmynd = "sem"
-        elif m.stofn == "hvort að" and m.utg == 495365:
+            m.fletta = "sem"
+            m.mynd = "sem"
+        elif m.fletta == "hvort að" and m.einkenni == 495365:
             # Fix BÍN bug
-            m.stofn = "hvort"
-            m.ordmynd = "hvort"
-        elif m.stofn == "dínamítsprenging" and m.utg == 508550:
-            m.ordmynd = m.ordmynd.replace("dýnamít", "dínamít")
-        elif m.stofn == "fullleiksviðslegur" and m.utg == 509413:
-            if not m.ordmynd.startswith("full"):
-                m.ordmynd = "full" + m.ordmynd
-        elif m.stofn == "fullmenntaskólalegur" and m.utg == 509414:
-            if not m.ordmynd.startswith("full"):
-                m.ordmynd = "full" + m.ordmynd
-        elif m.stofn == "fulltæfulegur" and m.utg == 509415:
-            if not m.ordmynd.startswith("full"):
-                m.ordmynd = "full" + m.ordmynd
-        elif m.stofn == "fullviðkvæmnislegur" and m.utg == 509416:
-            if not m.ordmynd.startswith("full"):
-                m.ordmynd = "full" + m.ordmynd
-        elif m.stofn == "illinnheimtanlegur" and m.utg == 509831:
-            if not m.ordmynd.startswith("ill"):
-                m.ordmynd = "ill" + m.ordmynd
-        elif m.stofn == "Norður-Landeyjar" and m.utg == 488593:
-            if m.ordmynd.startswith("Norð-Vestur"):
-                m.ordmynd = m.ordmynd.replace("Norð-Vestur", "Norður")
-            elif m.ordmynd.startswith("Norð-vestur"):
-                m.ordmynd = m.ordmynd.replace("Norð-vestur", "Norður")
+            m.fletta = "hvort"
+            m.mynd = "hvort"
+        elif m.fletta == "dínamítsprenging" and m.einkenni == 508550:
+            m.mynd = m.mynd.replace("dýnamít", "dínamít")
+        elif m.fletta == "fullleiksviðslegur" and m.einkenni == 509413:
+            if not m.mynd.startswith("full"):
+                m.mynd = "full" + m.mynd
+        elif m.fletta == "fullmenntaskólalegur" and m.einkenni == 509414:
+            if not m.mynd.startswith("full"):
+                m.mynd = "full" + m.mynd
+        elif m.fletta == "fulltæfulegur" and m.einkenni == 509415:
+            if not m.mynd.startswith("full"):
+                m.mynd = "full" + m.mynd
+        elif m.fletta == "fullviðkvæmnislegur" and m.einkenni == 509416:
+            if not m.mynd.startswith("full"):
+                m.mynd = "full" + m.mynd
+        elif m.fletta == "illinnheimtanlegur" and m.einkenni == 509831:
+            if not m.mynd.startswith("ill"):
+                m.mynd = "ill" + m.mynd
+        elif m.fletta == "Norður-Landeyjar" and m.einkenni == 488593:
+            if m.mynd.startswith("Norð-Vestur"):
+                m.mynd = m.mynd.replace("Norð-Vestur", "Norður")
+            elif m.mynd.startswith("Norð-vestur"):
+                m.mynd = m.mynd.replace("Norð-vestur", "Norður")
         # Skip this if the lemma is capitalized differently
         # than the word form (which is a bug in BÍN)
-        if m.stofn[0].isupper() != m.ordmynd[0].isupper():
+        if m.fletta[0].isupper() != m.mynd[0].isupper():
             return False
         return True
 
@@ -519,7 +519,7 @@ class BinCompressor:
         max_wix = 0
         start_time = time.time()
         last_stofn = ""
-        # Map utg number to lemma number
+        # Map einkenni number to lemma number
         utg_to_lemma: Dict[int, int] = dict()
         for fname in fnames:
             print("Reading file '{0}'...".format(fname))
@@ -534,27 +534,27 @@ class BinCompressor:
                     m = Ksnid()
                     if len(t) == 6:
                         # Older (SHsnid) format file, containing Greynir additions
-                        m.stofn, utg, m.ordfl, m.fl, m.ordmynd, m.beyging = t
-                        m.utg = int(utg)
-                        if m.utg <= 0:
-                            # No utg number: allocate a new one
+                        m.fletta, einkenni, m.ordfl, m.hluti, m.mynd, m.mark = t
+                        m.einkenni = int(einkenni)
+                        if m.einkenni <= 0:
+                            # No einkenni number: allocate a new one
                             if self._begin_greynir_utg == 0:
                                 # First Greynir number: round up to a nice
                                 # number divisible by 1000, leaving a headroom of
                                 # at least 1000 numbers for BÍN
                                 self._utg = ((self._utg + 1999) // 1000) * 1000
                                 self._begin_greynir_utg = self._utg
-                                last_stofn = m.stofn
-                            elif m.stofn != last_stofn:
-                                # New lemma: increment the utg number
+                                last_stofn = m.fletta
+                            elif m.fletta != last_stofn:
+                                # New lemma: increment the einkenni number
                                 self._utg += 1
-                                last_stofn = m.stofn
-                            if m.utg == -1:
+                                last_stofn = m.fletta
+                            if m.einkenni == -1:
                                 # This is a suffix only, coming from
                                 # ord.suffix.csv: mark it with birting='S'
                                 m.birting = "S"
-                            # Assign a Greynir utg number
-                            m.utg = self._utg
+                            # Assign a Greynir einkenni number
+                            m.einkenni = self._utg
                         else:
                             # This is a Greynir addition to an existing
                             # BÍN entry (probably a plural form):
@@ -563,38 +563,38 @@ class BinCompressor:
                     else:
                         # Newer (KRISTINsnid) format file
                         m = Ksnid.from_tuple(t)
-                        if m.utg > self._utg:
-                            # Keep track of the highest utg number from BÍN
-                            self._utg = m.utg
+                        if m.einkenni > self._utg:
+                            # Keep track of the highest einkenni number from BÍN
+                            self._utg = m.einkenni
                     # Avoid bugs in BÍN
                     if not self.fix_bugs(m):
                         fn = fname.split("/")[-1]
                         print(
-                            f"Skipping invalid data (lemma '{m.stofn}', utg {m.utg}, "
-                            f"ordmynd '{m.ordmynd}'), line {cnt} in {fn}"
+                            f"Skipping invalid data (lemma '{m.fletta}', einkenni {m.einkenni}, "
+                            f"mynd '{m.mynd}'), line {cnt} in {fn}"
                         )
                         continue
-                    lemma = m.stofn.encode("latin-1")
+                    lemma = m.fletta.encode("latin-1")
                     ordfl = m.ordfl.encode("latin-1")
-                    fl = m.fl.encode("latin-1")
-                    form = m.ordmynd.encode("latin-1")
-                    meaning = m.beyging.encode("latin-1")
+                    hluti = m.hluti.encode("latin-1")
+                    form = m.mynd.encode("latin-1")
+                    meaning = m.mark.encode("latin-1")
                     ksnid = m.ksnid_string.encode("latin-1")
                     self._alphabet |= set(form)
-                    # Subcategory (fl) index
-                    cix = self._subcats.add(fl)
+                    # Subcategory (hluti) index
+                    cix = self._subcats.add(hluti)
                     # Utg number (unique lemma id)
-                    wix = m.utg
+                    wix = m.einkenni
                     if wix > max_wix:
                         max_wix = wix
                     if wix in utg_to_lemma:
-                        # We have seen this utg number before: make some sanity checks
+                        # We have seen this einkenni number before: make some sanity checks
                         p_six = utg_to_lemma[wix]
                         p_lemma, p_wix, p_cix = self._lemmas[p_six]
                         assert p_wix == wix
                         if p_lemma != lemma:
                             print(
-                                f"Warning: utg {wix} refers to different lemmas, i.e. "
+                                f"Warning: einkenni {wix} refers to different lemmas, i.e. "
                                 f"{lemma.decode('latin-1')}/{cix} and "
                                 f"{p_lemma.decode('latin-1')}/{p_cix}"
                             )
@@ -604,7 +604,7 @@ class BinCompressor:
                             # Different subcategory index: replace it to conform
                             # with the previously seen one
                             cix = p_cix
-                    # Add a (lemma index, utg, subcat index) tuple
+                    # Add a (lemma index, einkenni, subcat index) tuple
                     six = self._lemmas.add((lemma, wix, cix))
                     # When putting something into memory, remember where you put it
                     utg_to_lemma[wix] = six
@@ -630,7 +630,7 @@ class BinCompressor:
         print("{0} done\n".format(cnt))
         print("Time: {0:.1f} seconds".format(time.time() - start_time))
         if not quiet:
-            print("Highest utg (wix) is {0}".format(max_wix))
+            print("Highest einkenni (wix) is {0}".format(max_wix))
         # Convert alphabet set to contiguous byte array, sorted by ordinal
         self._alphabet_bytes = bytes(sorted(self._alphabet))
 
@@ -659,15 +659,15 @@ class BinCompressor:
                 (self._lemmas[six], self._meanings[mix]) for six, mix, _ in values
             ]
             # Convert to Unicode and return a 5-tuple
-            # (stofn, utg, ordfl, fl, ordmynd, beyging)
+            # (fletta, einkenni, ordfl, hluti, mynd, mark)
             return [
                 (
-                    s[0].decode("latin-1"),  # stofn
-                    s[1],  # utg
+                    s[0].decode("latin-1"),  # fletta
+                    s[1],  # einkenni
                     m[0].decode("latin-1"),  # ordfl
-                    self._subcats[s[2]].decode("latin-1"),  # fl
-                    form,  # ordmynd
-                    m[1].decode("latin-1"),  # beyging
+                    self._subcats[s[2]].decode("latin-1"),  # hluti
+                    form,  # mynd
+                    m[1].decode("latin-1"),  # mark
                 )
                 for s, m in result
             ]
@@ -682,17 +682,17 @@ class BinCompressor:
             values = self._lookup_form[self._forms[form_latin]]
             # Obtain the lemma and meaning tuples corresponding to the word form
             for six, mix, kix in values:
-                stofn, utg, fl_ix = self._lemmas[six]
-                ordfl, beyging = self._meanings[mix]
+                fletta, einkenni, fl_ix = self._lemmas[six]
+                ordfl, mark = self._meanings[mix]
                 ksnid = self._ksnid_strings[kix]
                 result.append(
                     Ksnid.from_parameters(
-                        stofn.decode("latin-1"),
-                        utg,
+                        fletta.decode("latin-1"),
+                        einkenni,
                         ordfl.decode("latin-1"),
-                        self._subcats[fl_ix].decode("latin-1"),  # fl
-                        form,  # ordmynd
-                        beyging.decode("latin-1"),
+                        self._subcats[fl_ix].decode("latin-1"),  # hluti
+                        form,  # mynd
+                        mark.decode("latin-1"),
                         ksnid.decode("latin-1"),
                     )
                 )
@@ -717,7 +717,7 @@ class BinCompressor:
                         if s == six:
                             b = self._meanings[m][1]
                             if case_latin in b:
-                                # The 'beyging' string contains the requested case
+                                # The 'mark' string contains the requested case
                                 v.add((b, canonical))
             return [(m.decode("latin-1"), f.decode("latin-1")) for m, f in v]
         except KeyError:
@@ -825,7 +825,7 @@ class BinCompressor:
         ksnid_offset = f.tell()
         f.write(UINT32.pack(0))
 
-        # Store the lowest Greynir-specific utg number
+        # Store the lowest Greynir-specific einkenni number
         f.write(UINT32.pack(self._begin_greynir_utg))
 
         def write_padded(b: bytes, n: int) -> None:
@@ -993,12 +993,12 @@ class BinCompressor:
         template_bytes = 0
         for ix in range(len(self._lemmas)):
             lookup_map.append(f.tell())
-            # Squeeze the utg (word id) and subcategory index into the lower 31 bits.
+            # Squeeze the einkenni (word id) and subcategory index into the lower 31 bits.
             # The uppermost bit flags whether a canonical forms list is present.
-            lemma, utg, cix = self._lemmas[ix]
-            assert 0 <= utg < 2 ** UTG_BITS
+            lemma, einkenni, cix = self._lemmas[ix]
+            assert 0 <= einkenni < 2 ** UTG_BITS
             assert 0 <= cix < 2 ** SUBCAT_BITS
-            bits = (utg << SUBCAT_BITS) | cix
+            bits = (einkenni << SUBCAT_BITS) | cix
             has_template = False
             if ix in self._lemma_forms:
                 # We have a set of word forms for this lemma
@@ -1045,14 +1045,14 @@ class BinCompressor:
         if align:
             f.write(b"\x00" * (16 - align))
 
-        # Write the meanings, i.e. the distinct BÍN 'beyging' strings
+        # Write the meanings, i.e. the distinct BÍN 'mark' strings
         write_padded(b"[meanings]", 16)
         lookup_map = []
         num_meanings = len(self._meanings)
         f.write(UINT32.pack(num_meanings))
         for ix in range(num_meanings):
             lookup_map.append(f.tell())
-            write_spaced(b" ".join(self._meanings[ix]))  # ordfl, beyging
+            write_spaced(b" ".join(self._meanings[ix]))  # ordfl, mark
         f.write(b" " * 24)
 
         # Write the index-to-offset mapping table for meanings

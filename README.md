@@ -68,14 +68,14 @@ categories in the DMI/BÍN database can be found
 
 | Name     | Type  | Content |
 |----------|-------|---------|
-| `stofn`  | `str` | Lemma (headword) of the word form (*uppflettiorð*). |
-| `utg`    | `int` | Identifier of the lemma, unique for a particular lemma/class combination. |
-| `ordfl`  | `str` | Word class/category, i.e. `kk`/`kvk`/`hk` for (masculine/feminine/neutral) nouns, `lo` for adjectives, `so` for verbs, `ao` for adverbs, etc.|
-| `fl`     | `str` | Semantic classification, i.e. `alm` for general vocabulary, `ism` for Icelandic person names, `örn` for place names (*örnefni*), etc.|
-| `ordmynd` | `str` | Inflected word form. |
-| `beyging` | `str` | Grammatical (part-of-speech, PoS) tags of the word form, for instance `ÞGFETgr` for dative (*þágufall*, `ÞGF`), singular (*eintala*, `ET`), definite (*með greini*, `gr`). |
+| `fletta` | `str` | Lemma (headword) of the word form (*uppflettiorð*). |
+| `einkenni` | `int` | Identifier of the lemma, unique for a particular lemma/class combination. |
+| `ordfl` | `str` | Word class/category, i.e. `kk`/`kvk`/`hk` for (masculine/feminine/neutral) nouns, `lo` for adjectives, `so` for verbs, `ao` for adverbs, etc.|
+| `hluti` | `str` | Semantic classification, i.e. `alm` for general vocabulary, `ism` for Icelandic person names, `örn` for place names (*örnefni*), etc.|
+| `mynd` | `str` | Inflected word form (*beygingarmynd*). |
+| `mark` | `str` | Grammatical (part-of-speech, PoS) tags of the word form, for instance `ÞGFETgr` for dative (*þágufall*, `ÞGF`), singular (*eintala*, `ET`), definite (*með greini*, `gr`). |
 
-The grammatical tags in the `beyging` attribute are documented in detail
+The grammatical tags in the `mark` attribute are documented in detail
 [here in Icelandic](https://bin.arnastofnun.is/gogn/greiningarstrengir/) and
 [here in English](https://bin.arnastofnun.is/DMII/LTdata/tagset/).
 
@@ -91,7 +91,7 @@ and [here in English](https://bin.arnastofnun.is/DMII/LTdata/k-format/)):
 | `einkunn` | `int` | Headword correctness grade, ranging from 0-5. |
 | `malsnid` | `str` | Genre/register indicator; e.g. `STAD` for dialectal, `GAM` for old-fashioned or `URE` for obsolete. |
 | `malfraedi` | `str` | Grammatical marking, such as `STAFS` for spelling that needs checking, and `TALA` for singular forms that need consideration. |
-| `millivisun` | `int` | Cross reference to the identifier (`utg` field) of a variant of this headword. |
+| `millivisun` | `int` | Cross reference to the identifier (`einkenni` field) of a variant of this headword. |
 | `birting` | `str` | `K` for the DMII Core (*BÍN kjarni*) of most common and accepted word forms, `V` for other published BÍN entries. |
 | `beinkunn` | `int` | Correctness grade for this inflectional form, ranging from 0-5. |
 | `bmalsnid` | `str` | Genre/register indicator for this inflectional form. |
@@ -123,13 +123,13 @@ with the latter providing the inflection of *síamskattarkjóll* as
 a singular masculine noun in the nominative case.
 
 The compounding algorithm returns the prefixes and suffixes of the
-optimal compound in the `stofn` and `ordmynd` fields of the returned
+optimal compound in the `fletta` and `mynd` fields of the returned
 `BinMeaning` / `Ksnid` instances, separated by hyphens `-`. As an example,
 *síamskattarkjóll* is returned as follows (note the hyphens):
 
 ```python
 >>> b.lookup("síamskattarkjóll")
-('síamskattarkjóll', [(stofn='síamskattar-kjóll', kk/alm/0, ordmynd='síamskattar-kjóll', NFET)])
+('síamskattarkjóll', [(fletta='síamskattar-kjóll', kk/alm/0, mynd='síamskattar-kjóll', NFET)])
 ```
 
 If desired, the compounding algorithm can be disabled
@@ -146,25 +146,25 @@ via an optional flag; see the documentation below.
 >>> b = Bin()
 >>> b.lookup("færi")
 ('færi', [
-  (stofn='fara', so/alm/433568, ordmynd='færi', OP-ÞGF-GM-VH-ÞT-1P-ET),
-  (stofn='fara', so/alm/433568, ordmynd='færi', OP-ÞGF-GM-VH-ÞT-1P-FT),
-  (stofn='fara', so/alm/433568, ordmynd='færi', OP-ÞGF-GM-VH-ÞT-2P-ET),
-  (stofn='fara', so/alm/433568, ordmynd='færi', OP-ÞGF-GM-VH-ÞT-2P-FT),
-  (stofn='fara', so/alm/433568, ordmynd='færi', OP-ÞGF-GM-VH-ÞT-3P-ET),
-  (stofn='fara', so/alm/433568, ordmynd='færi', OP-það-GM-VH-ÞT-3P-ET),
-  (stofn='fara', so/alm/433568, ordmynd='færi', OP-ÞGF-GM-VH-ÞT-3P-FT),
-  (stofn='fara', so/alm/433568, ordmynd='færi', GM-VH-ÞT-1P-ET),
-  (stofn='fara', so/alm/433568, ordmynd='færi', GM-VH-ÞT-3P-ET),
-  (stofn='fær', lo/alm/448392, ordmynd='færi', FVB-KK-NFET),
-  (stofn='færa', so/alm/434742, ordmynd='færi', GM-FH-NT-1P-ET),
-  (stofn='færa', so/alm/434742, ordmynd='færi', GM-VH-NT-1P-ET),
-  (stofn='færa', so/alm/434742, ordmynd='færi', GM-VH-NT-3P-ET),
-  (stofn='færa', so/alm/434742, ordmynd='færi', GM-VH-NT-3P-FT),
-  (stofn='færi', hk/alm/1198, ordmynd='færi', NFET),
-  (stofn='færi', hk/alm/1198, ordmynd='færi', ÞFET),
-  (stofn='færi', hk/alm/1198, ordmynd='færi', ÞGFET),
-  (stofn='færi', hk/alm/1198, ordmynd='færi', NFFT),
-  (stofn='færi', hk/alm/1198, ordmynd='færi', ÞFFT)
+  (fletta='fara', so/alm/433568, mynd='færi', OP-ÞGF-GM-VH-ÞT-1P-ET),
+  (fletta='fara', so/alm/433568, mynd='færi', OP-ÞGF-GM-VH-ÞT-1P-FT),
+  (fletta='fara', so/alm/433568, mynd='færi', OP-ÞGF-GM-VH-ÞT-2P-ET),
+  (fletta='fara', so/alm/433568, mynd='færi', OP-ÞGF-GM-VH-ÞT-2P-FT),
+  (fletta='fara', so/alm/433568, mynd='færi', OP-ÞGF-GM-VH-ÞT-3P-ET),
+  (fletta='fara', so/alm/433568, mynd='færi', OP-það-GM-VH-ÞT-3P-ET),
+  (fletta='fara', so/alm/433568, mynd='færi', OP-ÞGF-GM-VH-ÞT-3P-FT),
+  (fletta='fara', so/alm/433568, mynd='færi', GM-VH-ÞT-1P-ET),
+  (fletta='fara', so/alm/433568, mynd='færi', GM-VH-ÞT-3P-ET),
+  (fletta='fær', lo/alm/448392, mynd='færi', FVB-KK-NFET),
+  (fletta='færa', so/alm/434742, mynd='færi', GM-FH-NT-1P-ET),
+  (fletta='færa', so/alm/434742, mynd='færi', GM-VH-NT-1P-ET),
+  (fletta='færa', so/alm/434742, mynd='færi', GM-VH-NT-3P-ET),
+  (fletta='færa', so/alm/434742, mynd='færi', GM-VH-NT-3P-FT),
+  (fletta='færi', hk/alm/1198, mynd='færi', NFET),
+  (fletta='færi', hk/alm/1198, mynd='færi', ÞFET),
+  (fletta='færi', hk/alm/1198, mynd='færi', ÞGFET),
+  (fletta='færi', hk/alm/1198, mynd='færi', NFFT),
+  (fletta='færi', hk/alm/1198, mynd='færi', ÞFFT)
 ])
 ```
 
@@ -173,8 +173,8 @@ passed-in word (here *færi*), and a list of its possible meanings
 in `SHsnid` (*Sigrúnarsnið*), i.e. as instances of `BinMeaning`.
 
 Each meaning tuple contains the
-lemma (`stofn`), the word class, domain and issue number (`hk/alm/1198`),
-the inflectional form (`ordmynd`) and the grammatical (PoS) tags (`GM-VH-NT-3P-FT`).
+lemma (`fletta`), the word class, domain and id number (`hk/alm/1198`),
+the inflectional form (`mynd`) and the grammatical (PoS) tags (`GM-VH-NT-3P-FT`).
 The tag strings are documented in detail
 [here in Icelandic](https://bin.arnastofnun.is/gogn/greiningarstrengir/) and
 [here in English](https://bin.arnastofnun.is/DMII/LTdata/tagset/).
@@ -228,7 +228,7 @@ at an example:
 >>> from islenska import Bin
 >>> b = Bin()
 >>> m = b.lookup_variants("Laugavegur", "kk", "ÞGF")
->>> m[0].ordmynd
+>>> m[0].mynd
 'Laugavegi'
 ```
 
@@ -239,13 +239,13 @@ to dative case, commonly used in addresses.
 >>> from islenska import Bin
 >>> b = Bin()
 >>> m = b.lookup_variants("fallegur", "lo", ("EVB", "HK", "FT"))
->>> adj = m[0].ordmynd
+>>> adj = m[0].mynd
 >>> f"Ég sá {adj} norðurljósin"
 'Ég sá fallegustu norðurljósin'
 ```
 
 Here, we obtained the superlative degree, weak form (`EVB`, *efsta stig*,
-*veik beyging*), neutral gender (`HK`), plural (`FT`), of the adjective (`lo`)
+*veik mark*), neutral gender (`HK`), plural (`FT`), of the adjective (`lo`)
 *fallegur* and used it in a sentence.
 
 # Documentation
@@ -288,7 +288,7 @@ call the `lookup` function:
 >>> w
 'síamskattarkjólanna'
 >>> m
-[(stofn='síamskattar-kjóll', kk/alm/0, ordmynd='síamskattar-kjólanna', EFFTgr)]
+[(fletta='síamskattar-kjóll', kk/alm/0, mynd='síamskattar-kjólanna', EFFTgr)]
 ```
 
 This function returns a `Tuple[str, List[BinMeaning]]` containing the word that
@@ -300,7 +300,7 @@ case the word is probably not Icelandic or at least not spelled correctly.
 Here we see that *síamskattarkjólanna* is a compound word, amalgamated
 from *síamskattar* and *kjólanna*, with *kjóll* being the base lemma of the compound
 word. This is a masculine noun (`kk`), in the `alm` (general vocabulary) domain.
-It has an issue number (*útgáfunúmer*) equal to 0 since it is constructed
+It has an id number (*einkenni*) equal to 0 since it is constructed
 on-the-fly by BinPackage, rather than being fetched directly from BÍN. The grammatical
 tag string is `EFFTgr`, i.e. genitive (*eignarfall*, `EF`), plural (*fleirtala*,
 `FT`) and definite (*með greini*, `gr`).
@@ -311,7 +311,7 @@ is upper case. As an example:
 
 ```python
 >>> b.lookup("Heftaranum", at_sentence_start=True)
-('heftaranum', [(stofn='heftari', kk/alm/7958, ordmynd='heftaranum', ÞGFETgr)])
+('heftaranum', [(fletta='heftari', kk/alm/7958, mynd='heftaranum', ÞGFETgr)])
 ```
 
 Note that here, the returned search key (`w` in the first example above) is
@@ -330,9 +330,9 @@ A final example of when the returned search key is different from the lookup wor
 ```python
 >>>> b.lookup("þýzk")
 ('þýsk', [
-    (stofn='þýskur', lo/alm/408914, ordmynd='þýsk', FSB-KVK-NFET),
-    (stofn='þýskur', lo/alm/408914, ordmynd='þýsk', FSB-HK-NFFT),
-    (stofn='þýskur', lo/alm/408914, ordmynd='þýsk', FSB-HK-ÞFFT)
+    (fletta='þýskur', lo/alm/408914, mynd='þýsk', FSB-KVK-NFET),
+    (fletta='þýskur', lo/alm/408914, mynd='þýsk', FSB-HK-NFFT),
+    (fletta='þýskur', lo/alm/408914, mynd='þýsk', FSB-HK-ÞFFT)
 ])
 ```
 
@@ -366,7 +366,7 @@ call the `lookup_ksnid()` function:
 >>> w
 'allskonar'
 >>> str(m[0])
-"<Ksnid: ordmynd='allskonar', stofn/ordfl/fl/utg='allskonar'/lo/alm/175686, beyging=FSB-KK-NFET, ksnid='4;;STAFS;496369;V;1;;;'>"
+"<Ksnid: mynd='allskonar', fletta/ordfl/hluti/einkenni='allskonar'/lo/alm/175686, mark=FSB-KK-NFET, ksnid='4;;STAFS;496369;V;1;;;'>"
 >>> m.malfraedi
 'STAFS'
 >>> m.millivisun
@@ -380,7 +380,7 @@ is the same.
 
 The example shows how the word *allskonar* has a grammatical comment
 regarding spelling (`m.malfraedi == 'STAFS'`) and a cross-reference
-to the entry with issue number (`utg`) 496369 - which is the lemma
+to the entry with id number (`einkenni`) 496369 - which is the lemma
 *alls konar*.
 
 `lookup_ksnid()` has the following parameters:
@@ -455,7 +455,7 @@ to nominative case (`NF`):
 
 ```python
 >>> m = b.lookup_variants("heftaranum", "kk", "NF")
->>> m[0].ordmynd
+>>> m[0].mynd
 'heftarinn'
 ```
 
@@ -464,7 +464,7 @@ grammatical tags in a tuple:
 
 ```python
 >>> m = b.lookup_variants("heftaranum", "kk", ("NF", "FT"))
->>> m[0].ordmynd
+>>> m[0].mynd
 'heftararnir'
 ```
 
@@ -472,7 +472,7 @@ Finally, we specify a conversion to indefinite form (`nogr`):
 
 ```python
 >>> m = b.lookup_variants("heftaranum", "kk", ("NF", "FT", "nogr"))
->>> m[0].ordmynd
+>>> m[0].mynd
 'heftarar'
 ```
 
@@ -483,7 +483,7 @@ indicative mood (*framsöguháttur*), present tense:
 
 ```python
 >>> m = b.lookup_variants("hraðlæsi", "so", ("FH", "NT"))
->>> for mm in m: print(mm.stofn, mm.ordmynd, mm.beyging)
+>>> for mm in m: print(mm.fletta, mm.mynd, mm.mark)
 hraðlesa hraðles GM-FH-NT-1P-ET
 hraðlesa hraðles GM-FH-NT-3P-ET
 ```
@@ -491,7 +491,7 @@ hraðlesa hraðles GM-FH-NT-3P-ET
 Finally, let's describe this functionality in superlative terms:
 
 ```python
->>> adj = b.lookup_variants("frábær", "lo", ("EVB", "KVK"))[0].ordmynd
+>>> adj = b.lookup_variants("frábær", "lo", ("EVB", "KVK"))[0].mynd
 >>> f"Þetta er {adj} virknin af öllum"
 'Þetta er frábærasta virknin af öllum'
 ```
@@ -501,10 +501,10 @@ getting back the adjective *frábærasta*. We could also ask for the
 strong form (`ESB`), and then for the comparative (*miðstig*, `MST`):
 
 ```python
->>> adj = b.lookup_variants("frábær", "lo", ("ESB", "KVK"))[0].ordmynd
+>>> adj = b.lookup_variants("frábær", "lo", ("ESB", "KVK"))[0].mynd
 >>> f"Þessi virkni er {adj} af öllum"
 'Þessi virkni er frábærust af öllum'
->>> adj = b.lookup_variants("frábær", "lo", ("MST", "KVK"))[0].ordmynd
+>>> adj = b.lookup_variants("frábær", "lo", ("MST", "KVK"))[0].mynd
 >>> f"Þessi virkni er {adj} en allt annað"
 'Þessi virkni er frábærari en allt annað'
 ```
@@ -517,8 +517,8 @@ strong form (`ESB`), and then for the comparative (*miðstig*, `MST`):
 | cat | `str` | | The word class, used to disambiguate the word. `no` (*nafnorð*) can be used to match any of `kk`, `kvk` and `hk`. |
 | to_beyging | `Union[str, Tuple[str, ...]]` | | One or more requested grammatical features, using the BÍN tag string format. As a special case, `nogr` means indefinite form (no `gr`) for nouns. The parameter can be a single string or a tuple of several strings.|
 | lemma | `Optional[str]` | `None` | The lemma of the word, optionally used to further disambiguate it |
-| utg | `Optional[int]` | `None` | The id number of the word, optionally used to further disambiguate it |
-| beyging_filter | `Optional[Callable[[str], bool]]` | `None` | A callable taking a single string parameter and returning a `bool`. The `beyging` attribute of a potential word meaning will be passed to this function, and only included in the result if the function returns `True`. |
+| einkenni | `Optional[int]` | `None` | The id number of the word, optionally used to further disambiguate it |
+| beyging_filter | `Optional[Callable[[str], bool]]` | `None` | A callable taking a single string parameter and returning a `bool`. The `mark` attribute of a potential word meaning will be passed to this function, and only included in the result if the function returns `True`. |
 
 The function returns `List[Ksnid]`.
 
@@ -532,12 +532,12 @@ call the `lemma_meanings` function:
 >>> b.lemma_meanings("þyrla")
 ('þyrla',
   [
-    (stofn='þyrla', kvk/alm/16445, ordmynd='þyrla', NFET),  # Feminine noun
-    (stofn='þyrla', so/alm/425096, ordmynd='þyrla', GM-NH)  # Verb
+    (fletta='þyrla', kvk/alm/16445, mynd='þyrla', NFET),  # Feminine noun
+    (fletta='þyrla', so/alm/425096, mynd='þyrla', GM-NH)  # Verb
   ]
 )
 >>> b.lemma_meanings("þyrlast")
-('þyrlast', [(stofn='þyrla', so/alm/425096, ordmynd='þyrlast', MM-NH)])  # Middle voice infinitive
+('þyrlast', [(fletta='þyrla', so/alm/425096, mynd='þyrlast', MM-NH)])  # Middle voice infinitive
 >>> b.lemma_meanings("þyrlan")
 ('þyrlan', [])
 ```

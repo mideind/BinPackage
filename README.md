@@ -9,7 +9,7 @@
 
 <img src="img/greynir-logo-large.png" alt="Greynir" width="200" height="200" align="right" style="margin-left:20px; margin-bottom: 20px;">
 
-*BinPackage* is a Python package that embeds the entire
+*BinPackage* is a Python package that embeds the vocabulary of the
 [*Database of Icelandic Morphology*](https://bin.arnastofnun.is/DMII/)
 ([*Beygingarlýsing íslensks nútímamáls*](https://bin.arnastofnun.is/), *BÍN*)
 and offers various lookups and queries of the data.
@@ -27,11 +27,12 @@ The package maps this structure directly into memory (via `mmap`) for fast looku
 An algorithm for handling compound words is an important additional feature
 of the package.
 
-With BinPackage, `pip install islenska` is all you need to have almost the
-entire vocabulary of the modern Icelandic language at your disposal via Python.
-Batteries are included; no additional databases, downloads or middleware are required.
+With BinPackage, `pip install islenska` is all you need to have almost all of
+of the commonly used vocabulary of the modern Icelandic language at your
+disposal via Python. Batteries are included; no additional databases,
+downloads or middleware are required.
 
-BinPackage allows querying for word forms, as well as lemmas and grammatical variants.
+BinPackage allows querying for word forms, as well as lemmas and inflectional variants.
 This includes information about word classes/categories (noun, verb, ...),
 domains (person names, place names, ...), grammatical tags and
 various annotations, such as degrees of linguistic acceptability and alternate
@@ -40,51 +41,62 @@ spelling forms.
 
 ## The basics of BÍN
 
-The BÍN database is
+The DMI/BÍN database is
 [published in electronic form](https://bin.arnastofnun.is/gogn/mimisbrunnur/)
-under the CC-BY 4.0 license, in CSV files in two main formats:
-*Sigrúnarsnið* (`SHsnid`) and
-*Kristínarsnið* (`Ksnid`). Sigrúnarsnið is more compact with 6 attributes
-for each word form. Kristínarsnið, documented
-[here](https://bin.arnastofnun.is/gogn/k-snid), is newer and more detailed,
+by [*The Árni Magnússon Institute for Icelandic Studies*](https://arnastofnun.is).
+The database is
+released under the CC-BY 4.0 license, in CSV files having two main formats:
+*Sigrúnarsnið* (`SHsnid`) and *Kristínarsnið* (`Ksnid`).
+Sigrúnarsnið is more compact with 6 attributes
+for each word form. Kristínarsnið is newer and more detailed,
 with up to 15 attributes for each word form.
 
 BinPackage supports both formats, with `Ksnid` being returned from several
 functions and `SHsnid` from others, as documented below.
 
+Further information in English about the word classes and the inflectional
+categories in the DMI/BÍN database can be found
+[here](https://bin.arnastofnun.is/DMII/infl-system/).
+
+
 ### SHsnid
 
 `SHsnid` is represented in BinPackage with a Python `NamedTuple` called
-`BinMeaning`, having the following attributes:
+`BinMeaning`, having the following attributes (further documented
+[here in Icelandic](https://bin.arnastofnun.is/gogn/SH-snid) and
+[here in English](https://bin.arnastofnun.is/DMII/LTdata/s-format/)):
 
 | Name     | Type  | Content |
 |----------|-------|---------|
-| `stofn`  | `str` | The lemma (headword) of the word form (*uppflettiorð*). |
-| `utg`    | `int` | The issue number (*útgáfunúmer*) of the lemma, unique for a particular lemma/class combination. |
-| `ordfl`  | `str` | The word class/category, i.e. `kk`/`kvk`/`hk` for (masculine/feminine/neutral) nouns, `lo` for adjectives, `so` for verbs, `ao` for adverbs, etc.|
-| `fl`     | `str` | The domain, i.e. `alm` for general vocabulary, `ism` for Icelandic person names, `örn` for place names (*örnefni*), etc.|
-| `ordmynd` | `str` | The inflected word form. |
-| `beyging` | `str` | The grammatical (part-of-speech, PoS) tags of the word form, for instance `ÞGFETgr` for dative (*þágufall*, `ÞGF`), singular (*eintala*, `ET`), definite (*með greini*, `gr`). |
+| `stofn`  | `str` | Lemma (headword) of the word form (*uppflettiorð*). |
+| `utg`    | `int` | Identifier of the lemma, unique for a particular lemma/class combination. |
+| `ordfl`  | `str` | Word class/category, i.e. `kk`/`kvk`/`hk` for (masculine/feminine/neutral) nouns, `lo` for adjectives, `so` for verbs, `ao` for adverbs, etc.|
+| `fl`     | `str` | Semantic classification, i.e. `alm` for general vocabulary, `ism` for Icelandic person names, `örn` for place names (*örnefni*), etc.|
+| `ordmynd` | `str` | Inflected word form. |
+| `beyging` | `str` | Grammatical (part-of-speech, PoS) tags of the word form, for instance `ÞGFETgr` for dative (*þágufall*, `ÞGF`), singular (*eintala*, `ET`), definite (*með greini*, `gr`). |
 
-The grammatical tags in the `beyging` attribute are documented in detail [here](https://bin.arnastofnun.is/gogn/greiningarstrengir/).
+The grammatical tags in the `beyging` attribute are documented in detail
+[here in Icelandic](https://bin.arnastofnun.is/gogn/greiningarstrengir/) and
+[here in English](https://bin.arnastofnun.is/DMII/LTdata/tagset/).
 
 ### Ksnid
 
 `Ksnid` is represented by instances of the `Ksnid` class. It has the same 6
 attributes as `SHsnid` but adds 9 attributes, shortly summarized below
-(full documentation [here](https://bin.arnastofnun.is/gogn/k-snid)):
+(full documentation [here in Icelandic](https://bin.arnastofnun.is/gogn/k-snid))
+and [here in English](https://bin.arnastofnun.is/DMII/LTdata/k-format/)):
 
 | Name     | Type  | Content |
 |----------|-------|---------|
-| `einkunn` | `int` | A general correctness grade, ranging from 0-5. |
-| `malsnid` | `str` | A genre/register indicator; e.g. `STAD` for local and `URE` for deprecated. |
-| `malfraedi` | `str` | Grammatical marking, such as `STAFS` for dubious spelling and `TALA` for rare singular forms. |
-| `millivisun` | `int` | Cross reference to the `utg` number of a related lemma. |
-| `birting` | `str` | `K` for the BÍN *kernel* of most common and accepted word forms, `V` for other published BÍN entries. |
-| `beinkunn` | `int` | An inflectional correctness grade, ranging from 0-5. |
-| `bmalsnid` | `str` | A genre/register indicator for this inflectional form. |
-| `bgildi` | `str` | Indicator for word forms bound to idioms and other special cases. |
-| `aukafletta` | `str` | Alternative lemma, e.g. plural form. |
+| `einkunn` | `int` | Headword correctness grade, ranging from 0-5. |
+| `malsnid` | `str` | Genre/register indicator; e.g. `STAD` for dialectal, `GAM` for old-fashioned or `URE` for obsolete. |
+| `malfraedi` | `str` | Grammatical marking, such as `STAFS` for spelling that needs checking, and `TALA` for singular forms that need consideration. |
+| `millivisun` | `int` | Cross reference to the identifier (`utg` field) of a variant of this headword. |
+| `birting` | `str` | `K` for the DMII Core (*BÍN kjarni*) of most common and accepted word forms, `V` for other published BÍN entries. |
+| `beinkunn` | `int` | Correctness grade for this inflectional form, ranging from 0-5. |
+| `bmalsnid` | `str` | Genre/register indicator for this inflectional form. |
+| `bgildi` | `str` | Indicator for inflectional forms bound to idioms and other special cases. |
+| `aukafletta` | `str` | Alternative headword, e.g. plural form. |
 
 
 ## Word compounding algorithm
@@ -163,7 +175,10 @@ in `SHsnid` (*Sigrúnarsnið*), i.e. as instances of `BinMeaning`.
 Each meaning tuple contains the
 lemma (`stofn`), the word class, domain and issue number (`hk/alm/1198`),
 the inflectional form (`ordmynd`) and the grammatical (PoS) tags (`GM-VH-NT-3P-FT`).
-The tag strings are [documented on the BÍN website](https://bin.arnastofnun.is/gogn/k-snid).
+The tag strings are documented in detail
+[here in Icelandic](https://bin.arnastofnun.is/gogn/greiningarstrengir/) and
+[here in English](https://bin.arnastofnun.is/DMII/LTdata/tagset/).
+
 
 ## Detailed word query
 
@@ -179,7 +194,8 @@ The tag strings are [documented on the BÍN website](https://bin.arnastofnun.is/
 
 `Bin.lookup_ksnid()` returns the matched search key and a list of its possible
 meanings in *Kristínarsnið* (`Ksnid`). The fields of *Kristínarsnið* are
-[documented on the BÍN website](https://bin.arnastofnun.is/gogn/k-snid).
+documented [here in Icelandic](https://bin.arnastofnun.is/gogn/k-snid))
+and [here in English](https://bin.arnastofnun.is/DMII/LTdata/k-format/)).
 In the example, we show how the word `allskonar` is marked with the
 tag `STAFS` in the `malfraedi` field, indicating that this spelling
 is nonstandard. A more correct form is `alls konar`, in two words.
@@ -642,8 +658,8 @@ BinPackage:
 
 # Copyright and licensing
 
-BinPackage embeds the
-**[Database of Icelandic Morphology](https://bin.arnastofnun.is/)**
+BinPackage embeds the vocabulary of the
+**[Database of Icelandic Morphology](https://bin.arnastofnun.is/DMII/)**
 (**[Beygingarlýsing íslensks nútímamáls](https://bin.arnastofnun.is/)**),
 abbreviated *BÍN*.
 
@@ -660,7 +676,8 @@ In accordance with the BÍN license terms, credit is hereby given as follows:
 ----
 
 BinPackage includes certain additions and modifications to the original
-BÍN source data. These are documented above and also explained in detail
+BÍN source data, the visibility of which is controlled via option flags.
+These are documented above and also explained in detail
 in the source code file `tools/binpack.py`, available in the project's
 GitHub repository.
 

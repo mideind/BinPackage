@@ -32,9 +32,9 @@ of the commonly used vocabulary of the modern Icelandic language at your
 disposal via Python. Batteries are included; no additional databases,
 downloads or middleware are required.
 
-BinPackage allows querying for word forms, as well as lemmas and inflectional variants.
+BinPackage allows querying for word forms, as well as lemmas and grammatical variants.
 This includes information about word classes/categories (noun, verb, ...),
-domains (person names, place names, ...), grammatical tags and
+domains (person names, place names, ...), inflectional tags and
 various annotations, such as degrees of linguistic acceptability and alternate
 spelling forms.
 
@@ -73,9 +73,9 @@ categories in the DMI/BÍN database can be found
 | `ofl` | `str` | Word class/category, i.e. `kk`/`kvk`/`hk` for (masculine/feminine/neutral) nouns, `lo` for adjectives, `so` for verbs, `ao` for adverbs, etc.|
 | `hluti` | `str` | Semantic classification, i.e. `alm` for general vocabulary, `ism` for Icelandic person names, `örn` for place names (*örnefni*), etc.|
 | `bmynd` | `str` | Inflected word form (*beygingarmynd*). |
-| `mark` | `str` | Grammatical (part-of-speech, PoS) tags of the word form, for instance `ÞGFETgr` for dative (*þágufall*, `ÞGF`), singular (*eintala*, `ET`), definite (*með greini*, `gr`). |
+| `mark` | `str` | Inflectional tags of the word form, for instance `ÞGFETgr` for dative (*þágufall*, `ÞGF`), singular (*eintala*, `ET`), definite (*með greini*, `gr`). |
 
-The grammatical tags in the `mark` attribute are documented in detail
+The inflectional tags in the `mark` attribute are documented in detail
 [here in Icelandic](https://bin.arnastofnun.is/gogn/greiningarstrengir/) and
 [here in English](https://bin.arnastofnun.is/DMII/LTdata/tagset/).
 
@@ -174,7 +174,7 @@ in `SHsnid` (*Sigrúnarsnið*), i.e. as instances of `BinMeaning`.
 
 Each meaning tuple contains the
 lemma (`ord`), the word class, domain and id number (`hk/alm/1198`),
-the inflectional form (`bmynd`) and the grammatical (PoS) tags (`GM-VH-NT-3P-FT`).
+the inflectional form (`bmynd`) and tags (`GM-VH-NT-3P-FT`).
 The tag strings are documented in detail
 [here in Icelandic](https://bin.arnastofnun.is/gogn/greiningarstrengir/) and
 [here in English](https://bin.arnastofnun.is/DMII/LTdata/tagset/).
@@ -460,7 +460,7 @@ to nominative case (`NF`):
 ```
 
 Here we add a conversion to plural (`FT`) as well - note that we can pass multiple
-grammatical tags in a tuple:
+inflectional tags in a tuple:
 
 ```python
 >>> m = b.lookup_variants("heftaranum", "kk", ("NF", "FT"))

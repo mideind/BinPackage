@@ -73,7 +73,7 @@ categories in the DMI/BÍN database can be found
 | `ofl` | `str` | Word class/category, i.e. `kk`/`kvk`/`hk` for (masculine/feminine/neutral) nouns, `lo` for adjectives, `so` for verbs, `ao` for adverbs, etc.|
 | `hluti` | `str` | Semantic classification, i.e. `alm` for general vocabulary, `ism` for Icelandic person names, `örn` for place names (*örnefni*), etc.|
 | `bmynd` | `str` | Inflectional form (*beygingarmynd*). |
-| `mark` | `str` | Inflectional tag of the word form, for instance `ÞGFETgr` for dative (*þágufall*, `ÞGF`), singular (*eintala*, `ET`), definite (*með greini*, `gr`). |
+| `mark` | `str` | Inflectional tag of this inflectional form, for instance `ÞGFETgr` for dative (*þágufall*, `ÞGF`), singular (*eintala*, `ET`), definite (*með greini*, `gr`). |
 
 The inflectional tag in the `mark` attribute is documented in detail
 [here in Icelandic](https://bin.arnastofnun.is/gogn/greiningarstrengir/) and

@@ -83,7 +83,7 @@ The grammatical tags in the `beyging` attribute are documented in detail
 
 `Ksnid` is represented by instances of the `Ksnid` class. It has the same 6
 attributes as `SHsnid` but adds 9 attributes, shortly summarized below
-(full documentation [here in Icelandic](https://bin.arnastofnun.is/gogn/k-snid))
+(full documentation [here in Icelandic](https://bin.arnastofnun.is/gogn/k-snid)
 and [here in English](https://bin.arnastofnun.is/DMII/LTdata/k-format/)):
 
 | Name     | Type  | Content |
@@ -194,7 +194,7 @@ The tag strings are documented in detail
 
 `Bin.lookup_ksnid()` returns the matched search key and a list of its possible
 meanings in *Kristínarsnið* (`Ksnid`). The fields of *Kristínarsnið* are
-documented [here in Icelandic](https://bin.arnastofnun.is/gogn/k-snid))
+documented [here in Icelandic](https://bin.arnastofnun.is/gogn/k-snid)
 and [here in English](https://bin.arnastofnun.is/DMII/LTdata/k-format/)).
 In the example, we show how the word `allskonar` is marked with the
 tag `STAFS` in the `malfraedi` field, indicating that this spelling

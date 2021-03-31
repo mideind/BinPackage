@@ -59,7 +59,7 @@ from .basics import (
 )
 
 
-# Type for static phrases: ordfl, fl, beyging
+# Type for static phrases: ofl, fl, beyging
 StaticPhraseTuple = Tuple[str, str, str]
 # Type for preference specifications
 PreferenceTuple = Tuple[List[str], List[str], int]
@@ -157,10 +157,10 @@ class BinErrata:
     DICT: Dict[Tuple[str, str], str] = dict()
 
     @staticmethod
-    def add(lemma: str, ordfl: str, fl: str) -> None:
+    def add(lemma: str, ofl: str, fl: str) -> None:
         """ Add a BÍN fix. Used by bincompress.py when generating a new
             compressed vocabulary file. """
-        BinErrata.DICT[(lemma, ordfl)] = fl
+        BinErrata.DICT[(lemma, ofl)] = fl
 
 
 class BinDeletions:
@@ -170,10 +170,10 @@ class BinDeletions:
     SET: Set[Tuple[str, str, str]] = set()
 
     @staticmethod
-    def add(lemma: str, ordfl: str, fl: str) -> None:
+    def add(lemma: str, ofl: str, fl: str) -> None:
         """ Add a BÍN fix. Used by bincompress.py when generating a new
             compressed vocabulary file. """
-        BinDeletions.SET.add((lemma, ordfl, fl))
+        BinDeletions.SET.add((lemma, ofl, fl))
 
 
 class Settings:
@@ -254,28 +254,28 @@ class Settings:
         """ Handle changes to BÍN categories ('fl') """
         a = s.split()
         if len(a) != 3:
-            raise ConfigError("Expected 'lemma ordfl fl' fields in bin_errata section")
-        lemma, ordfl, fl = a
-        if not ordfl.islower() or not fl.islower():
+            raise ConfigError("Expected 'lemma ofl fl' fields in bin_errata section")
+        lemma, ofl, fl = a
+        if not ofl.islower() or not fl.islower():
             raise ConfigError(
-                "Expected lowercase ordfl and fl fields in bin_errata section"
+                "Expected lowercase ofl and fl fields in bin_errata section"
             )
-        BinErrata.add(lemma, ordfl, fl)
+        BinErrata.add(lemma, ofl, fl)
 
     @staticmethod
     def _handle_bin_deletions(s: str) -> None:
-        """ Handle deletions from BÍN, given as lemma/ordfl/fl triples """
+        """ Handle deletions from BÍN, given as lemma/ofl/fl triples """
         a = s.split()
         if len(a) != 3:
             raise ConfigError(
-                "Expected 'lemma ordfl fl' fields in bin_deletions section"
+                "Expected 'lemma ofl fl' fields in bin_deletions section"
             )
-        lemma, ordfl, fl = a
-        if not ordfl.islower() or not fl.islower():
+        lemma, ofl, fl = a
+        if not ofl.islower() or not fl.islower():
             raise ConfigError(
-                "Expected lowercase ordfl and fl fields in bin_deletions section"
+                "Expected lowercase ofl and fl fields in bin_deletions section"
             )
-        BinDeletions.add(lemma, ordfl, fl)
+        BinDeletions.add(lemma, ofl, fl)
 
     @staticmethod
     def _handle_adjective_template(s: str) -> None:

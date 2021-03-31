@@ -199,13 +199,13 @@ class BinCompressed:
         return self._begin_greynir_utg
 
     def meaning(self, ix: int) -> Tuple[str, str]:
-        """ Find and decode a meaning (ordfl, beyging) tuple,
+        """ Find and decode a meaning (ofl, beyging) tuple,
             given its index """
         (off,) = UINT32.unpack_from(self._meanings, ix * 4)
         assert self._b is not None
         b = bytes(self._b[off : off + 24])
         s = b.decode("latin-1").split(maxsplit=2)
-        return s[0], s[1]  # ordfl, beyging
+        return s[0], s[1]  # ofl, beyging
 
     def ksnid_string(self, ix: int) -> str:
         """ Find and decode a KRISTINsnid string """
@@ -362,8 +362,8 @@ class BinCompressed:
             cats = frozenset([cat])
         result: List[MeaningTuple] = []
         for lemma_index, meaning_index, _ in self._raw_lookup(word):
-            ordfl, beyging = self.meaning(meaning_index)
-            if cats is not None and ordfl not in cats:
+            ofl, beyging = self.meaning(meaning_index)
+            if cats is not None and ofl not in cats:
                 # Fails the word category constraint
                 continue
             stofn, wutg, fl = self.lemma(lemma_index)
@@ -376,8 +376,8 @@ class BinCompressed:
             if beyging_filter is not None and not beyging_filter(beyging):
                 # Fails the beyging_func filter
                 continue
-            # stofn, utg, ordfl, fl, ordmynd, beyging
-            result.append((stofn, wutg, ordfl, fl, word, beyging))
+            # stofn, utg, ofl, fl, ordmynd, beyging
+            result.append((stofn, wutg, ofl, fl, word, beyging))
         return result
 
     def lookup_ksnid(
@@ -404,8 +404,8 @@ class BinCompressed:
             cats = frozenset([cat])
         result: List[Ksnid] = []
         for lemma_index, meaning_index, ksnid_index in self._raw_lookup(word):
-            ordfl, beyging = self.meaning(meaning_index)
-            if cats is not None and ordfl not in cats:
+            ofl, beyging = self.meaning(meaning_index)
+            if cats is not None and ofl not in cats:
                 # Fails the word category constraint
                 continue
             stofn, wutg, fl = self.lemma(lemma_index)
@@ -421,7 +421,7 @@ class BinCompressed:
             ksnid_string = self.ksnid_string(ksnid_index)
             result.append(
                 Ksnid.from_parameters(
-                    stofn, wutg, ordfl, fl, word, beyging, ksnid_string,
+                    stofn, wutg, ofl, fl, word, beyging, ksnid_string,
                 )
             )
         return result
@@ -509,9 +509,9 @@ class BinCompressed:
 
         for lemma_index, meaning_index, _ in self._raw_lookup(word):
             # Check the category filter, if present
-            ordfl, beyging = self.meaning(meaning_index)
+            ofl, beyging = self.meaning(meaning_index)
             if cats is not None:
-                if ordfl not in cats:
+                if ofl not in cats:
                     # Not the category we're looking for
                     continue
             stofn, wutg, _ = self.lemma(lemma_index)
@@ -535,7 +535,7 @@ class BinCompressed:
                 result.update(
                     m
                     for m in self.lookup(
-                        c, cat=ordfl, lemma=stofn, utg=wutg, beyging_filter=beyging_func,
+                        c, cat=ofl, lemma=stofn, utg=wutg, beyging_filter=beyging_func,
                     )
                 )
         return result
@@ -626,8 +626,8 @@ class BinCompressed:
             cats = frozenset([cat])
         result: Set[Ksnid] = set()
         for lemma_index, meaning_index, _ in self._raw_lookup(word):
-            ordfl, beyging = self.meaning(meaning_index)
-            if ordfl not in cats:
+            ofl, beyging = self.meaning(meaning_index)
+            if ofl not in cats:
                 # Fails the word category constraint
                 continue
             stofn, wutg, fl = self.lemma(lemma_index)
@@ -658,7 +658,7 @@ class BinCompressed:
                             Ksnid.from_parameters(
                                 stofn,
                                 wutg,
-                                ordfl,
+                                ofl,
                                 fl,
                                 form_latin.decode("latin-1"),
                                 this_beyging,

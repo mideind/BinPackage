@@ -78,7 +78,7 @@ KSNID_BITS = 13
 KSNID_MAX = 2 ** KSNID_BITS
 
 # The following are encoded with each lemma
-# Bits allocated for the einkenni number (currently max 513582)
+# Bits allocated for the bin_id number (currently max 513582)
 UTG_BITS = 23
 # Bits allocated for the subcategory index (hluti) (currently max 49)
 SUBCAT_BITS = 8
@@ -125,32 +125,19 @@ MeaningTuple = Tuple[str, int, str, str, str, str]
 BinMeaning = NamedTuple(
     "BinMeaning",
     [
-        ("fletta", str),
-        ("einkenni", int),
-        ("ordfl", str),
+        ("ord", str),
+        ("bin_id", int),
+        ("ofl", str),
         ("hluti", str),
-        ("mynd", str),
+        ("bmynd", str),
         ("mark", str),
-    ],
-)
-
-# SHSnid tuple as seen by the Greynir compatibility layer
-GreynirMeaning = NamedTuple(
-    "GreynirMeaning",
-    [
-        ("stofn", str),
-        ("utg", int),
-        ("ordfl", str),
-        ("fl", str),
-        ("ordmynd", str),
-        ("beyging", str),
     ],
 )
 
 # Compact string representation
 _meaning_repr: Callable[[BinMeaning], str] = lambda self: (
-    "(fletta='{0}', {2}/{3}/{1}, mynd='{4}', {5})".format(
-        self.fletta, self.einkenni, self.ordfl, self.hluti, self.mynd, self.mark
+    "(ord='{0}', {2}/{3}/{1}, bmynd='{4}', {5})".format(
+        self.ord, self.bin_id, self.ofl, self.hluti, self.bmynd, self.mark
     )
 )
 
@@ -159,16 +146,16 @@ setattr(BinMeaning, "__repr__", _meaning_repr)
 
 
 def make_bin_meaning(
-    fletta: str,
-    einkenni: int,
-    ordfl: str,
+    ord: str,
+    bin_id: int,
+    ofl: str,
     hluti: str,
-    mynd: str,
+    bmynd: str,
     mark: str,
     copy_from: Optional[BinMeaning] = None,
 ) -> BinMeaning:
     """ Constructor for BinMeaning instances """
-    return BinMeaning(fletta, einkenni, ordfl, hluti, mynd, mark)
+    return BinMeaning(ord, bin_id, ofl, hluti, bmynd, mark)
 
 
 # Type variable for the Ksnid class
@@ -180,16 +167,16 @@ class Ksnid:
     """ A class corresponding to the BÍN KRISTINsnid format """
 
     def __init__(self) -> None:
-        self.fletta: str = ""
-        self.einkenni: int = 0
-        self.ordfl: str = ""
+        self.ord: str = ""
+        self.bin_id: int = 0
+        self.ofl: str = ""
         self.hluti: str = ""
         self.einkunn: int = 0
         self.malsnid: str = ""
         self.malfraedi: str = ""
         self.millivisun: int = 0
         self.birting: str = ""
-        self.mynd: str = ""
+        self.bmynd: str = ""
         self.mark: str = ""
         self.beinkunn: int = 0
         self.bmalsnid: str = ""
@@ -198,8 +185,8 @@ class Ksnid:
 
     def __str__(self) -> str:
         return (
-            f"<Ksnid: mynd='{self.mynd}', "
-            f"fletta/ordfl/hluti/einkenni='{self.fletta}'/{self.ordfl}/{self.hluti}/{self.einkenni}, "
+            f"<Ksnid: bmynd='{self.bmynd}', "
+            f"ord/ofl/hluti/bin_id='{self.ord}'/{self.ofl}/{self.hluti}/{self.bin_id}, "
             f"mark={self.mark}, "
             f"ksnid='{self.ksnid_string}'>"
         )
@@ -226,23 +213,23 @@ class Ksnid:
         """ Create a Ksnid instance from a tuple of strings """
         m = cls()
         (
-            m.fletta,
-            einkenni,
-            m.ordfl,
+            m.ord,
+            bin_id,
+            m.ofl,
             m.hluti,
             einkunn,
             m.malsnid,
             m.malfraedi,
             millivisun,
             m.birting,
-            m.mynd,
+            m.bmynd,
             m.mark,
             beinkunn,
             m.bmalsnid,
             m.bgildi,
             m.aukafletta,
         ) = t
-        m.einkenni = int(einkenni or "0")
+        m.bin_id = int(bin_id or "0")
         m.einkunn = int(einkunn)
         m.millivisun = int(millivisun or "0")
         m.beinkunn = int(beinkunn)
@@ -250,14 +237,14 @@ class Ksnid:
 
     def __hash__(self) -> int:
         """ Make Ksnid instances hashable, using their 'primary key' attributes """
-        return (self.fletta, self.einkenni, self.ordfl, self.mynd).__hash__()
+        return (self.ord, self.bin_id, self.ofl, self.bmynd).__hash__()
 
     @classmethod
     def from_parameters(
         cls: Type[_Ksnid],
-        fletta: str,
-        einkenni: int,
-        ordfl: str,
+        ord: str,
+        bin_id: int,
+        ofl: str,
         hluti: str,
         form: str,
         mark: str,
@@ -265,11 +252,11 @@ class Ksnid:
     ) -> _Ksnid:
         """ Create a Ksnid instance from the given parameters """
         m = cls()
-        m.fletta = fletta
-        m.einkenni = einkenni
-        m.ordfl = ordfl
+        m.ord = ord
+        m.bin_id = bin_id
+        m.ofl = ofl
         m.hluti = hluti
-        m.mynd = form
+        m.bmynd = form
         m.mark = mark
         einkunn: str
         millivisun: str
@@ -294,16 +281,16 @@ class Ksnid:
     @classmethod
     def make(
         cls: Type[_Ksnid],
-        fletta: str,
-        einkenni: int,
-        ordfl: str,
+        ord: str,
+        bin_id: int,
+        ofl: str,
         hluti: str,
         form: str,
         mark: str,
         copy_from: Optional["_Ksnid"] = None,
     ) -> _Ksnid:
         """ Create a Ksnid instance from the given parameters """
-        m = cls.from_parameters(fletta, einkenni, ordfl, hluti, form, mark)
+        m = cls.from_parameters(ord, bin_id, ofl, hluti, form, mark)
         if copy_from is not None:
             m.einkunn = copy_from.einkunn
             m.malsnid = copy_from.malsnid
@@ -319,7 +306,7 @@ class Ksnid:
     def to_bin_meaning(self) -> BinMeaning:
         """ Copy this instance to a BinMeaning instance """
         return BinMeaning(
-            self.fletta, self.einkenni, self.ordfl, self.hluti, self.mynd, self.mark
+            self.ord, self.bin_id, self.ofl, self.hluti, self.bmynd, self.mark
         )
 
 

@@ -197,10 +197,10 @@ class Bin:
         uppercase_suffix: bool = False
     ) -> List[_T]:
         """ Return a meaning list with a prefix added to the
-            fletta and mynd attributes of each entry in the list.
+            ord and bmynd attributes of each entry in the list.
             If insert_hyphen is True, we insert a hyphen between
-            the prefix and the suffix, both in the fletta and in
-            the mynd fields. If uppercase is additionally True,
+            the prefix and the suffix, both in the ord and in
+            the bmynd fields. If uppercase is additionally True,
             we uppercase the suffix. """
         if not prefix:
             # No prefix: nothing to do
@@ -213,12 +213,12 @@ class Bin:
                 concat = lambda w: prefix + "-" + w
         else:
             concat = lambda w: prefix + w
-        # Note that the compound words created have 'einkenni' set to 0, but they
+        # Note that the compound words created have 'bin_id' set to 0, but they
         # retain other information from the the suffix (base) word.
         # This includes the additional ksnid fields, and notably 'birting',
         # which is not set to 'G' as for synthetic word forms
         return [
-            ctor(concat(r.fletta), 0, r.ordfl, r.hluti, concat(r.mynd), r.mark, r)
+            ctor(concat(r.ord), 0, r.ofl, r.hluti, concat(r.bmynd), r.mark, r)
             for r in mlist
         ]
 
@@ -230,7 +230,7 @@ class Bin:
         return [
             BinMeaning._make(mt)
             for mt in mtlist
-            # Only return entries with einkenni numbers below the Greynir-specific mark,
+            # Only return entries with bin_id numbers below the Greynir-specific mark,
             # i.e. skip entries that are Greynir-specific
             if mt[1] < max_utg
         ]
@@ -243,10 +243,10 @@ class Bin:
         return [
             k
             for k in klist
-            # Only return entries with einkenni numbers below the Greynir-specific mark,
+            # Only return entries with bin_id numbers below the Greynir-specific mark,
             # and that don't have 'birting' set to 'G',
             # i.e. skip entries that are Greynir-specific
-            if (k.einkenni < max_utg and k.birting != "G") or k.birting == "S"
+            if (k.bin_id < max_utg and k.birting != "G") or k.birting == "S"
         ]
 
     def _ksnid_lookup(self, w: str) -> KsnidList:
@@ -462,16 +462,16 @@ class Bin:
                 if om:
                     m = [
                         ctor(
-                            "ó" + r.fletta,
-                            r.einkenni,
-                            r.ordfl,
+                            "ó" + r.ord,
+                            r.bin_id,
+                            r.ofl,
                             r.hluti,
-                            "ó" + r.mynd,
+                            "ó" + r.bmynd,
                             r.mark,
                             r,
                         )
                         for r in om
-                        if r.ordfl == "lo"
+                        if r.ofl == "lo"
                     ]
 
         if not m and self._replace_z and "z" in w:
@@ -512,8 +512,8 @@ class Bin:
         def score(m: BinMeaning) -> int:
             """ Return a score for a noun word form, based on the
                 [noun_preferences] section in Prefs.conf """
-            sc = NounPreferences.DICT.get(m.mynd.split("-")[-1])
-            return 0 if sc is None else sc.get(m.ordfl, 0)
+            sc = NounPreferences.DICT.get(m.bmynd.split("-")[-1])
+            return 0 if sc is None else sc.get(m.ofl, 0)
 
         mm: BinMeaningList
 
@@ -523,11 +523,11 @@ class Bin:
             # Unknown word form: leave it as-is
             return w
         # Check whether this is (or might be) an adjective
-        m_word = next((m for m in mm if m.ordfl == "lo" and "NF" in m.mark), None)
+        m_word = next((m for m in mm if m.ofl == "lo" and "NF" in m.mark), None)
         if m_word is not None:
             # This is an adjective: find its forms
             # in the requested case ("Gul gata", "Stjáni blái")
-            mm = case_func(m_word.mynd, cat="lo", lemma=m_word.fletta)
+            mm = case_func(m_word.bmynd, cat="lo", lemma=m_word.ord)
             if "VB" in m_word.mark:
                 mm = [m for m in mm if "VB" in m.mark]
             elif "SB" in m_word.mark:
@@ -539,7 +539,7 @@ class Bin:
                 (
                     m
                     for m in mm
-                    if m.ordfl in {"kk", "kvk", "hk", "fn", "pfn", "to", "gr"}
+                    if m.ofl in {"kk", "kvk", "hk", "fn", "pfn", "to", "gr"}
                     and "NF" in m.mark
                 ),
                 None,
@@ -547,25 +547,25 @@ class Bin:
             if m_word is None:
                 # Not a case-inflectable word that we are interested in: leave it
                 return w
-            if "-" in m_word.mynd and "-" not in w:
+            if "-" in m_word.bmynd and "-" not in w:
                 # Composite word (and not something like 'Vestur-Þýskaland', which
                 # is in BÍN including the hyphen): use the meaning of its last part
-                cw = m_word.mynd.split("-")
+                cw = m_word.bmynd.split("-")
                 prefix = "".join(cw[0:-1])
                 # No need to think about upper or lower case here,
                 # since the last part of a compound word is always in BÍN as-is
                 mm = case_func(
-                    cw[-1], cat=m_word.ordfl, lemma=m_word.fletta.split("-")[-1]
+                    cw[-1], cat=m_word.ofl, lemma=m_word.ord.split("-")[-1]
                 )
                 # Add the prefix to the remaining word lemmas
                 mm = Bin._prefix_meanings(
                     mm, prefix, make_bin_meaning, insert_hyphen=False
                 )
             else:
-                mm = case_func(w, cat=m_word.ordfl, lemma=m_word.fletta)
+                mm = case_func(w, cat=m_word.ofl, lemma=m_word.ord)
                 if not mm and w[0].isupper() and not w.isupper():
                     # Did not find an uppercase version: try a lowercase one
-                    mm = case_func(w.lower(), cat=m_word.ordfl, lemma=m_word.fletta)
+                    mm = case_func(w.lower(), cat=m_word.ofl, lemma=m_word.ord)
         if mm:
             # Likely successful: return the word after casting it
             if "ET" in m_word.mark:
@@ -578,7 +578,7 @@ class Bin:
             if meaning_filter_func is not None:
                 mm = meaning_filter_func(mm)
             if mm:
-                o = mm[0].mynd
+                o = mm[0].bmynd
                 # Imitate the case of the original word
                 if w.isupper():
                     o = o.upper()
@@ -605,12 +605,12 @@ class Bin:
     def open_cats(mlist: Iterable[_T]) -> List[_T]:
         """ Return a list of meanings filtered down to
             open (extensible) word categories """
-        return [mm for mm in mlist if mm.ordfl in _OPEN_CATS]
+        return [mm for mm in mlist if mm.ofl in _OPEN_CATS]
 
     @staticmethod
     def nouns(mlist: Iterable[_T]) -> List[_T]:
         """ Return a list of meanings filtered down to noun categories (kk, kvk, hk) """
-        return [mm for mm in mlist if mm.ordfl in _NOUNS]
+        return [mm for mm in mlist if mm.ofl in _NOUNS]
 
     def lookup(
         self, w: str, at_sentence_start: bool = False, auto_uppercase: bool = False
@@ -639,7 +639,7 @@ class Bin:
         _, m = self._lookup(
             w, at_sentence_start, False, self._ksnid_cache_lookup, Ksnid.make,
         )
-        return set(mm.ordfl for mm in m)
+        return set(mm.ofl for mm in m)
 
     def lookup_lemmas_and_cats(
         self, w: str, at_sentence_start: bool = False
@@ -648,7 +648,7 @@ class Bin:
         _, m = self._lookup(
             w, at_sentence_start, False, self._ksnid_cache_lookup, Ksnid.make,
         )
-        return set((mm.fletta, mm.ordfl) for mm in m)
+        return set((mm.ord, mm.ofl) for mm in m)
 
     def lookup_forms(self, lemma: str, cat: str, case: str) -> BinMeaningList:
         """ Lookup all word forms in the indicated case, of the given lemma.
@@ -669,7 +669,7 @@ class Bin:
         to_beyging: Union[str, Tuple[str, ...]],
         *,
         lemma: Optional[str] = None,
-        einkenni: Optional[int] = None,
+        bin_id: Optional[int] = None,
         beyging_filter: Optional[BeygingFilter] = None
     ) -> KsnidList:
         """ Lookup grammatical variants of the given word with the
@@ -683,7 +683,7 @@ class Bin:
             """ Create a closure function to send into _lookup(),
                 obtaining the requested inflection variants correctly,
                 also for composite words """
-            mset = bc.lookup_variants(key, cat, to_beyging, lemma, einkenni, beyging_filter)
+            mset = bc.lookup_variants(key, cat, to_beyging, lemma, bin_id, beyging_filter)
             klist = self._filter_ksnid(mset)
             return [k for k in klist if compound or k.birting != "S"]
 
@@ -700,15 +700,15 @@ class Bin:
 
         def match(m: BinMeaning) -> bool:
             """ Return True for meanings that are canonical as lemmas """
-            if m.ordfl == "so" and m.mark == "MM-NH":
+            if m.ofl == "so" and m.mark == "MM-NH":
                 # This is a middle voice verb infinitive meaning
                 # ('eignast', 'komast'): accept it as a lemma
                 return True
-            if m.fletta.replace("-", "") != final_w:
+            if m.ord.replace("-", "") != final_w:
                 # This lemma does not agree with the passed-in word
                 return False
             # Do a check of the canonical lemma inflection forms
-            return _LEMMA_FILTERS.get(m.ordfl, lambda _: True)(m.mark)
+            return _LEMMA_FILTERS.get(m.ofl, lambda _: True)(m.mark)
 
         return final_w, [m for m in meanings if match(m)]
 
@@ -821,12 +821,12 @@ class GreynirBin(Bin):
         result: BinMeaningList = []
         for mt in mtlist:
             if (mt[0], mt[2], mt[3]) in self.bin_deletions:
-                # The mynd field contains a space or the (fletta, ordfl, hluti)
+                # The bmynd field contains a space or the (ord, ofl, hluti)
                 # combination is marked for deletion in BinErrata.conf:
                 # This meaning is not visible to Greynir
                 continue
             m: List[Union[str, int]] = list(mt)
-            # ml: [0]=fletta, [1]=einkenni, [2]=ordfl, [3]=hluti, [4]=mynd, [5]=mark
+            # ml: [0]=ord, [1]=bin_id, [2]=ofl, [3]=hluti, [4]=bmynd, [5]=mark
             # Convert uninflectable indicator to "-" for compatibility
             if mt[5] == "OBEYGJANLEGT":
                 m[5] = "-"
@@ -840,7 +840,7 @@ class GreynirBin(Bin):
             # for compatibility
             elif mt[2] == "rt":
                 m[2] = "lo"
-            # Apply a fix if we have one for this particular (lemma, ordfl) combination
+            # Apply a fix if we have one for this particular (lemma, ofl) combination
             assert self.bin_errata is not None
             m[3] = self.bin_errata.get((mt[0], cast(str, m[2])), mt[3])
             result.append(BinMeaning._make(m))
@@ -851,27 +851,27 @@ class GreynirBin(Bin):
             for compatibility with previous versions of BÍN, as used in Greynir """
         result: KsnidList = []
         for k in klist:
-            if (k.fletta, k.ordfl, k.hluti) in self.bin_deletions:
-                # The mynd field contains a space or the (fletta, ordfl, hluti)
+            if (k.ord, k.ofl, k.hluti) in self.bin_deletions:
+                # The bmynd field contains a space or the (ord, ofl, hluti)
                 # combination is marked for deletion in BinErrata.conf:
                 # This meaning is not visible to Greynir
                 continue
             # Convert uninflectable indicator to "-" for compatibility
             if k.mark == "OBEYGJANLEGT":
                 k.mark = "-"
-                if k.ordfl == "to":
+                if k.ofl == "to":
                     # Convert uninflectable number words to "töl" for compatibility
-                    k.ordfl = "töl"
+                    k.ofl = "töl"
             # Convert "afn" (reflexive pronoun) to "abfn" for compatibility
-            if k.ordfl == "afn":
-                k.ordfl = "abfn"
+            if k.ofl == "afn":
+                k.ofl = "abfn"
             # Convert "rt" (ordinal number) to "lo" (adjective)
             # for compatibility
-            elif k.ordfl == "rt":
-                k.ordfl = "lo"
-            # Apply a fix if we have one for this particular (lemma, ordfl) combination
+            elif k.ofl == "rt":
+                k.ofl = "lo"
+            # Apply a fix if we have one for this particular (lemma, ofl) combination
             assert self.bin_errata is not None
-            k.hluti = self.bin_errata.get((k.fletta, k.ordfl), k.hluti)
+            k.hluti = self.bin_errata.get((k.ord, k.ofl), k.hluti)
             result.append(k)
         return result
 
@@ -880,9 +880,9 @@ class GreynirBin(Bin):
         """ Return a relative priority for the word meaning tuple
             in m. A lower number means more priority, a higher number
             means less priority. """
-        if m.ordfl != "so":
-            # Not a verb: Prioritize forms with non-NULL einkenni
-            return 1 if (m.einkenni is None or m.einkenni < 1) else 0
+        if m.ofl != "so":
+            # Not a verb: Prioritize forms with non-NULL bin_id
+            return 1 if (m.bin_id is None or m.bin_id < 1) else 0
         # Verb priorities
         # Order "VH" verbs (viðtengingarháttur) after other forms
         # Also order past tense ("ÞT") after present tense
@@ -905,7 +905,7 @@ class GreynirBin(Bin):
             # We have a preferred lemma for this word form:
             # cut off meanings based on other lemmas
             worse, _ = stem_prefs
-            m = [mm for mm in m if mm.fletta not in worse]
+            m = [mm for mm in m if mm.ord not in worse]
 
         # Order the meanings by priority, so that the most
         # common/likely ones are first in the list and thus

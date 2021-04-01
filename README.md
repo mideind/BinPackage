@@ -195,7 +195,7 @@ The tag strings are documented in detail
 `Bin.lookup_ksnid()` returns the matched search key and a list of its possible
 meanings in *Kristínarsnið* (`Ksnid`). The fields of *Kristínarsnið* are
 documented [here in Icelandic](https://bin.arnastofnun.is/gogn/k-snid)
-and [here in English](https://bin.arnastofnun.is/DMII/LTdata/k-format/)).
+and [here in English](https://bin.arnastofnun.is/DMII/LTdata/k-format/).
 In the example, we show how the word `allskonar` is marked with the
 tag `STAFS` in the `malfraedi` field, indicating that this spelling
 is nonstandard. A more correct form is `alls konar`, in two words.
@@ -478,8 +478,10 @@ Finally, we specify a conversion to indefinite form (`nogr`):
 
 Definite form is requested via `gr`, and indefinite form via `nogr`.
 
-Let's try modifying a verb from subjunctive (*viðtengingarháttur*) to
-indicative mood (*framsöguháttur*), present tense:
+Let's try modifying a verb from subjunctive (*viðtengingarháttur*)
+(e.g., *Ég/hún hraðlæsi bókina ef ég hefði tíma til þess*) to
+indicative mood (*framsöguháttur*), present tense
+(e.g. *Ég/hún hraðles bókina í flugferðinni*):
 
 ```python
 >>> m = b.lookup_variants("hraðlæsi", "so", ("FH", "NT"))
@@ -487,6 +489,9 @@ indicative mood (*framsöguháttur*), present tense:
 hraðlesa hraðles GM-FH-NT-1P-ET
 hraðlesa hraðles GM-FH-NT-3P-ET
 ```
+
+We get back both the 1st and the 3rd person inflection forms,
+since they are identical.
 
 Finally, let's describe this functionality in superlative terms:
 
@@ -507,6 +512,26 @@ strong form (`ESB`), and then for the comparative (*miðstig*, `MST`):
 >>> adj = b.lookup_variants("frábær", "lo", ("MST", "KVK"))[0].bmynd
 >>> f"Þessi virkni er {adj} en allt annað"
 'Þessi virkni er frábærari en allt annað'
+```
+
+Finally, for some cool Python code for converting any adjective to
+the superlative degree (*efsta stig*):
+
+```python
+from islenska import Bin
+b = Bin()
+def efsta_stig(lo: str, kyn: str, veik_beyging: bool=True) -> str:
+    """ Skilar efsta stigi lýsingarorðs, í umbeðnu kyni og beygingu """
+    vlist = b.lookup_variants(lo, "lo", (kyn, "EVB" if veik_beyging else "ESB"))
+    return vlist[0].bmynd if vlist else ""
+print(f"Þetta er {efsta_stig('nýr', 'kvk')} framförin í íslenskri máltækni!")
+print(f"Þetta er {efsta_stig('sniðugur', 'hk')} verkfærið!")
+```
+
+This will output:
+```
+Þetta er nýjasta framförin í íslenskri máltækni!
+Þetta er sniðugasta verkfærið!
 ```
 
 `lookup_variants()` has the following parameters:

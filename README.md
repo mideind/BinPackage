@@ -640,6 +640,7 @@ $ # Install the package in editable mode
 $ pip install -e .  # Note the dot!
 $ cd src/islenska/resources
 $ # Fetch the newest BÍN data (KRISTINsnid.csv.zip)
+$ # (We remind you that the BÍN data is under the CC BY-SA 4.0 license; see below.)
 $ wget -O KRISTINsnid.csv.zip https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip
 $ # Unzip the data
 $ unzip -q KRISTINsnid.csv.zip
@@ -688,7 +689,10 @@ BinPackage embeds the vocabulary of the
 (**[Beygingarlýsing íslensks nútímamáls](https://bin.arnastofnun.is/)**),
 abbreviated *BÍN*.
 
-The BÍN source data are publicly available under the CC BY-SA 4.0 license,
+The copyright holder for DIM/BÍN is *The Árni Magnússon Institute*
+*for Icelandic Studies*. The DIM/BÍN data used herein are publicly available
+for use under the terms of the
+[CC BY-SA 4.0 license](https://creativecommons.org/licenses/by-sa/4.0/legalcode),
 as further detailed
 [here in English](https://bin.arnastofnun.is/DMII/LTdata/conditions/) and
 [here in Icelandic](https://bin.arnastofnun.is/gogn/mimisbrunnur/).
@@ -700,11 +704,10 @@ In accordance with the BÍN license terms, credit is hereby given as follows:
 
 ----
 
-BinPackage includes certain additions and modifications to the original
-BÍN source data, the visibility of which is controlled via option flags.
-These are documented above and also explained in detail
-in the source code file `tools/binpack.py`, available in the project's
-GitHub repository.
+BinPackage includes certain program logic, created by Miðeind ehf.,
+that optionally exposes additions and modifications to the original
+BÍN source data. Such logic is enabled or disabled by user-settable flags,
+as described in the documentation above.
 
 ----
 

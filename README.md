@@ -47,7 +47,7 @@ by [*The Árni Magnússon Institute for Icelandic Studies*](https://arnastofnun.
 The database is
 released under the CC BY-SA 4.0 license, in CSV files having two main formats:
 *Sigrúnarsnið* (`SHsnid`) and *Kristínarsnið* (`Ksnid`).
-Sigrúnarsnið is more compact with 6 attributes
+Sigrúnarsnið is more compact with six attributes
 for each word form. Kristínarsnið is newer and more detailed,
 with up to 15 attributes for each word form.
 
@@ -81,8 +81,8 @@ The inflectional tag in the `mark` attribute is documented in detail
 
 ### Ksnid
 
-`Ksnid` is represented by instances of the `Ksnid` class. It has the same 6
-attributes as `SHsnid` but adds 9 attributes, shortly summarized below
+`Ksnid` is represented by instances of the `Ksnid` class. It has the same six
+attributes as `SHsnid` but adds nine attributes, shortly summarized below
 (full documentation [here in Icelandic](https://bin.arnastofnun.is/gogn/k-snid)
 and [here in English](https://bin.arnastofnun.is/DMII/LTdata/k-format/)):
 
@@ -703,6 +703,9 @@ In accordance with the BÍN license terms, credit is hereby given as follows:
 *Höfundur og ritstjóri Kristín Bjarnadóttir.*
 
 ----
+
+**Miðeind ehf., the publisher of BinPackage, claims no endorsement, sponsorship,**
+**or official status granted to it by the DIM/BÍN copyright holder.**
 
 BinPackage includes certain program logic, created by Miðeind ehf.,
 that optionally exposes additions and modifications to the original

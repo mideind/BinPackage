@@ -45,7 +45,7 @@ The DMI/BÍN database is
 [published in electronic form](https://bin.arnastofnun.is/gogn/mimisbrunnur/)
 by [*The Árni Magnússon Institute for Icelandic Studies*](https://arnastofnun.is).
 The database is
-released under the CC-BY 4.0 license, in CSV files having two main formats:
+released under the CC BY-SA 4.0 license, in CSV files having two main formats:
 *Sigrúnarsnið* (`SHsnid`) and *Kristínarsnið* (`Ksnid`).
 Sigrúnarsnið is more compact with 6 attributes
 for each word form. Kristínarsnið is newer and more detailed,
@@ -688,7 +688,7 @@ BinPackage embeds the vocabulary of the
 (**[Beygingarlýsing íslensks nútímamáls](https://bin.arnastofnun.is/)**),
 abbreviated *BÍN*.
 
-The BÍN source data are publicly available under the CC-BY-4.0 license,
+The BÍN source data are publicly available under the CC BY-SA 4.0 license,
 as further detailed
 [here in English](https://bin.arnastofnun.is/DMII/LTdata/conditions/) and
 [here in Icelandic](https://bin.arnastofnun.is/gogn/mimisbrunnur/).

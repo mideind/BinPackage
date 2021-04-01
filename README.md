@@ -689,8 +689,8 @@ BinPackage embeds the vocabulary of the
 (**[Beygingarlýsing íslensks nútímamáls](https://bin.arnastofnun.is/)**),
 abbreviated *BÍN*.
 
-The copyright holder for DIM/BÍN is *The Árni Magnússon Institute*
-*for Icelandic Studies*. The DIM/BÍN data used herein are publicly available
+The copyright holder for BÍN is *The Árni Magnússon Institute*
+*for Icelandic Studies*. The BÍN data used herein are publicly available
 for use under the terms of the
 [CC BY-SA 4.0 license](https://creativecommons.org/licenses/by-sa/4.0/legalcode),
 as further detailed
@@ -705,7 +705,7 @@ In accordance with the BÍN license terms, credit is hereby given as follows:
 ----
 
 **Miðeind ehf., the publisher of BinPackage, claims no endorsement, sponsorship,**
-**or official status granted to it by the DIM/BÍN copyright holder.**
+**or official status granted to it by the BÍN copyright holder.**
 
 BinPackage includes certain program logic, created by Miðeind ehf.,
 that optionally exposes additions and modifications to the original

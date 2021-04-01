@@ -133,7 +133,8 @@ from typing import (
     Optional,
     Iterable,
     IO,
-    TypeVar, Union,
+    TypeVar,
+    Union,
 )
 
 import os
@@ -143,7 +144,8 @@ import struct
 from collections import defaultdict
 
 from islenska.basics import (
-    BinMeaning, Ksnid,
+    BinMeaning,
+    Ksnid,
     MeaningTuple,
     BIN_COMPRESSOR_VERSION,
     BIN_COMPRESSED_FILE,
@@ -469,11 +471,7 @@ class BinCompressor:
     def fix_bugs(m: Union[BinMeaning, Ksnid]) -> bool:
         """ Fix known bugs in BÍN. Return False if the record should
             be skipped entirely; otherwise True. """
-        if (
-            not m.ord
-            or not m.bmynd
-            or m.bmynd in {"num", "ir", "irnir", "i", "ina"}
-        ):
+        if not m.ord or not m.bmynd or m.bmynd in {"num", "ir", "irnir", "i", "ina"}:
             return False
         elif m.ord == "sem að" and m.bin_id == 495372:
             # Fix BÍN bug
@@ -872,7 +870,7 @@ class BinCompressor:
 
             # Sort the set for maximum compression
             ss = sorted(s)
-            b = bytearray()
+            b: bytearray = bytearray()
             if base is None:
                 # Use the first word in the set as a base
                 last_w = ss[0]

@@ -62,17 +62,25 @@ setup(
     name="islenska",
     version=__version__,
     license="MIT",
-    description="The Database of Icelandic Morphology (DIM)",
+    description=(
+        "The vocabulary of the modern Icelandic language, "
+        "packed in a Python package"
+    ),
     long_description=(
     """
-        BinPackage is a Python package that embeds the entire Database of
-        Icelandic Morphology (Beygingarlýsing íslensks nútímamáls, BÍN)
-        and offers various lookups and queries of the data.
+        BinPackage is a Python package that embeds the vocabulary
+        of the Database of Icelandic Morphology (Beygingarlýsing íslensks
+        nútímamáls, BÍN) and offers various lookups and queries of the data.
 
         The database, maintained by Árni Magnússon Institute for
         Icelandic Studies and edited by chief editor Kristín Bjarnadóttir,
         contains over 6.5 million entries, over 3.1 million unique word forms,
-        and about 300 thousand distinct lemmas.
+        and about 300,000 distinct lemmas.
+
+        With BinPackage, `pip install islenska` is all you need to have almost all of
+        of the commonly used vocabulary of the modern Icelandic language at your
+        disposal via Python. Batteries are included; no additional databases,
+        downloads or middleware are required.
     """
     ),
     author="Miðeind ehf",

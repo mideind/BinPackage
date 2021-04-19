@@ -191,6 +191,21 @@ class Ksnid:
             f"ksnid='{self.ksnid_string}'>"
         )
 
+    __repr__ = __str__
+
+    def __eq__(self, o: object) -> bool:
+        if not isinstance(o, Ksnid):
+            return False
+        return (
+            self.bmynd == o.bmynd and
+            self.mark == o.mark and
+            self.bin_id == o.bin_id and
+            self.ord == o.ord and
+            self.ofl == o.ofl and
+            self.hluti == o.hluti and
+            self.ksnid_string == o.ksnid_string
+        )
+
     @property
     def ksnid_string(self) -> str:
         """ Return a concatenation of all Ksnid-specific attributes """
@@ -237,7 +252,7 @@ class Ksnid:
 
     def __hash__(self) -> int:
         """ Make Ksnid instances hashable, using their 'primary key' attributes """
-        return (self.ord, self.bin_id, self.ofl, self.bmynd).__hash__()
+        return (self.bin_id, self.ofl, self.bmynd, self.mark).__hash__()
 
     @classmethod
     def from_parameters(

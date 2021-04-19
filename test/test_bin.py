@@ -817,6 +817,10 @@ def test_variants() -> None:
     assert len(m) == 1
     assert m[0].bmynd == "löngufrjádaga"
 
+    m = b.lookup_variants("sjóntækjafræðinga", "no", ("ef", "gr"))
+    assert len(m) == 1
+    assert m[0].bmynd == "sjóntækjafræðinganna"
+
 
 if __name__ == "__main__":
 

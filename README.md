@@ -102,7 +102,7 @@ and [here in English](https://bin.arnastofnun.is/DMII/LTdata/k-format/)):
 ## Word compounding algorithm
 
 Icelandic allows almost unlimited creation of compound words. Examples are
-*síamskattarkjóll* (noun), *sólarolíulegt* (adjective), *öskurgrenja* (verb).
+*síamskattarkjóll* (noun), *sólarolíulegur* (adjective), *öskurgrenja* (verb).
 It is of course impossible for a static database to include all possible
 compound words. To address this problem, BinPackage features a compound word
 recognition algorithm, which is invoked when looking up any word that is not
@@ -129,10 +129,9 @@ optimal compound in the `ord` and `bmynd` fields of the returned
 
 ```python
 >>> b.lookup("síamskattarkjóll")
-(
-    'síamskattarkjóll',
-    [(ord='síamskattar-kjóll', kk/alm/0, bmynd='síamskattar-kjóll', NFET)]
-)
+('síamskattarkjóll', [
+    (ord='síamskattar-kjóll', kk/alm/0, bmynd='síamskattar-kjóll', NFET)
+])
 ```
 
 Lookups that are resolved via the compounding algorithm have a `bin_id` of zero.

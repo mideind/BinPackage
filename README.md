@@ -66,8 +66,8 @@ categories in the DMI/BÍN database can be found
 [here in Icelandic](https://bin.arnastofnun.is/gogn/SH-snid) and
 [here in English](https://bin.arnastofnun.is/DMII/LTdata/s-format/)):
 
-| Name     | Type  | Content |
-|----------|-------|---------|
+| Name     | Type  | Content  |
+|----------|-------|----------|
 | `ord` | `str` | Lemma (headword, *uppflettiorð*). |
 | `bin_id` | `int` | Identifier of the lemma, unique for a particular lemma/class combination. |
 | `ofl` | `str` | Word class/category, i.e. `kk`/`kvk`/`hk` for (masculine/feminine/neutral) nouns, `lo` for adjectives, `so` for verbs, `ao` for adverbs, etc.|
@@ -86,8 +86,8 @@ attributes as `SHsnid` but adds nine attributes, shortly summarized below
 (full documentation [here in Icelandic](https://bin.arnastofnun.is/gogn/k-snid)
 and [here in English](https://bin.arnastofnun.is/DMII/LTdata/k-format/)):
 
-| Name     | Type  | Content |
-|----------|-------|---------|
+| Name     | Type  | Content  |
+|----------|-------|----------|
 | `einkunn` | `int` | Headword correctness grade, ranging from 0-5. |
 | `malsnid` | `str` | Genre/register indicator; e.g. `STAD` for dialectal, `GAM` for old-fashioned or `URE` for obsolete. |
 | `malfraedi` | `str` | Grammatical marking, such as `STAFS` for spelling that needs checking, and `TALA` for singular forms that need consideration. |
@@ -129,8 +129,13 @@ optimal compound in the `ord` and `bmynd` fields of the returned
 
 ```python
 >>> b.lookup("síamskattarkjóll")
-('síamskattarkjóll', [(ord='síamskattar-kjóll', kk/alm/0, bmynd='síamskattar-kjóll', NFET)])
+(
+    'síamskattarkjóll',
+    [(ord='síamskattar-kjóll', kk/alm/0, bmynd='síamskattar-kjóll', NFET)]
+)
 ```
+
+Lookups that are resolved via the compounding algorithm have a `bin_id` of zero.
 
 If desired, the compounding algorithm can be disabled
 via an optional flag; see the documentation below.
@@ -146,25 +151,25 @@ via an optional flag; see the documentation below.
 >>> b = Bin()
 >>> b.lookup("færi")
 ('færi', [
-  (ord='fara', so/alm/433568, bmynd='færi', OP-ÞGF-GM-VH-ÞT-1P-ET),
-  (ord='fara', so/alm/433568, bmynd='færi', OP-ÞGF-GM-VH-ÞT-1P-FT),
-  (ord='fara', so/alm/433568, bmynd='færi', OP-ÞGF-GM-VH-ÞT-2P-ET),
-  (ord='fara', so/alm/433568, bmynd='færi', OP-ÞGF-GM-VH-ÞT-2P-FT),
-  (ord='fara', so/alm/433568, bmynd='færi', OP-ÞGF-GM-VH-ÞT-3P-ET),
-  (ord='fara', so/alm/433568, bmynd='færi', OP-það-GM-VH-ÞT-3P-ET),
-  (ord='fara', so/alm/433568, bmynd='færi', OP-ÞGF-GM-VH-ÞT-3P-FT),
-  (ord='fara', so/alm/433568, bmynd='færi', GM-VH-ÞT-1P-ET),
-  (ord='fara', so/alm/433568, bmynd='færi', GM-VH-ÞT-3P-ET),
-  (ord='fær', lo/alm/448392, bmynd='færi', FVB-KK-NFET),
-  (ord='færa', so/alm/434742, bmynd='færi', GM-FH-NT-1P-ET),
-  (ord='færa', so/alm/434742, bmynd='færi', GM-VH-NT-1P-ET),
-  (ord='færa', so/alm/434742, bmynd='færi', GM-VH-NT-3P-ET),
-  (ord='færa', so/alm/434742, bmynd='færi', GM-VH-NT-3P-FT),
-  (ord='færi', hk/alm/1198, bmynd='færi', NFET),
-  (ord='færi', hk/alm/1198, bmynd='færi', ÞFET),
-  (ord='færi', hk/alm/1198, bmynd='færi', ÞGFET),
-  (ord='færi', hk/alm/1198, bmynd='færi', NFFT),
-  (ord='færi', hk/alm/1198, bmynd='færi', ÞFFT)
+    (ord='fara', so/alm/433568, bmynd='færi', OP-ÞGF-GM-VH-ÞT-1P-ET),
+    (ord='fara', so/alm/433568, bmynd='færi', OP-ÞGF-GM-VH-ÞT-1P-FT),
+    (ord='fara', so/alm/433568, bmynd='færi', OP-ÞGF-GM-VH-ÞT-2P-ET),
+    (ord='fara', so/alm/433568, bmynd='færi', OP-ÞGF-GM-VH-ÞT-2P-FT),
+    (ord='fara', so/alm/433568, bmynd='færi', OP-ÞGF-GM-VH-ÞT-3P-ET),
+    (ord='fara', so/alm/433568, bmynd='færi', OP-það-GM-VH-ÞT-3P-ET),
+    (ord='fara', so/alm/433568, bmynd='færi', OP-ÞGF-GM-VH-ÞT-3P-FT),
+    (ord='fara', so/alm/433568, bmynd='færi', GM-VH-ÞT-1P-ET),
+    (ord='fara', so/alm/433568, bmynd='færi', GM-VH-ÞT-3P-ET),
+    (ord='fær', lo/alm/448392, bmynd='færi', FVB-KK-NFET),
+    (ord='færa', so/alm/434742, bmynd='færi', GM-FH-NT-1P-ET),
+    (ord='færa', so/alm/434742, bmynd='færi', GM-VH-NT-1P-ET),
+    (ord='færa', so/alm/434742, bmynd='færi', GM-VH-NT-3P-ET),
+    (ord='færa', so/alm/434742, bmynd='færi', GM-VH-NT-3P-FT),
+    (ord='færi', hk/alm/1198, bmynd='færi', NFET),
+    (ord='færi', hk/alm/1198, bmynd='færi', ÞFET),
+    (ord='færi', hk/alm/1198, bmynd='færi', ÞGFET),
+    (ord='færi', hk/alm/1198, bmynd='færi', NFFT),
+    (ord='færi', hk/alm/1198, bmynd='færi', ÞFFT)
 ])
 ```
 
@@ -311,7 +316,9 @@ is upper case. As an example:
 
 ```python
 >>> b.lookup("Heftaranum", at_sentence_start=True)
-('heftaranum', [(ord='heftari', kk/alm/7958, bmynd='heftaranum', ÞGFETgr)])
+('heftaranum', [
+    (ord='heftari', kk/alm/7958, bmynd='heftaranum', ÞGFETgr)
+])
 ```
 
 Note that here, the returned search key (`w` in the first example above) is
@@ -555,14 +562,14 @@ call the `lemma_meanings` function:
 
 ```python
 >>> b.lemma_meanings("þyrla")
-('þyrla',
-  [
+('þyrla', [
     (ord='þyrla', kvk/alm/16445, bmynd='þyrla', NFET),  # Feminine noun
     (ord='þyrla', so/alm/425096, bmynd='þyrla', GM-NH)  # Verb
-  ]
-)
+])
 >>> b.lemma_meanings("þyrlast")
-('þyrlast', [(ord='þyrla', so/alm/425096, bmynd='þyrlast', MM-NH)])  # Middle voice infinitive
+('þyrlast', [
+    (ord='þyrla', so/alm/425096, bmynd='þyrlast', MM-NH)  # Middle voice infinitive
+])
 >>> b.lemma_meanings("þyrlan")
 ('þyrlan', [])
 ```
@@ -606,7 +613,8 @@ as `mypy` and `Pylance` / `Pyright`.
 # Installation and setup
 
 You must have Python >= 3.6 installed on your machine (CPython or PyPy).
-If you are using a Python virtual environment (`virtualenv`), activate it first (substituting your environment name for `venv` below):
+If you are using a Python virtual environment (`virtualenv`), activate it
+first (substituting your environment name for `venv` below):
 
 ```bash
 $ venv/bin/activate
@@ -717,7 +725,9 @@ as described in the documentation above.
 BinPackage is Copyright (C) 2021 [Miðeind ehf.](https://mideind.is)
 The original author of this software is *Vilhjálmur Þorsteinsson*.
 
-<img src="img/MideindLogoVert400.png" alt="Miðeind ehf." width="118" height="100" align="left" style="margin-right:20px; margin-top: 10px; margin-bottom: 10px;">
+<img src="img/MideindLogoVert400.png" alt="Miðeind ehf." 
+   width="118" height="100" align="left"
+   style="margin-right:20px; margin-top: 10px; margin-bottom: 10px;">
 
 This software is licensed under the **MIT License**:
 

@@ -497,7 +497,10 @@ hraðlesa hraðles GM-FH-NT-3P-ET
 ```
 
 We get back both the 1st and the 3rd person inflection forms,
-since they are identical.
+since they can both be derived from *hraðlæsi* and we don't constrain
+the person in our variant specification. If only third person
+results are desired, we could have specified `("FH", "NT", "3P")` in the
+variant tuple.
 
 Finally, let's describe this functionality in superlative terms:
 

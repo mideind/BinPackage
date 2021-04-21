@@ -38,6 +38,7 @@
 
 """
 
+import re
 from typing import (
     Any,
     Optional,
@@ -47,6 +48,7 @@ from typing import (
     Tuple,
     Iterable,
     Dict,
+    Type,
     Union,
     cast,
     TypeVar,
@@ -554,9 +556,7 @@ class Bin:
                 prefix = "".join(cw[0:-1])
                 # No need to think about upper or lower case here,
                 # since the last part of a compound word is always in BÍN as-is
-                mm = case_func(
-                    cw[-1], cat=m_word.ofl, lemma=m_word.ord.split("-")[-1]
-                )
+                mm = case_func(cw[-1], cat=m_word.ofl, lemma=m_word.ord.split("-")[-1])
                 # Add the prefix to the remaining word lemmas
                 mm = Bin._prefix_meanings(
                     mm, prefix, make_bin_meaning, insert_hyphen=False
@@ -683,7 +683,14 @@ class Bin:
             """ Create a closure function to send into _lookup(),
                 obtaining the requested inflection variants correctly,
                 also for composite words """
-            mset = bc.lookup_variants(key, cat, to_beyging, lemma, bin_id, beyging_filter)
+            mset = bc.lookup_variants(
+                key,
+                cat,
+                to_beyging,
+                lemma,
+                None if compound else bin_id,
+                beyging_filter,
+            )
             klist = self._filter_ksnid(mset)
             return [k for k in klist if compound or k.birting != "S"]
 
@@ -882,7 +889,7 @@ class GreynirBin(Bin):
             means less priority. """
         if m.ofl != "so":
             # Not a verb: Prioritize forms with non-NULL bin_id
-            return 1 if (m.bin_id is None or m.bin_id < 1) else 0
+            return int(m.bin_id == 0)  # 1 if bin_id is 0, or 0 otherwise
         # Verb priorities
         # Order "VH" verbs (viðtengingarháttur) after other forms
         # Also order past tense ("ÞT") after present tense
@@ -912,3 +919,116 @@ class GreynirBin(Bin):
         # matched more readily than the less common ones
         m.sort(key=self._priority)
         return m
+
+
+_T_Orð = TypeVar("_T_Orð", bound="Orð")
+
+
+class Orð:
+
+    """ Encapsulates an Icelandic word along with its BÍN meanings,
+        allowing easy generation of inflectional variants
+        via a __format__() method """
+
+    _b: Optional[GreynirBin] = None
+
+    def __init__(
+        self,
+        word: str,
+        category: Union[None, str, Iterable[str]] = None,
+        at_sentence_start: bool = False,
+    ):
+        if self._b is None:
+            Orð._b = GreynirBin()
+        assert self._b is not None
+        self._word = word
+        self._key, self._m = self._b.lookup_ksnid(word, at_sentence_start)
+        if category is not None:
+            if category == "no":
+                # Any noun
+                cat_set = frozenset(("kk", "kvk", "hk"))
+            else:
+                cat_set = frozenset(
+                    [category] if isinstance(category, str) else category
+                )
+            self._m = [mm for mm in self._m if mm.ofl in cat_set]
+        self._ksnid: Optional[Ksnid] = self._m[0] if self._m else None
+
+    @classmethod
+    def from_ksnid(cls: Type[_T_Orð], ksnid: Ksnid) -> _T_Orð:
+        """ Hacky constructor to create an Orð instance from a Ksnid instance """
+        o = cls(ksnid.bmynd, ksnid.ofl)
+        o._m = [ksnid]
+        o._ksnid = ksnid
+        return o
+
+    @property
+    def word(self) -> str:
+        """ Returns the original word that was passed to the constructor """
+        return self._word
+
+    @property
+    def key(self) -> str:
+        """ Returns the BÍN lookup key """
+        return self._key
+
+    @property
+    def meanings(self) -> KsnidList:
+        """ Return a list of possible meanings, according to BÍN """
+        return self._m
+
+    @property
+    def ord(self) -> str:
+        """ Returns the headword/lemma """
+        return self._ksnid.ord if self._ksnid else self._key
+
+    @property
+    def hluti(self) -> str:
+        """ Return the genre/register """
+        return self._ksnid.hluti if self._ksnid else "alm"
+
+    @property
+    def bmynd(self) -> str:
+        """ Return the inflectional form """
+        return self._ksnid.bmynd if self._ksnid else self._word
+
+    @property
+    def mark(self) -> str:
+        """ Return the inflectional tag. An empty string means that
+            the word was not found in BÍN. """
+        return self._ksnid.mark if self._ksnid else ""
+
+    @property
+    def ofl(self) -> str:
+        """ Return the word class/category """
+        return self._ksnid.ofl if self._ksnid else "hk"
+
+    @property
+    def bin_id(self) -> int:
+        """ Return the BÍN identifier, or zero if not present in BÍN """
+        return self._ksnid.bin_id if self._ksnid else 0
+
+    def __format__(self, format_spec: str) -> str:
+        """ Return a requested inflectional variant of the word """
+        if self._ksnid is None or not format_spec:
+            # Not found in BÍN or no format specification: can't inflect
+            return self.word
+        # We allow both hyphen and underscore as variant separators
+        to_beyging = tuple(f.strip() for f in re.split(r"[-_]", format_spec))
+        bin_id = self.bin_id
+        assert self._b is not None
+        # Look up the inflectional variant(s)
+        v = self._b.lookup_variants(self.word, self.ofl, to_beyging, bin_id=bin_id)
+        if not v:
+            # No such variants: return the original word
+            return self.word
+        # Found the requested variant: emulate the case of the original word
+        w = v[0].bmynd
+        if bin_id == 0:
+            # Probably a word created by the compounder: delete the inserted hyphens
+            w = w.replace("-", "")
+        if self.word.isupper():
+            return w.upper()
+        if self.word[0].isupper():
+            return w[0].upper() + w[1:]
+        return w.lower()

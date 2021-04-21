@@ -1,4 +1,3 @@
-# type: ignore
 """
 
     BinPackage
@@ -35,7 +34,12 @@
 from .version import __version__
 
 from .basics import BinMeaning, Ksnid
-from .bindb import Bin, BinFilterFunc, BinMeaningList, BinMeaningIterable
+from .bindb import Bin, Orð, BinFilterFunc, BinMeaningList, BinMeaningIterable
 
 __author__ = "Miðeind ehf."
 __copyright__ = "(C) 2021 Miðeind ehf."
+
+__all__ = (
+    "BinMeaning", "Ksnid",
+    "Bin", "Orð", "BinFilterFunc", "BinMeaningList", "BinMeaningIterable"
+)

@@ -613,6 +613,15 @@ class BinCompressed:
                     # it is too complex and different to be replaceable
                     # with anything else
                     b = re.sub(r"-NH|-FH|-VH|-BH", "-" + t, b)
+                elif t == "SAGNB":
+                    # SAGNB clobbers everything else except GM and MM
+                    if "GM" in b:
+                        b = "GM-SAGNB"
+                    elif "MM" in b:
+                        b = "MM-SAGNB"
+                    elif not b.endswith("-SAGNB"):
+                        # Thin ice here, probably a wrong target string
+                        b += "-SAGNB"
                 else:
                     raise ValueError(f"Unknown BÍN 'beyging' feature: '{t}'")
             return b

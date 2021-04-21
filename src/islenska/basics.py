@@ -55,6 +55,7 @@ from pkg_resources import resource_stream
 
 import threading
 
+
 INT32 = struct.Struct("<i")
 UINT32 = struct.Struct("<I")
 

@@ -9,7 +9,8 @@
 
 <img src="img/greynir-logo-large.png" alt="Greynir" width="200" height="200" align="right" style="margin-left:20px; margin-bottom: 20px;">
 
-*BinPackage* is a Python package that embeds the vocabulary of the
+*BinPackage* is a Python package, published by
+[*Miðeind ehf*](https://mideind.is), that embeds the vocabulary of the
 [*Database of Icelandic Morphology*](https://bin.arnastofnun.is/DMII/)
 ([*Beygingarlýsing íslensks nútímamáls*](https://bin.arnastofnun.is/), *BÍN*)
 and offers various lookups and queries of the data.
@@ -20,8 +21,8 @@ and edited by chief editor *Kristín Bjarnadóttir*, contains over
 6.5 million entries, over 3.1 million unique word forms,
 and about 300,000 distinct lemmas.
 
-[*Miðeind ehf*](https://mideind.is), the publisher of BinPackage,
-has encapsulated the database in an easy-to-install Python package, compressing it
+Miðeind has encapsulated the database in an easy-to-install Python package,
+compressing it
 from a 400+ megabyte CSV file into an ~80 megabyte indexed binary structure.
 The package maps this structure directly into memory (via `mmap`) for fast lookup.
 An algorithm for handling compound words is an important additional feature
@@ -46,23 +47,25 @@ The DMI/BÍN database is
 by [*The Árni Magnússon Institute for Icelandic Studies*](https://arnastofnun.is).
 The database is
 released under the CC BY-SA 4.0 license, in CSV files having two main formats:
-*Sigrúnarsnið* (`SHsnid`) and *Kristínarsnið* (`Ksnid`).
+*Sigrúnarsnið* (the *Basic Format*) and *Kristínarsnið* (the *Augmented Format*).
 Sigrúnarsnið is more compact with six attributes
 for each word form. Kristínarsnið is newer and more detailed,
 with up to 15 attributes for each word form.
 
-BinPackage supports both formats, with `Ksnid` being returned from several
-functions and `SHsnid` from others, as documented below.
+BinPackage supports both formats, with the augmented format (represented
+by the class `Ksnid`)
+being returned from several functions and the basic format (represented by
+the named tuple `BinEntry`) from others, as documented below.
 
 Further information in English about the word classes and the inflectional
 categories in the DMI/BÍN database can be found
 [here](https://bin.arnastofnun.is/DMII/infl-system/).
 
 
-### SHsnid
+### The Basic Format
 
-`SHsnid` is represented in BinPackage with a Python `NamedTuple` called
-`BinMeaning`, having the following attributes (further documented
+The BÍN *Basic Format* is represented in BinPackage with a Python `NamedTuple`
+called `BinEntry`, having the following attributes (further documented
 [here in Icelandic](https://bin.arnastofnun.is/gogn/SH-snid) and
 [here in English](https://bin.arnastofnun.is/DMII/LTdata/s-format/)):
 
@@ -79,18 +82,20 @@ The inflectional tag in the `mark` attribute is documented in detail
 [here in Icelandic](https://bin.arnastofnun.is/gogn/greiningarstrengir/) and
 [here in English](https://bin.arnastofnun.is/DMII/LTdata/tagset/).
 
-### Ksnid
+### The Augmented Format
 
-`Ksnid` is represented by instances of the `Ksnid` class. It has the same six
-attributes as `SHsnid` but adds nine attributes, shortly summarized below
-(full documentation [here in Icelandic](https://bin.arnastofnun.is/gogn/k-snid)
-and [here in English](https://bin.arnastofnun.is/DMII/LTdata/k-format/)):
+The BÍN *Augmented Format*, *Kristínarsnið*, is represented by instances of
+the `Ksnid` class. It has the same six attributes as `BinEntry` (the Basic
+Format) but adds nine attributes, shortly summarized below.
+For details, please refer to the full documentation
+[in Icelandic](https://bin.arnastofnun.is/gogn/k-snid)
+or [in English](https://bin.arnastofnun.is/DMII/LTdata/k-format/).
 
 | Name     | Type  | Content  |
 |----------|-------|----------|
 | `einkunn` | `int` | Headword correctness grade, ranging from 0-5. |
 | `malsnid` | `str` | Genre/register indicator; e.g. `STAD` for dialectal, `GAM` for old-fashioned or `URE` for obsolete. |
-| `malfraedi` | `str` | Grammatical marking, such as `STAFS` for spelling that needs checking, and `TALA` for singular forms that need consideration. |
+| `malfraedi` | `str` | Grammatical marking for further consideration, such as `STAFS` (spelling) or `TALA` (singular/plural). |
 | `millivisun` | `int` | Cross reference to the identifier (`bin_id` field) of a variant of this headword. |
 | `birting` | `str` | `K` for the DMII Core (*BÍN kjarni*) of most common and accepted word forms, `V` for other published BÍN entries. |
 | `beinkunn` | `int` | Correctness grade for this inflectional form, ranging from 0-5. |
@@ -124,7 +129,7 @@ a singular masculine noun in the nominative case.
 
 The compounding algorithm returns the prefixes and suffixes of the
 optimal compound in the `ord` and `bmynd` fields of the returned
-`BinMeaning` / `Ksnid` instances, separated by hyphens `-`. As an example,
+`BinEntry` / `Ksnid` instances, separated by hyphens `-`. As an example,
 *síamskattarkjóll* is returned as follows (note the hyphens):
 
 ```python
@@ -135,6 +140,8 @@ optimal compound in the `ord` and `bmynd` fields of the returned
 ```
 
 Lookups that are resolved via the compounding algorithm have a `bin_id` of zero.
+Note that the compounding algorithm will occasionally recognize nonexistent
+words, for instance spelling errors, as compounds.
 
 If desired, the compounding algorithm can be disabled
 via an optional flag; see the documentation below.
@@ -173,10 +180,10 @@ via an optional flag; see the documentation below.
 ```
 
 `Bin.lookup()` returns the matched search key, usually identical to the
-passed-in word (here *færi*), and a list of its possible meanings
-in `SHsnid` (*Sigrúnarsnið*), i.e. as instances of `BinMeaning`.
+passed-in word (here *færi*), and a list of matching entries
+in the basic format (*Sigrúnarsnið*), i.e. as instances of `BinEntry`.
 
-Each meaning tuple contains the
+Each entry is a named tuple containing the
 lemma (`ord`), the word class, domain and id number (`hk/alm/1198`),
 the inflectional form (`bmynd`) and tag (`GM-VH-NT-3P-FT`).
 The tag strings are documented in detail
@@ -192,17 +199,22 @@ The tag strings are documented in detail
 >>> from islenska import Bin
 >>> b = Bin()
 >>> w, m = b.lookup_ksnid("allskonar")
+>>> # m is a list of 24 matching entries; we look at the first item only
 >>> m[0].malfraedi
 'STAFS'
+>>> m[0].einkunn
+4
 ```
 
-`Bin.lookup_ksnid()` returns the matched search key and a list of its possible
-meanings in *Kristínarsnið* (`Ksnid`). The fields of *Kristínarsnið* are
-documented [here in Icelandic](https://bin.arnastofnun.is/gogn/k-snid)
+`Bin.lookup_ksnid()` returns the matched search key and a list of matching
+entries in the augmented format (*Kristínarsnið*). The fields of *Kristínarsnið*
+are documented in detail [here in Icelandic](https://bin.arnastofnun.is/gogn/k-snid)
 and [here in English](https://bin.arnastofnun.is/DMII/LTdata/k-format/).
-In the example, we show how the word `allskonar` is marked with the
-tag `STAFS` in the `malfraedi` field, indicating that this spelling
-is nonstandard. A more correct form is `alls konar`, in two words.
+
+As the example shows, the word `allskonar` is marked with the
+tag `STAFS` in the `malfraedi` field, and has an `einkunn` (correctness grade)
+of 4 (where 1 is the normal grade), giving a clue that this spelling is
+nonstandard. (A more correct form is `alls konar`, in two words.)
 
 ## Lemmas and classes
 
@@ -224,7 +236,8 @@ respectively), and one verb (`so`), having the infinitive (*nafnháttur*) *að l
 
 ## Grammatical variants
 
-With BinPackage, it is easy to obtain grammatical variants of words: convert
+With BinPackage, it is easy to obtain grammatical variants
+(alternative inflection forms) of words: convert
 them between cases, singular and plural, persons, degrees, moods, etc. Let's look
 at an example:
 
@@ -232,6 +245,8 @@ at an example:
 >>> from islenska import Bin
 >>> b = Bin()
 >>> m = b.lookup_variants("Laugavegur", "kk", "ÞGF")
+>>> # m is a list of all possible variants of 'Laugavegur' in dative case.
+>>> # In this particular example, m has only one entry.
 >>> m[0].bmynd
 'Laugavegi'
 ```
@@ -243,6 +258,8 @@ to dative case, commonly used in addresses.
 >>> from islenska import Bin
 >>> b = Bin()
 >>> m = b.lookup_variants("fallegur", "lo", ("EVB", "HK", "FT"))
+>>> # m contains a list of all inflection forms that meet the
+>>> # criteria. In this example, we use the first form in the list.
 >>> adj = m[0].bmynd
 >>> f"Ég sá {adj} norðurljósin"
 'Ég sá fallegustu norðurljósin'
@@ -266,7 +283,7 @@ To create an instance of the `Bin` class, do as follows:
 You can optionally specify the following boolean flags in the `Bin()`
 constructor call:
 
-| Flag              | Default | Meaning                                        |
+| Flag              | Default | Description                                    |
 |-------------------|---------|------------------------------------------------|
 | `add_negation`    | `True`    | For adjectives, find forms with the prefix `ó` even if only the non-prefixed version is present in BÍN. Example: find `ófíkinn` because `fíkinn` is in BÍN. |
 | `add_legur`       | `True`    | For adjectives, find all forms with an "adjective-like" suffix, i.e. `-legur`, `-leg`, etc. even if they are not present in BÍN. Example: `sólarolíulegt`. |
@@ -284,8 +301,8 @@ in the original BÍN database, do like so:
 
 ## `lookup()` function
 
-To look up word forms and return summarized `SHsnid` data (`BinMeaning` tuples),
-call the `lookup` function:
+To look up word forms and return summarized data in the Basic Format
+(`BinEntry` tuples), call the `lookup` function:
 
 ```python
 >>> w, m = b.lookup("síamskattarkjólanna")
@@ -295,17 +312,17 @@ call the `lookup` function:
 [(ord='síamskattar-kjóll', kk/alm/0, bmynd='síamskattar-kjólanna', EFFTgr)]
 ```
 
-This function returns a `Tuple[str, List[BinMeaning]]` containing the word that
+This function returns a `Tuple[str, List[BinEntry]]` containing the word that
 was actually used as a search key,
-and a list of `BinMeaning` instances corresponding to the various possible
-meanings of that word. The list is empty if no meanings were found, in which
+and a list of `BinEntry` instances that match the search key.
+The list is empty if no matches were found, in which
 case the word is probably not Icelandic or at least not spelled correctly.
 
 Here we see that *síamskattarkjólanna* is a compound word, amalgamated
 from *síamskattar* and *kjólanna*, with *kjóll* being the base lemma of the compound
 word. This is a masculine noun (`kk`), in the `alm` (general vocabulary) domain.
 It has an id number (*bin_id*) equal to 0 since it is constructed
-on-the-fly by BinPackage, rather than being fetched directly from BÍN. The grammatical
+on-the-fly by BinPackage, rather than being found in BÍN. The grammatical
 tag string is `EFFTgr`, i.e. genitive (*eignarfall*, `EF`), plural (*fleirtala*,
 `FT`) and definite (*með greini*, `gr`).
 
@@ -324,7 +341,7 @@ Note that here, the returned search key (`w` in the first example above) is
 `heftaranum` in lower case, since `Heftaranum` in upper case was not found in BÍN.
 
 Another option is `auto_uppercase`, which if set to True, causes the returned
-search key to be in upper case if any upper case meaning exists in BÍN for the
+search key to be in upper case if any upper case entry exists in BÍN for the
 lookup word. This can be helpful when attempting to normalize
 all-lowercase input, for example from voice recognition systems. (Additional
 disambiguation is typically still needed, since many common words and names do
@@ -356,36 +373,40 @@ as described above.)
 | at_sentence_start | `bool` | `False` | `True` if BinPackage should also return lower case forms of the word, if it is given in upper case. |
 | auto_uppercase | `bool` | `False` | `True` if BinPackage should use and return upper case search keys, if the word exists in upper case. |
 
-The function returns a `Tuple[str, List[BinMeaning]]` instance.
+The function returns a `Tuple[str, List[BinEntry]]` instance.
 The first element of the tuple is the search key that was matched in BÍN,
-and the second element is the list of potential word meanings, each represented
-by a `BinMeaning` (`SHsnid`) instance.
+and the second element is the list of matches, each represented
+by a `BinEntry` instance.
 
 
 ## `lookup_ksnid()` function
 
-To look up word forms and return full `Ksnid` instances,
-call the `lookup_ksnid()` function:
+To look up word forms and return full augmented format (*Kristínarsnið*)
+entries, call the `lookup_ksnid()` function:
 
 ```python
 >>> w, m = b.lookup_ksnid("allskonar")
 >>> w
 'allskonar'
+>>> # m is a list of all matches of the word form; here we show the first item
 >>> str(m[0])
 "<Ksnid: bmynd='allskonar', ord/ofl/hluti/bin_id='allskonar'/lo/alm/175686, mark=FSB-KK-NFET, ksnid='4;;STAFS;496369;V;1;;;'>"
->>> m.malfraedi
+>>> m[0].malfraedi
 'STAFS'
->>> m.millivisun
+>>> m[0].einkunn
+4
+>>> m[0].millivisun
 496369
 ```
 
-This function is identical to `lookup()` except that it returns full `Ksnid`
-instances, with 15 attributes each, instead of `BinMeaning` tuples. The
-same option flags are available and the logic for returning the search key
-is the same.
+This function is identical to `lookup()` except that it returns full
+augmented format entries of class `Ksnid`, with 15 attributes each, instead of
+basic format (`BinEntry`) tuples. The same option flags are available
+and the logic for returning the search key is the same.
 
 The example shows how the word *allskonar* has a grammatical comment
-regarding spelling (`m.malfraedi == 'STAFS'`) and a cross-reference
+regarding spelling (`m[0].malfraedi == 'STAFS'`) and a correctness grade
+(`m[0].einkunn`) of 4, as well as a cross-reference
 to the entry with id number (`bin_id`) 496369 - which is the lemma
 *alls konar*.
 
@@ -397,10 +418,10 @@ to the entry with id number (`bin_id`) 496369 - which is the lemma
 | at_sentence_start | `bool` | `False` | `True` if BinPackage should also return lower case forms of the word, if it is given in upper case. |
 | auto_uppercase | `bool` | `False` | `True` if BinPackage should use and return upper case search keys, if the word exists in upper case. |
 
-The function returns a `Tuple[str, List[Ksnid]]` instance.
+The function returns a tuple of type `Tuple[str, List[Ksnid]]`.
 The first element of the tuple is the search key that was matched in BÍN,
-and the second element is the list of potential word meanings, each represented
-in a `Ksnid` instance.
+and the second element is the list of matching entries, each represented
+by an instance of class `Ksnid`.
 
 
 ## `lookup_cats()` function
@@ -450,7 +471,8 @@ compounding algorithm, the function returns an empty set.
 
 ## `lookup_variants()` function
 
-This function returns grammatical variants of a given word. For instance,
+This function returns grammatical variants (different inflectional forms)
+of a given word. For instance,
 it can return a noun in a different case, plural instead of singular,
 and/or with or without an attached definite article (*greinir*). It can return
 adjectives in different degrees (*frumstig*, *miðstig*, *efsta stig*), verbs
@@ -549,43 +571,45 @@ This will output:
 |------|------|---------|-------------|
 | w | `str` | | The word to use as a base for the lookup |
 | cat | `str` | | The word class, used to disambiguate the word. `no` (*nafnorð*) can be used to match any of `kk`, `kvk` and `hk`. |
-| to_beyging | `Union[str, Tuple[str, ...]]` | | One or more requested grammatical features, using the BÍN tag string format. As a special case, `nogr` means indefinite form (no `gr`) for nouns. The parameter can be a single string or a tuple of several strings.|
+| to_inflection | `Union[str, Tuple[str, ...]]` | | One or more requested grammatical features, specified using fragments of the BÍN tag string. As a special case, `nogr` means indefinite form (no `gr`) for nouns. The parameter can be a single string or a tuple of several strings. |
 | lemma | `Optional[str]` | `None` | The lemma of the word, optionally used to further disambiguate it |
 | bin_id | `Optional[int]` | `None` | The id number of the word, optionally used to further disambiguate it |
-| beyging_filter | `Optional[Callable[[str], bool]]` | `None` | A callable taking a single string parameter and returning a `bool`. The `mark` attribute of a potential word meaning will be passed to this function, and only included in the result if the function returns `True`. |
+| inflection_filter | `Optional[Callable[[str], bool]]` | `None` | A callable taking a single string parameter and returning a `bool`. The `mark` attribute of a potential match will be passed to this function, and only included in the result if the function returns `True`. |
 
-The function returns `List[Ksnid]`.
+The function returns `List[Ksnid]`, i.e. a list of `Ksnid` instances that
+match the grammatical features requested in `to_inflection`. If no such
+instances exist, an empty list is returned.
 
 
-## `lemma_meanings()` function
+## `lemma_entries()` function
 
-To look up all possible meanings of a word as a lemma/headword,
-call the `lemma_meanings` function:
+To look up all entries having the given string as a lemma/headword,
+call the `lemma_entries` function:
 
 ```python
->>> b.lemma_meanings("þyrla")
+>>> b.lemma_entries("þyrla")
 ('þyrla', [
     (ord='þyrla', kvk/alm/16445, bmynd='þyrla', NFET),  # Feminine noun
     (ord='þyrla', so/alm/425096, bmynd='þyrla', GM-NH)  # Verb
 ])
->>> b.lemma_meanings("þyrlast")
+>>> b.lemma_entries("þyrlast")
 ('þyrlast', [
     (ord='þyrla', so/alm/425096, bmynd='þyrlast', MM-NH)  # Middle voice infinitive
 ])
->>> b.lemma_meanings("þyrlan")
+>>> b.lemma_entries("þyrlan")
 ('þyrlan', [])
 ```
 
-The function returns a `Tuple[str, List[BinMeaning]]` like `lookup()`,
-but where the `BinMeaning` list
+The function returns a `Tuple[str, List[BinEntry]]` like `lookup()`,
+but where the `BinEntry` list
 has been filtered to include only lemmas/headwords. This is the reason why
-`b.lemma_meanings("þyrlan")` returns an empty list in the example above -
+`b.lemma_entries("þyrlan")` returns an empty list in the example above -
 *þyrlan* does not appear in BÍN as a lemma/headword.
 
 Lemmas/headwords of verbs include the middle voice (*miðmynd*) of the
 infinitive, `MM-NH`, as in the example for *þyrlast*.
 
-`lemma_meanings()` has a single parameter:
+`lemma_entries()` has a single parameter:
 
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
@@ -680,7 +704,7 @@ BinPackage:
 * `bindb.py`: The main `Bin` class; high-level interfaces into BinPackage.
 * `bincompress.py`: The lower-level `BinCompressed` class, interacting directly with
   the compressed data in a binary buffer in memory.
-* `basics.py`: Basic data structures, such as the `BinMeaning` NamedTuple.
+* `basics.py`: Basic data structures, such as the `BinEntry` NamedTuple.
 * `dawgdictionary.py`: Classes that handle compound words.
 * `bin.h`, `bin.cpp`: C++ code for fast lookup of word forms, called from Python via CFFI.
 * `tools/binpack.py`: A command-line tool that reads vocabulary data in .CSV

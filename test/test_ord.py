@@ -122,3 +122,18 @@ def test_ord() -> None:
 
     b = Orð("Borgarstjórnarráðsfundur")
     assert f"{b:ef_gr} var sárt saknað" == "Borgarstjórnarráðsfundarins var sárt saknað"
+
+    g = Orð("Hinn", "gr")
+    l = Orð("íslenskur")
+
+    b = Orð("bókmenntafélag")
+    assert f"{g:hk} {l:hk_fvb_et} {b}" == "Hið íslenska bókmenntafélag"
+    assert f"{g:hk_ft} {l:hk_fvb_ft} {b:ft}" == "Hin íslensku bókmenntafélög"
+
+    b = Orð("draumur")
+    assert f"{g:kk} {l:kk_fvb_et} {b}" == "Hinn íslenski draumur"
+    assert f"{g:kk_ft} {l:kk_fvb_ft} {b:ft}" == "Hinir íslensku draumar"
+
+    b = Orð("draumsýn")
+    assert f"{g:kvk} {l:kvk_fvb_et} {b}" == "Hin íslenska draumsýn"
+    assert f"{g:kvk_ft} {l:kvk_fvb_ft} {b:ft}" == "Hinar íslensku draumsýnir"

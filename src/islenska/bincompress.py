@@ -89,8 +89,8 @@ bin_cffi = cast(Any, lib_unknown)
 ffi = cast(Any, ffi_unknown)
 
 from .basics import (
-    BeygingFilter,
-    MeaningTuple,
+    InflectionFilter,
+    BinEntryTuple,
     Ksnid,
     ALL_GENDERS,
     ALL_BIN_GENDERS,
@@ -307,9 +307,9 @@ class BinCompressed:
             an empty list if it is not found in the trie """
         mapping = self._mapping_cffi(word)
         if mapping is None:
-            # Word not found in trie: return an empty list of meanings
+            # Word not found in trie: return an empty list of entries
             return []
-        # Found the word in the trie; return potentially multiple meanings
+        # Found the word in the trie; return potentially multiple entries
         # Fetch the mapping-to-lemma/meaning tuples
         result: List[Tuple[int, int, int]] = []
         lemma_mask = LEMMA_MAX - 1
@@ -344,10 +344,10 @@ class BinCompressed:
         cat: Optional[str] = None,
         lemma: Optional[str] = None,
         utg: Optional[int] = None,
-        beyging_filter: Optional[BeygingFilter] = None,
-    ) -> List[MeaningTuple]:
+        inflection_filter: Optional[InflectionFilter] = None,
+    ) -> List[BinEntryTuple]:
 
-        """ Returns a list of BÍN meanings for the given word form,
+        """ Returns a list of BÍN entries for the given word form,
             eventually constrained to the requested word category,
             lemma, utg number and/or the given beyging_func filter function,
             which is called with the beyging field as a parameter. """
@@ -360,7 +360,7 @@ class BinCompressed:
             cats = ALL_GENDERS
         else:
             cats = frozenset([cat])
-        result: List[MeaningTuple] = []
+        result: List[BinEntryTuple] = []
         for lemma_index, meaning_index, _ in self._raw_lookup(word):
             ofl, beyging = self.meaning(meaning_index)
             if cats is not None and ofl not in cats:
@@ -373,7 +373,7 @@ class BinCompressed:
             if utg is not None and wutg != utg:
                 # Fails the utg filter
                 continue
-            if beyging_filter is not None and not beyging_filter(beyging):
+            if inflection_filter is not None and not inflection_filter(beyging):
                 # Fails the beyging_func filter
                 continue
             # stofn, utg, ofl, fl, ordmynd, beyging
@@ -386,10 +386,10 @@ class BinCompressed:
         cat: Optional[str] = None,
         lemma: Optional[str] = None,
         utg: Optional[int] = None,
-        beyging_filter: Optional[BeygingFilter] = None,
+        inflection_filter: Optional[InflectionFilter] = None,
     ) -> List[Ksnid]:
 
-        """ Returns a list of BÍN meanings for the given word form,
+        """ Returns a list of BÍN entries for the given word form,
             eventually constrained to the requested word category,
             lemma, utg number and/or the given beyging_func filter function,
             which is called with the beyging field as a parameter. """
@@ -415,7 +415,7 @@ class BinCompressed:
             if utg is not None and wutg != utg:
                 # Fails the utg filter
                 continue
-            if beyging_filter is not None and not beyging_filter(beyging):
+            if inflection_filter is not None and not inflection_filter(beyging):
                 # Fails the beyging_func filter
                 continue
             ksnid_string = self.ksnid_string(ksnid_index)
@@ -437,14 +437,14 @@ class BinCompressed:
         cat: Optional[str] = None,
         lemma: Optional[str] = None,
         utg: Optional[int] = None,
-        beyging_filter: Optional[BeygingFilter] = None,
-    ) -> Set[MeaningTuple]:
+        inflection_filter: Optional[InflectionFilter] = None,
+    ) -> Set[BinEntryTuple]:
 
-        """ Returns a set of meanings, in the requested case, derived
+        """ Returns a set of entries, in the requested case, derived
             from the lemmas of the given word form, optionally constrained
             by word category and by the other arguments given. The
-            beyging_filter argument, if present, should be a function that
-            filters on the beyging field of each candidate BÍN meaning.
+            inflection_filter argument, if present, should be a function that
+            filters on the beyging field of each candidate BÍN entry.
             The word form is case-sensitive. """
 
         # Note that singular=True means that we force the result to be
@@ -455,7 +455,7 @@ class BinCompressed:
         # However, if all_forms=True, both singular and plural, as well as
         # definite and indefinite forms, are always returned.
 
-        result: Set[MeaningTuple] = set()
+        result: Set[BinEntryTuple] = set()
         # Category set
         if cat is None:
             cats = None
@@ -499,7 +499,7 @@ class BinCompressed:
                     # For indefinite forms, we don't want the attached definite
                     # article ('gr') or weak declensions of adjectives
                     return False
-            if beyging_filter is not None and not beyging_filter(beyging):
+            if inflection_filter is not None and not inflection_filter(beyging):
                 # The user-defined filter fails: return False
                 return False
             # Apply our own filter, making sure we have effectively
@@ -535,7 +535,7 @@ class BinCompressed:
                 result.update(
                     m
                     for m in self.lookup(
-                        c, cat=ofl, lemma=stofn, utg=wutg, beyging_filter=beyging_func,
+                        c, cat=ofl, lemma=stofn, utg=wutg, inflection_filter=beyging_func,
                     )
                 )
         return result
@@ -544,10 +544,10 @@ class BinCompressed:
         self,
         word: str,
         cat: str,
-        to_beyging: Union[str, Tuple[str, ...]],
+        to_inflection: Union[str, Tuple[str, ...]],
         lemma: Optional[str] = None,
         utg: Optional[int] = None,
-        beyging_filter: Optional[BeygingFilter] = None,
+        inflection_filter: Optional[InflectionFilter] = None,
     ) -> Set[Ksnid]:
 
         """ Returns a list of BÍN meaning tuples for word forms
@@ -556,11 +556,11 @@ class BinCompressed:
             The list can be optionally constrained to a particular lemma and
             utg number. """
 
-        if isinstance(to_beyging, str):
-            to_beyging = (to_beyging,)
+        if isinstance(to_inflection, str):
+            to_inflection = (to_inflection,)
 
         def xform(t: str) -> str:
-            """ Transform to_beyging strings to allow lower case and
+            """ Transform to_inflection strings to allow lower case and
                 Greynir-style person variants """
             if t in {"gr", "nogr"}:
                 # Don't uppercase the definite article variant
@@ -570,15 +570,15 @@ class BinCompressed:
                 return t[1] + "P"
             return t.upper()
 
-        to_beyging_list = [xform(t) for t in to_beyging]
+        to_inflection_list = [xform(t) for t in to_inflection]
 
         def make_target(b: str) -> str:
             """ Create a target beyging string by substituting the
-                desired to_beyging in its proper place in the source """
+                desired to_inflection in its proper place in the source """
             # Remove '2' or '3' at the end of the beyging string,
             # denoting alternative forms
             b = re.sub(r"(2|3)$", "", b)
-            for t in to_beyging_list:
+            for t in to_inflection_list:
                 if t in ALL_BIN_CASES:
                     b = re.sub(r"ÞGF|NF|ÞF|EF", t, b)
                 elif t in ALL_BIN_NUMBERS:
@@ -646,11 +646,11 @@ class BinCompressed:
             if utg is not None and wutg != utg:
                 # Fails the utg filter
                 continue
-            if beyging_filter is not None and not beyging_filter(beyging):
+            if inflection_filter is not None and not inflection_filter(beyging):
                 # The user-defined filter fails
                 continue
             target_beyging = make_target(beyging)
-            if any(t not in target_beyging for t in to_beyging_list if t != "nogr"):
+            if any(t not in target_beyging for t in to_inflection_list if t != "nogr"):
                 # This target beyging string does not contain
                 # our desired variants and is therefore not relevant
                 continue
@@ -676,10 +676,10 @@ class BinCompressed:
                         )
         return result
 
-    def raw_nominative(self, word: str) -> Set[MeaningTuple]:
+    def raw_nominative(self, word: str) -> Set[BinEntryTuple]:
         """ Returns a set of all nominative forms of the lemmas of the given word form.
             Note that the word form is case-sensitive. """
-        result: Set[MeaningTuple] = set()
+        result: Set[BinEntryTuple] = set()
         for lemma_index, _, _ in self._raw_lookup(word):
             for c_latin in self.lemma_forms(lemma_index):
                 c = c_latin.decode("latin-1")
@@ -687,25 +687,25 @@ class BinCompressed:
                 result.update(m for m in self.lookup(c) if "NF" in m[5])
         return result
 
-    def nominative(self, word: str, **options: Any) -> Set[MeaningTuple]:
+    def nominative(self, word: str, **options: Any) -> Set[BinEntryTuple]:
         """ Returns a set of all nominative forms of the lemmas of the given word form,
             subject to the constraints in **options.
             Note that the word form is case-sensitive. """
         return self.lookup_case(word, "NF", **options)
 
-    def accusative(self, word: str, **options: Any) -> Set[MeaningTuple]:
+    def accusative(self, word: str, **options: Any) -> Set[BinEntryTuple]:
         """ Returns a set of all accusative forms of the lemmas of the given word form,
             subject to the given constraints on the beyging field.
             Note that the word form is case-sensitive. """
         return self.lookup_case(word, "ÞF", **options)
 
-    def dative(self, word: str, **options: Any) -> Set[MeaningTuple]:
+    def dative(self, word: str, **options: Any) -> Set[BinEntryTuple]:
         """ Returns a set of all dative forms of the lemmas of the given word form,
             subject to the given constraints on the beyging field.
             Note that the word form is case-sensitive. """
         return self.lookup_case(word, "ÞGF", **options)
 
-    def genitive(self, word: str, **options: Any) -> Set[MeaningTuple]:
+    def genitive(self, word: str, **options: Any) -> Set[BinEntryTuple]:
         """ Returns a set of all genitive forms of the lemmas of the given word form,
             subject to the given constraints on the beyging field.
             Note that the word form is case-sensitive. """

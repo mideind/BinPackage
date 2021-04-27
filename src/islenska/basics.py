@@ -118,13 +118,14 @@ ALL_BIN_MOODS = frozenset(("LHNT", "NH", "FH", "VH", "BH"))
 CASES = ("NF", "ÞF", "ÞGF", "EF")
 CASES_LATIN = tuple(case.encode("latin-1") for case in CASES)
 
-BeygingFilter = Callable[[str], bool]
+InflectionFilter = Callable[[str], bool]
 
-MeaningTuple = Tuple[str, int, str, str, str, str]
+BinEntryTuple = Tuple[str, int, str, str, str, str]
+MeaningTuple = BinEntryTuple  # For backwards compatibility only
 
-# Named tuple for the smaller "Sigrúnarsnið" (SHsnid) vocabulary format
-BinMeaning = NamedTuple(
-    "BinMeaning",
+# Named tuple for the Basic Format ("Sigrúnarsnið")
+BinEntry = NamedTuple(
+    "BinEntry",
     [
         ("ord", str),
         ("bin_id", int),
@@ -134,29 +135,30 @@ BinMeaning = NamedTuple(
         ("mark", str),
     ],
 )
+BinMeaning = BinEntry  # For backwards compatibility only
 
 # Compact string representation
-_meaning_repr: Callable[[BinMeaning], str] = lambda self: (
+_entry_repr: Callable[[BinEntry], str] = lambda self: (
     "(ord='{0}', {2}/{3}/{1}, bmynd='{4}', {5})".format(
         self.ord, self.bin_id, self.ofl, self.hluti, self.bmynd, self.mark
     )
 )
 
-setattr(BinMeaning, "__str__", _meaning_repr)
-setattr(BinMeaning, "__repr__", _meaning_repr)
+setattr(BinEntry, "__str__", _entry_repr)
+setattr(BinEntry, "__repr__", _entry_repr)
 
 
-def make_bin_meaning(
+def make_bin_entry(
     ord: str,
     bin_id: int,
     ofl: str,
     hluti: str,
     bmynd: str,
     mark: str,
-    copy_from: Optional[BinMeaning] = None,
-) -> BinMeaning:
-    """ Constructor for BinMeaning instances """
-    return BinMeaning(ord, bin_id, ofl, hluti, bmynd, mark)
+    copy_from: Optional[BinEntry] = None,
+) -> BinEntry:
+    """ Constructor for BinEntry instances """
+    return BinEntry(ord, bin_id, ofl, hluti, bmynd, mark)
 
 
 # Type variable for the Ksnid class
@@ -319,9 +321,9 @@ class Ksnid:
             m.aukafletta = copy_from.aukafletta
         return m
 
-    def to_bin_meaning(self) -> BinMeaning:
-        """ Copy this instance to a BinMeaning instance """
-        return BinMeaning(
+    def to_bin_entry(self) -> BinEntry:
+        """ Copy this instance to a BinEntry instance """
+        return BinEntry(
             self.ord, self.bin_id, self.ofl, self.hluti, self.bmynd, self.mark
         )
 

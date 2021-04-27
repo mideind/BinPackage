@@ -34,7 +34,7 @@
     The database is assumed to be packed into a compressed binary file,
     which is wrapped inside the bincompress.py module.
 
-    Word meaning lookups are cached in Least Frequently Used (LFU) caches.
+    Word lookups are cached in Least Frequently Used (LFU) caches.
 
 """
 
@@ -58,12 +58,12 @@ from typing_extensions import Protocol
 from functools import lru_cache
 
 from .basics import (
-    BeygingFilter,
-    BinMeaning,
+    InflectionFilter,
+    BinEntry,
     Ksnid,
     LFU_Cache,
-    MeaningTuple,
-    make_bin_meaning,
+    BinEntryTuple,
+    make_bin_entry,
 )
 from .settings import (
     Settings,
@@ -79,21 +79,21 @@ from .bincompress import BinCompressed
 
 # Type definitions
 
-# Type variable allowing BinMeaning and Ksnid for its value
-_T = TypeVar("_T", BinMeaning, Ksnid)
+# Type variable allowing BinEntry and Ksnid for its value
+_T = TypeVar("_T", BinEntry, Ksnid)
 
 ResultTuple = Tuple[str, List[_T]]
 
-# A constructor that constructs either BinMeaning or Ksnid instances,
+# A constructor that constructs either BinEntry or Ksnid instances,
 # optionally copying data from an existing instance
-MeaningCtor = Callable[[str, int, str, str, str, str, Optional[_T]], _T]
+EntryCtor = Callable[[str, int, str, str, str, str, Optional[_T]], _T]
 
 TupleLookupFunc = Callable[[str], ResultTuple[_T]]
-MeaningFilterFunc = Callable[[Iterable[_T]], List[_T]]
+EntryFilterFunc = Callable[[Iterable[_T]], List[_T]]
 
-BinFilterFunc = MeaningFilterFunc[BinMeaning]
-BinMeaningList = List[BinMeaning]
-BinMeaningIterable = Iterable[BinMeaning]
+BinFilterFunc = EntryFilterFunc[BinEntry]
+BinEntryList = List[BinEntry]
+BinEntryIterable = Iterable[BinEntry]
 KsnidList = List[Ksnid]
 KsnidIterable = Iterable[Ksnid]
 
@@ -106,14 +106,14 @@ class LookupFunc(Protocol[_T]):
 # Annotate the case-casting function signature via a callback protocol
 # See https://www.python.org/dev/peps/pep-0544/#callback-protocols
 class CaseFunc(Protocol):
-    def __call__(self, w: str, **options: Any) -> BinMeaningList:
+    def __call__(self, w: str, **options: Any) -> BinEntryList:
         ...
 
 
 # Size of LRU/LFU caches for word lookups
 CACHE_SIZE = 512
 # Cache size for most common lookup function
-# (meanings of a particular word form)
+# (entries matching a particular word form)
 CACHE_SIZE_MEANINGS = 4096
 
 # The set of word subcategories (hluti) for person names
@@ -131,7 +131,7 @@ _OPEN_CATS = frozenset(("so", "kk", "hk", "kvk", "lo"))  # Open word categories
 
 # A dictionary of functions, one for each word category, that return
 # True for declension (mark) strings of canonical/lemma forms
-_LEMMA_FILTERS: Dict[str, BeygingFilter] = {
+_LEMMA_FILTERS: Dict[str, InflectionFilter] = {
     # Nouns: Nominative, singular
     "kk": lambda b: b == "NFET",
     "kvk": lambda b: b == "NFET",
@@ -158,7 +158,7 @@ class Bin:
     # Singleton instance of the compressed, memory-mapped BÍN
     _bc: Optional[BinCompressed] = None
 
-    # Singleton LFU cache for word meaning lookup
+    # Singleton LFU cache for word lookup
     _ksnid_cache: LFU_Cache[str, KsnidList] = LFU_Cache(maxsize=CACHE_SIZE_MEANINGS)
 
     def __init__(self, **options: bool) -> None:
@@ -193,7 +193,7 @@ class Bin:
     def _prefix_meanings(
         mlist: Iterable[_T],
         prefix: str,
-        ctor: MeaningCtor[_T],
+        ctor: EntryCtor[_T],
         *,
         insert_hyphen: bool = True,
         uppercase_suffix: bool = False
@@ -224,13 +224,13 @@ class Bin:
             for r in mlist
         ]
 
-    def _filter_meanings(self, mtlist: Iterable[MeaningTuple]) -> BinMeaningList:
-        """ Default mapping function to make BinMeaning instances
-            from MeaningTuples coming from BinCompressed """
+    def _filter_meanings(self, mtlist: Iterable[BinEntryTuple]) -> BinEntryList:
+        """ Default mapping function to make BinEntry instances
+            from EntryTuples coming from BinCompressed """
         assert self._bc is not None
         max_utg = self._bc.begin_greynir_utg
         return [
-            BinMeaning._make(mt)
+            BinEntry._make(mt)
             for mt in mtlist
             # Only return entries with bin_id numbers below the Greynir-specific mark,
             # i.e. skip entries that are Greynir-specific
@@ -239,26 +239,31 @@ class Bin:
 
     def _filter_ksnid(self, klist: Iterable[Ksnid]) -> KsnidList:
         """ Default mapping function to make Ksnid instances
-            from MeaningTuples coming from BinCompressed """
+            from EntryTuples coming from BinCompressed """
         assert self._bc is not None
         max_utg = self._bc.begin_greynir_utg
-        return [
+        m = [
             k
             for k in klist
             # Only return entries with bin_id numbers below the Greynir-specific mark,
             # and that don't have 'birting' set to 'G',
-            # i.e. skip entries that are Greynir-specific
+            # i.e. skip entries that are Greynir-specific.
+            # 'birting' equal to 'S' means a suffix (coming from ord.suffix.csv).
             if (k.bin_id < max_utg and k.birting != "G") or k.birting == "S"
         ]
+        # Sort the result so that words with a non-normal correctness grade
+        # (i.e. not 1) are returned after those with a normal grade
+        m.sort(key=lambda k: int(k.einkunn != 1) + int(k.beinkunn != 1))
+        return m
 
     def _ksnid_lookup(self, w: str) -> KsnidList:
-        """ Low-level fetch of the BIN meanings of a given word.
+        """ Low-level fetch of the BIN entries that match a given word.
             The output of this function is cached. """
         # Route the lookup request to the compressed binary file
         assert self._bc is not None
         mtlist = self._bc.lookup_ksnid(w)
         # If the lookup doesn't yield any results, [] is returned.
-        # Otherwise, map the query results to a BinMeaning tuple
+        # Otherwise, map the query results to a BinEntry tuple
         if not mtlist:
             return cast(KsnidList, [])
         return self._filter_ksnid(mtlist)
@@ -273,12 +278,12 @@ class Bin:
 
     def _meanings_cache_lookup(
         self, key: str, compound: bool = False
-    ) -> BinMeaningList:
+    ) -> BinEntryList:
         """ Attempt to lookup a word in the cache,
-            returning a list of BinMeanings """
+            returning a list of BinEntry instances """
         klist = self._ksnid_cache_lookup(key, compound=compound)
-        # Convert the cached ksnid list to a list of BinMeaning (SHsnid) tuples
-        return [k.to_bin_meaning() for k in klist]
+        # Convert the cached ksnid list to a list of BinEntry (SHsnid) tuples
+        return [k.to_bin_entry() for k in klist]
 
     def _compound_meanings(
         self,
@@ -286,9 +291,9 @@ class Bin:
         lower_w: str,
         at_sentence_start: bool,
         lookup_func: LookupFunc[_T],
-        ctor: MeaningCtor[_T],
+        ctor: EntryCtor[_T],
     ) -> ResultTuple[_T]:
-        """ Return a list of meanings of this word,
+        """ Return a list of matching entries for this word,
             when interpreted as a compound word """
         m: List[_T]
         if " " in w:
@@ -340,7 +345,7 @@ class Bin:
         # This looks like a compound word:
         # use the meaning of its last part
         prefix = "-".join(cw[0:-1])
-        # Lookup the potential meanings of the last part, setting
+        # Lookup the entries that match the last part, setting
         # the compound flag if we actually have a compound word
         m = lookup_func(cw[-1], compound=bool(prefix))
         if not m:
@@ -351,7 +356,7 @@ class Bin:
             # (it wouldn't be correct to capitalize verbs, adjectives, etc.)
             m = self.nouns(m)
         else:
-            # Only allows meanings from open word categories
+            # Only allows entries from open word categories
             # (nouns, verbs, adjectives, adverbs)
             m = self.open_cats(m)
         # Add the prefix to the remaining word lemmas
@@ -363,7 +368,7 @@ class Bin:
         at_sentence_start: bool,
         auto_uppercase: bool,
         lookup_func: LookupFunc[_T],
-        ctor: MeaningCtor[_T],
+        ctor: EntryCtor[_T],
     ) -> ResultTuple[_T]:
 
         """ Lookup a simple or compound word in the database and
@@ -399,12 +404,12 @@ class Bin:
                         # in GreynirPackage.
                         m = m_upper + m
                     else:
-                        # No lowercase forms: use the uppercase form and meanings
+                        # No lowercase forms: use the uppercase form and entries
                         m = m_upper
                     at_sentence_start = False  # No need for special case here
 
         if at_sentence_start or not m:
-            # No meanings found in database, or at sentence start
+            # No matching entries found in the database, or we're at sentence start
             # Try a lowercase version of the word, if different
             lower_w = w.lower()
             if lower_w != w:
@@ -415,7 +420,7 @@ class Bin:
                     # try the all-lowercase version
                     m = lookup_func(lower_w)
                     if m:
-                        # Only lower case meanings, so we modify w
+                        # Only lower case entries, so we modify w
                         w = lower_w
                 else:
                     # Be careful to make a new list here, not extend m
@@ -423,7 +428,7 @@ class Bin:
                     # cache and we don't want to mess the original up
                     # Note: the lowercase lookup result is intentionally put
                     # in front of the uppercase one, as we want go give
-                    # 'regular' lowercase meanings priority when matching
+                    # 'regular' lowercase entries priority when matching
                     # tokens to terminals. For example, 'Maður' and 'maður'
                     # are both in BÍN, the former as a place name ('örn'),
                     # but we want to give the regular, common lower case form
@@ -504,20 +509,20 @@ class Bin:
     @staticmethod
     def _cast_to_case(
         w: str,
-        lookup_func: TupleLookupFunc[BinMeaning],
+        lookup_func: TupleLookupFunc[BinEntry],
         case_func: CaseFunc,
-        meaning_filter_func: Optional[BinFilterFunc],
+        filter_func: Optional[BinFilterFunc],
     ) -> str:
         """ Return a word after casting it from nominative to another case,
             as returned by the case_func """
 
-        def score(m: BinMeaning) -> int:
+        def score(m: BinEntry) -> int:
             """ Return a score for a noun word form, based on the
                 [noun_preferences] section in Prefs.conf """
             sc = NounPreferences.DICT.get(m.bmynd.split("-")[-1])
             return 0 if sc is None else sc.get(m.ofl, 0)
 
-        mm: BinMeaningList
+        mm: BinEntryList
 
         # Begin by looking up the word form
         _, mm = lookup_func(w)
@@ -535,7 +540,7 @@ class Bin:
             elif "SB" in m_word.mark:
                 mm = [m for m in mm if "SB" in m.mark]
         else:
-            # Sort the possible meanings in reverse order by score
+            # Sort the matching entries in reverse order by score
             mm = sorted(mm, key=score, reverse=True)
             m_word = next(
                 (
@@ -559,7 +564,7 @@ class Bin:
                 mm = case_func(cw[-1], cat=m_word.ofl, lemma=m_word.ord.split("-")[-1])
                 # Add the prefix to the remaining word lemmas
                 mm = Bin._prefix_meanings(
-                    mm, prefix, make_bin_meaning, insert_hyphen=False
+                    mm, prefix, make_bin_entry, insert_hyphen=False
                 )
             else:
                 mm = case_func(w, cat=m_word.ofl, lemma=m_word.ord)
@@ -575,8 +580,8 @@ class Bin:
                 # Restrict to plural
                 mm = [m for m in mm if "FT" in m.mark]
             # Apply further filtering, if desired
-            if meaning_filter_func is not None:
-                mm = meaning_filter_func(mm)
+            if filter_func is not None:
+                mm = filter_func(mm)
             if mm:
                 o = mm[0].bmynd
                 # Imitate the case of the original word
@@ -603,32 +608,32 @@ class Bin:
 
     @staticmethod
     def open_cats(mlist: Iterable[_T]) -> List[_T]:
-        """ Return a list of meanings filtered down to
+        """ Return a list of entries filtered down to
             open (extensible) word categories """
         return [mm for mm in mlist if mm.ofl in _OPEN_CATS]
 
     @staticmethod
     def nouns(mlist: Iterable[_T]) -> List[_T]:
-        """ Return a list of meanings filtered down to noun categories (kk, kvk, hk) """
+        """ Return a list of entries filtered down to noun categories (kk, kvk, hk) """
         return [mm for mm in mlist if mm.ofl in _NOUNS]
 
     def lookup(
         self, w: str, at_sentence_start: bool = False, auto_uppercase: bool = False
-    ) -> ResultTuple[BinMeaning]:
-        """ Given a word form, look up all its possible meanings.
+    ) -> ResultTuple[BinEntry]:
+        """ Given a word form, look up all matching entries.
             This is the main query function of the Bin class. """
         return self._lookup(
             w,
             at_sentence_start,
             auto_uppercase,
             self._meanings_cache_lookup,
-            make_bin_meaning,
+            make_bin_entry,
         )
 
     def lookup_ksnid(
         self, w: str, at_sentence_start: bool = False, auto_uppercase: bool = False
     ) -> ResultTuple[Ksnid]:
-        """ Given a word form, look up all its possible meanings in Ksnid form. """
+        """ Given a word form, look up all matchin entries in Ksnid form. """
         return self._lookup(
             w, at_sentence_start, auto_uppercase, self._ksnid_cache_lookup, Ksnid.make,
         )
@@ -650,7 +655,7 @@ class Bin:
         )
         return set((mm.ord, mm.ofl) for mm in m)
 
-    def lookup_forms(self, lemma: str, cat: str, case: str) -> BinMeaningList:
+    def lookup_forms(self, lemma: str, cat: str, case: str) -> BinEntryList:
         """ Lookup all word forms in the indicated case, of the given lemma.
             This is mainly used to retrieve inflection forms of nouns, where
             we want to retrieve singular and plural, definite and indefinite
@@ -666,15 +671,15 @@ class Bin:
         self,
         w: str,
         cat: str,
-        to_beyging: Union[str, Tuple[str, ...]],
+        to_inflection: Union[str, Tuple[str, ...]],
         *,
         lemma: Optional[str] = None,
         bin_id: Optional[int] = None,
-        beyging_filter: Optional[BeygingFilter] = None
+        inflection_filter: Optional[InflectionFilter] = None
     ) -> KsnidList:
         """ Lookup grammatical variants of the given word with the
             indicated category, converting PoS tags to the one(s) given
-            in the to_beyging parameter. """
+            in the to_inflection parameter. """
 
         assert self._bc is not None
         bc: BinCompressed = self._bc
@@ -686,10 +691,10 @@ class Bin:
             mset = bc.lookup_variants(
                 key,
                 cat,
-                to_beyging,
+                to_inflection,
                 lemma,
                 None if compound else bin_id,
-                beyging_filter,
+                inflection_filter,
             )
             klist = self._filter_ksnid(mset)
             return [k for k in klist if compound or k.birting != "S"]
@@ -697,18 +702,18 @@ class Bin:
         _, m = self._lookup(w, False, False, variant_lookup, Ksnid.make)
         return m
 
-    def lemma_meanings(self, lemma: str) -> ResultTuple[BinMeaning]:
-        """ Given a word, look up all its possible meanings as a lemma """
+    def lemma_entries(self, lemma: str) -> ResultTuple[BinEntry]:
+        """ Given a string, look up all entries matching it as a lemma """
         # Note: we consider middle voice infinitive verbs to be lemmas,
         # i.e. 'eignast' is recognized as a lemma as well as 'eigna'.
         # This is done for consistency, as some middle voice verbs have
         # their own separate lemmas in BÍN, such as 'ábyrgjast'.
-        final_w, meanings = self.lookup(lemma)
+        final_w, entries = self.lookup(lemma)
 
-        def match(m: BinMeaning) -> bool:
-            """ Return True for meanings that are canonical as lemmas """
+        def match(m: BinEntry) -> bool:
+            """ Return True for entries that are canonical as lemmas """
             if m.ofl == "so" and m.mark == "MM-NH":
-                # This is a middle voice verb infinitive meaning
+                # This is a middle voice verb infinitive form
                 # ('eignast', 'komast'): accept it as a lemma
                 return True
             if m.ord.replace("-", "") != final_w:
@@ -717,43 +722,46 @@ class Bin:
             # Do a check of the canonical lemma inflection forms
             return _LEMMA_FILTERS.get(m.ofl, lambda _: True)(m.mark)
 
-        return final_w, [m for m in meanings if match(m)]
+        return final_w, [m for m in entries if match(m)]
+
+    # Backwards compatibility only
+    lemma_meanings = lemma_entries
 
     @lru_cache(maxsize=CACHE_SIZE)
-    def lookup_raw_nominative(self, w: str) -> BinMeaningList:
-        """ Return a set of meaning tuples for all word forms in nominative case.
+    def lookup_raw_nominative(self, w: str) -> BinEntryList:
+        """ Return a set of BinEntry tuples for all word forms in nominative case.
             The set is unfiltered except for the presence of 'NF' in the mark
             field. For new code, lookup_nominative() is likely to be a
             more efficient choice. """
         assert self._bc is not None
         return self._filter_meanings(self._bc.raw_nominative(w))
 
-    def lookup_nominative(self, w: str, **options: Any) -> BinMeaningList:
-        """ Return meaning tuples for all word forms in nominative
+    def lookup_nominative(self, w: str, **options: Any) -> BinEntryList:
+        """ Return BinEntry tuples for all word forms in nominative
             case for all { kk, kvk, hk, lo } category lemmas of the given word """
         assert self._bc is not None
         return self._filter_meanings(self._bc.nominative(w, **options))
 
-    def lookup_accusative(self, w: str, **options: Any) -> BinMeaningList:
-        """ Return meaning tuples for all word forms in accusative
+    def lookup_accusative(self, w: str, **options: Any) -> BinEntryList:
+        """ Return BinEntry tuples for all word forms in accusative
             case for all { kk, kvk, hk, lo } category lemmas of the given word """
         assert self._bc is not None
         return self._filter_meanings(self._bc.accusative(w, **options))
 
-    def lookup_dative(self, w: str, **options: Any) -> BinMeaningList:
-        """ Return meaning tuples for all word forms in dative
+    def lookup_dative(self, w: str, **options: Any) -> BinEntryList:
+        """ Return BinEntry tuples for all word forms in dative
             case for all { kk, kvk, hk, lo } category lemmas of the given word """
         assert self._bc is not None
         return self._filter_meanings(self._bc.dative(w, **options))
 
-    def lookup_genitive(self, w: str, **options: Any) -> BinMeaningList:
-        """ Return meaning tuples for all word forms in genitive
+    def lookup_genitive(self, w: str, **options: Any) -> BinEntryList:
+        """ Return BinEntry tuples for all word forms in genitive
             case for all { kk, kvk, hk, lo } category lemmas of the given word """
         assert self._bc is not None
         return self._filter_meanings(self._bc.genitive(w, **options))
 
     def cast_to_accusative(
-        self, w: str, *, meaning_filter_func: Optional[BinFilterFunc] = None
+        self, w: str, *, filter_func: Optional[BinFilterFunc] = None
     ) -> str:
         """ Cast a word from nominative to accusative case, or return it
             unchanged if it is not inflectable by case. """
@@ -765,11 +773,11 @@ class Bin:
             w,
             self.lookup,
             self.lookup_accusative,
-            meaning_filter_func=meaning_filter_func,
+            filter_func=filter_func,
         )
 
     def cast_to_dative(
-        self, w: str, *, meaning_filter_func: Optional[BinFilterFunc] = None
+        self, w: str, *, filter_func: Optional[BinFilterFunc] = None
     ) -> str:
         """ Cast a word from nominative to dative case, or return it
             unchanged if it is not inflectable by case. """
@@ -778,11 +786,11 @@ class Bin:
         # an adjective is being used with an indefinite or definite noun,
         # or whether a word such as 'við' is actually a preposition.
         return self._cast_to_case(
-            w, self.lookup, self.lookup_dative, meaning_filter_func=meaning_filter_func,
+            w, self.lookup, self.lookup_dative, filter_func=filter_func,
         )
 
     def cast_to_genitive(
-        self, w: str, *, meaning_filter_func: Optional[BinFilterFunc] = None
+        self, w: str, *, filter_func: Optional[BinFilterFunc] = None
     ) -> str:
         """ Cast a word from nominative to genitive case, or return it
             unchanged if it is not inflectable by case. """
@@ -794,7 +802,7 @@ class Bin:
             w,
             self.lookup,
             self.lookup_genitive,
-            meaning_filter_func=meaning_filter_func,
+            filter_func=filter_func,
         )
 
 
@@ -821,15 +829,15 @@ class GreynirBin(Bin):
             GreynirBin.bin_deletions = BinDeletions.SET
             GreynirBin.bin_errata = BinErrata.DICT
 
-    def _filter_meanings(self, mtlist: Iterable[MeaningTuple]) -> BinMeaningList:
+    def _filter_meanings(self, mtlist: Iterable[BinEntryTuple]) -> BinEntryList:
         """ Override the default straight-through translation of
-            a MeaningTuple from BinCompressed over to a BinMeaning
+            a BinEntryTuple from BinCompressed over to a BinEntry
             returned from Bin/GreynirBin """
-        result: BinMeaningList = []
+        result: BinEntryList = []
         for mt in mtlist:
             if (mt[0], mt[2], mt[3]) in self.bin_deletions:
-                # The bmynd field contains a space or the (ord, ofl, hluti)
-                # combination is marked for deletion in BinErrata.conf:
+                # The (ord, ofl, hluti) combination is marked
+                # for deletion in BinErrata.conf:
                 # This meaning is not visible to Greynir
                 continue
             m: List[Union[str, int]] = list(mt)
@@ -850,7 +858,7 @@ class GreynirBin(Bin):
             # Apply a fix if we have one for this particular (lemma, ofl) combination
             assert self.bin_errata is not None
             m[3] = self.bin_errata.get((mt[0], cast(str, m[2])), mt[3])
-            result.append(BinMeaning._make(m))
+            result.append(BinEntry._make(m))
         return result
 
     def _filter_ksnid(self, klist: Iterable[Ksnid]) -> KsnidList:
@@ -859,8 +867,8 @@ class GreynirBin(Bin):
         result: KsnidList = []
         for k in klist:
             if (k.ord, k.ofl, k.hluti) in self.bin_deletions:
-                # The bmynd field contains a space or the (ord, ofl, hluti)
-                # combination is marked for deletion in BinErrata.conf:
+                # The (ord, ofl, hluti) combination is marked
+                # for deletion in BinErrata.conf:
                 # This meaning is not visible to Greynir
                 continue
             # Convert uninflectable indicator to "-" for compatibility
@@ -889,7 +897,9 @@ class GreynirBin(Bin):
             means less priority. """
         if m.ofl != "so":
             # Not a verb: Prioritize forms with non-NULL bin_id
-            return int(m.bin_id == 0)  # 1 if bin_id is 0, or 0 otherwise
+            # +1 if bin_id is 0, or 0 otherwise
+            # +1 if einkunn (grammatical correctness grade) is not 1 (normal)
+            return int(m.bin_id == 0) + int(m.einkunn != 1)
         # Verb priorities
         # Order "VH" verbs (viðtengingarháttur) after other forms
         # Also order past tense ("ÞT") after present tense
@@ -902,7 +912,7 @@ class GreynirBin(Bin):
 
     def _ksnid_lookup(self, w: str) -> KsnidList:
         """ Override the Bin _ksnid_lookup() function to order the
-            returned meanings by priority. The output of this
+            returned entries by priority. The output of this
             function is cached. """
         m = super()._ksnid_lookup(w)
         if not m:
@@ -910,11 +920,11 @@ class GreynirBin(Bin):
         stem_prefs = StemPreferences.DICT.get(w)
         if stem_prefs is not None:
             # We have a preferred lemma for this word form:
-            # cut off meanings based on other lemmas
+            # cut off entries based on other lemmas
             worse, _ = stem_prefs
             m = [mm for mm in m if mm.ord not in worse]
 
-        # Order the meanings by priority, so that the most
+        # Order the returned entries by priority, so that the most
         # common/likely ones are first in the list and thus
         # matched more readily than the less common ones
         m.sort(key=self._priority)
@@ -926,9 +936,8 @@ _T_Orð = TypeVar("_T_Orð", bound="Orð")
 
 class Orð:
 
-    """ Encapsulates an Icelandic word along with its BÍN meanings,
-        allowing easy generation of inflectional variants
-        via a __format__() method """
+    """ Encapsulates an Icelandic word along with its matching vocabulary entries,
+        allowing easy generation of inflectional variants via a __format__() method """
 
     _b: Optional[GreynirBin] = None
 
@@ -973,8 +982,8 @@ class Orð:
         return self._key
 
     @property
-    def meanings(self) -> KsnidList:
-        """ Return a list of possible meanings, according to BÍN """
+    def entries(self) -> KsnidList:
+        """ Return a list of matching entries, according to BÍN """
         return self._m
 
     @property
@@ -1014,11 +1023,11 @@ class Orð:
             # Not found in BÍN or no format specification: can't inflect
             return self.word
         # We allow both hyphen and underscore as variant separators
-        to_beyging = tuple(f.strip() for f in re.split(r"[-_]", format_spec))
+        to_inflection = tuple(f.strip() for f in re.split(r"[-_]", format_spec))
         bin_id = self.bin_id
         assert self._b is not None
         # Look up the inflectional variant(s)
-        v = self._b.lookup_variants(self.word, self.ofl, to_beyging, bin_id=bin_id)
+        v = self._b.lookup_variants(self.word, self.ofl, to_inflection, bin_id=bin_id)
         if not v:
             # No such variants: return the original word
             return self.word

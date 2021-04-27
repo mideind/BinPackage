@@ -144,9 +144,9 @@ import struct
 from collections import defaultdict
 
 from islenska.basics import (
-    BinMeaning,
+    BinEntry,
     Ksnid,
-    MeaningTuple,
+    BinEntryTuple,
     BIN_COMPRESSOR_VERSION,
     BIN_COMPRESSED_FILE,
     LEMMA_MAX,
@@ -468,7 +468,7 @@ class BinCompressor:
         assert COMMON_KIX_1 == common_kix_1
 
     @staticmethod
-    def fix_bugs(m: Union[BinMeaning, Ksnid]) -> bool:
+    def fix_bugs(m: Union[BinEntry, Ksnid]) -> bool:
         """ Fix known bugs in BÍN. Return False if the record should
             be skipped entirely; otherwise True. """
         if not m.ord or not m.bmynd or m.bmynd in {"num", "ir", "irnir", "i", "ina"}:
@@ -647,7 +647,7 @@ class BinCompressor:
             print("The alphabet is '{0!r}'".format(self._alphabet_bytes))
             print("It contains {0} characters".format(len(self._alphabet_bytes)))
 
-    def lookup(self, form: str) -> List[MeaningTuple]:
+    def lookup(self, form: str) -> List[BinEntryTuple]:
         """ Test lookup of SHsnid tuples from uncompressed data """
         form_latin = form.encode("latin-1")
         try:
@@ -942,12 +942,12 @@ class BinCompressor:
             num_meanings = len(self._lookup_form[fix])
             assert num_meanings > 0
             # Bucket the meanings by lemma index
-            lemma_meanings: DefaultDict[int, List[Tuple[int, int]]] = defaultdict(list)
+            lemma_entries: DefaultDict[int, List[Tuple[int, int]]] = defaultdict(list)
             for six, mix, kix in self._lookup_form[fix]:
-                lemma_meanings[six].append((mix, kix))
+                lemma_entries[six].append((mix, kix))
             # Index of the meaning being written
             ix = 0
-            for six, mlist in lemma_meanings.items():
+            for six, mlist in lemma_entries.items():
                 # Allocate bits for the lemma index
                 assert six < LEMMA_MAX
                 for mix, kix in mlist:

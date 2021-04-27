@@ -32,7 +32,7 @@
 
 from typing import Optional, Callable, List
 
-from islenska import Bin, BinMeaning, BinFilterFunc
+from islenska import Bin, BinEntry, BinFilterFunc
 from islenska.bincompress import BinCompressed
 from islenska.bindb import GreynirBin
 
@@ -103,20 +103,20 @@ def test_bin() -> None:
         case: str,
         lemma: str,
         cat: str,
-        beyging_filter: Optional[BeygingFunc] = None,
+        inflection_filter: Optional[BeygingFunc] = None,
     ):
-        meanings = b.lookup_case(
-            word, case, cat=cat, lemma=lemma, beyging_filter=beyging_filter
+        entries = b.lookup_case(
+            word, case, cat=cat, lemma=lemma, inflection_filter=inflection_filter
         )
-        return {(m[4], m[5]) for m in meanings}
+        return {(m[4], m[5]) for m in entries}
 
     def declension(
-        word: str, lemma: str, cat: str, beyging_filter: Optional[BeygingFunc] = None
+        word: str, lemma: str, cat: str, inflection_filter: Optional[BeygingFunc] = None
     ):
         result: List[str] = []
 
         def bf(b: str):
-            if beyging_filter is not None and not beyging_filter(b):
+            if inflection_filter is not None and not inflection_filter(b):
                 return False
             return "2" not in b and "3" not in b
 
@@ -288,57 +288,57 @@ def test_bin() -> None:
 def test_bindb() -> None:
     db = GreynirBin()
     # Test the lemma lookup functionality
-    w, m = db.lemma_meanings("eignast")
+    w, m = db.lemma_entries("eignast")
     assert w == "eignast"
     assert len(m) > 0
     assert m[0].ord == "eigna"
-    w, m = db.lemma_meanings("ábyrgjast")
+    w, m = db.lemma_entries("ábyrgjast")
     assert w == "ábyrgjast"
     assert len(m) > 0
     assert m[0].ord == "ábyrgjast"
-    w, m = db.lemma_meanings("ábyrgja")
+    w, m = db.lemma_entries("ábyrgja")
     assert w == "ábyrgja"
     assert len(m) > 0
     assert m[0].ord == "á-byrgja"
-    w, m = db.lemma_meanings("ábyrgir")
+    w, m = db.lemma_entries("ábyrgir")
     assert w == "ábyrgir"
     assert len(m) == 0
-    w, m = db.lemma_meanings("stór")
+    w, m = db.lemma_entries("stór")
     assert w == "stór"
     assert len(m) > 0
     assert m[0].ord == "stór"
-    w, m = db.lemma_meanings("stórar")
+    w, m = db.lemma_entries("stórar")
     assert w == "stórar"
     assert len(m) == 0
-    w, m = db.lemma_meanings("sig")
+    w, m = db.lemma_entries("sig")
     assert w == "sig"
     assert len(m) > 0
     assert any(mm.ofl == "abfn" for mm in m)
-    w, m = db.lemma_meanings("sér")
+    w, m = db.lemma_entries("sér")
     assert w == "sér"
     assert len(m) > 0
     assert not any(mm.ofl == "abfn" for mm in m)
-    w, m = db.lemma_meanings("hann")
+    w, m = db.lemma_entries("hann")
     assert w == "hann"
     assert len(m) > 0
     assert any(mm.ofl == "pfn" for mm in m)
-    w, m = db.lemma_meanings("hán")
+    w, m = db.lemma_entries("hán")
     assert w == "hán"
     assert len(m) > 0
     assert any(mm.ofl == "pfn" for mm in m)
-    w, m = db.lemma_meanings("háns")
+    w, m = db.lemma_entries("háns")
     assert w == "háns"
     assert len(m) == 0
-    w, m = db.lemma_meanings("hinn")
+    w, m = db.lemma_entries("hinn")
     assert w == "hinn"
     assert len(m) > 0
     assert any(mm.ofl == "gr" for mm in m)
-    w, m = db.lemma_meanings("einn")
+    w, m = db.lemma_entries("einn")
     assert w == "einn"
     assert len(m) > 0
     assert any(mm.ofl == "lo" for mm in m)
     assert any(mm.ofl == "fn" for mm in m)
-    w, m = db.lemma_meanings("núll")
+    w, m = db.lemma_entries("núll")
     assert w == "núll"
     assert len(m) > 0
     assert any(mm.ofl == "töl" for mm in m)
@@ -598,9 +598,9 @@ def test_casting() -> None:
     assert db.cast_to_genitive("Kattarhestur") == "Kattarhests"
 
     f: BinFilterFunc = lambda mm: [m for m in mm if "2" not in m.mark]
-    assert db.cast_to_accusative("fjórir", meaning_filter_func=f) == "fjóra"
-    assert db.cast_to_dative("fjórir", meaning_filter_func=f) == "fjórum"
-    assert db.cast_to_genitive("fjórir", meaning_filter_func=f) == "fjögurra"
+    assert db.cast_to_accusative("fjórir", filter_func=f) == "fjóra"
+    assert db.cast_to_dative("fjórir", filter_func=f) == "fjórum"
+    assert db.cast_to_genitive("fjórir", filter_func=f) == "fjögurra"
 
     assert db.cast_to_accusative("Suður-Afríka") == "Suður-Afríku"
     assert db.cast_to_dative("Suður-Afríka") == "Suður-Afríku"
@@ -613,9 +613,9 @@ def test_casting() -> None:
     f: BinFilterFunc = lambda mm: sorted(
         mm, key=lambda m: "2" in m.mark or "3" in m.mark
     )
-    assert db.cast_to_accusative("Kópavogur", meaning_filter_func=f) == "Kópavog"
-    assert db.cast_to_dative("Kópavogur", meaning_filter_func=f) == "Kópavogi"
-    assert db.cast_to_genitive("Kópavogur", meaning_filter_func=f) == "Kópavogs"
+    assert db.cast_to_accusative("Kópavogur", filter_func=f) == "Kópavog"
+    assert db.cast_to_dative("Kópavogur", filter_func=f) == "Kópavogi"
+    assert db.cast_to_genitive("Kópavogur", filter_func=f) == "Kópavogs"
 
     assert (
         db.cast_to_genitive("borgarstjórnarofurmeirihlutinn")
@@ -625,7 +625,7 @@ def test_casting() -> None:
 
 def test_forms():
     db = Bin()
-    l: List[BinMeaning]
+    l: List[BinEntry]
     l = db.lookup_forms("köttur", "kvk", "nf")
     assert len(l) == 0
     l = db.lookup_forms("köttur", "kzk", "nf")
@@ -715,7 +715,7 @@ def test_variants() -> None:
         "so",
         ("VH", "FT", "NT", "1P"),
         lemma="fara",
-        beyging_filter=lambda b: "OP" not in b,
+        inflection_filter=lambda b: "OP" not in b,
     )
     assert all(mm.bmynd == "förum" for mm in m)
     m = b.lookup_variants(
@@ -723,7 +723,7 @@ def test_variants() -> None:
         "so",
         ("VH", "FT", "ÞT", "1P"),
         lemma="fara",
-        beyging_filter=lambda b: "OP" not in b,
+        inflection_filter=lambda b: "OP" not in b,
     )
     assert all(mm.bmynd == "færum" for mm in m)
     m = b.lookup_variants(
@@ -731,7 +731,7 @@ def test_variants() -> None:
         "so",
         ("vh", "ft", "þt", "p1"),
         lemma="fara",
-        beyging_filter=lambda b: "OP" not in b,
+        inflection_filter=lambda b: "OP" not in b,
     )
     assert all(mm.bmynd == "færum" for mm in m)
     m = b.lookup_variants("fór", "so", ("NT",), lemma="fara")
@@ -745,7 +745,7 @@ def test_variants() -> None:
         "so",
         ("MM", "NT", "2P", "FT"),
         lemma="fara",
-        beyging_filter=lambda b: "OP" not in b,
+        inflection_filter=lambda b: "OP" not in b,
     )
     assert all(mm.bmynd == "farist" for mm in m)
     m = b.lookup_variants(
@@ -753,7 +753,7 @@ def test_variants() -> None:
         "so",
         ("MM", "NT", "p2", "FT"),
         lemma="fara",
-        beyging_filter=lambda b: "OP" not in b,
+        inflection_filter=lambda b: "OP" not in b,
     )
     assert all(mm.bmynd == "farist" for mm in m)
     m = b.lookup_variants("skrifar", "so", ("ÞT", "1P"))
@@ -822,6 +822,12 @@ def test_variants() -> None:
     assert m[0].bmynd == "sjóntækjafræðinganna"
 
 
+def test_sorting() -> None:
+    b = Bin()
+    assert b.lookup_ksnid("arfa")[1][0].ofl == "kk"
+    assert b.lookup_ksnid("arfa")[1][-1].ofl == "kvk"
+
+
 if __name__ == "__main__":
 
     test_lookup()
@@ -831,3 +837,4 @@ if __name__ == "__main__":
     test_legur()
     test_casting()
     test_forms()
+    test_sorting()

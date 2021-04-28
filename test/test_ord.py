@@ -138,5 +138,5 @@ def test_ord() -> None:
     assert f"{g:kk_nf_ft} {l:kk_fvb_ft} {b:ft}" == "Hinir íslensku draumar"
 
     b = Orð("draumsýn")
-    assert f"{g:kvk_nf} {l:kvk_fvb_et} {b}" == "Hin íslenska draumsýn"
-    assert f"{g:kvk_nf_ft} {l:kvk_fvb_ft} {b:ft}" == "Hinar íslensku draumsýnir"
+    assert f"{g:kvk_nf} {l:kvk_fvb_et} {b:nf_et}" == "Hin íslenska draumsýn"
+    assert f"{g:kvk_nf_ft} {l:kvk_fvb_ft} {b:nf_ft}" == "Hinar íslensku draumsýnir"

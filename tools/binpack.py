@@ -942,12 +942,12 @@ class BinCompressor:
             num_meanings = len(self._lookup_form[fix])
             assert num_meanings > 0
             # Bucket the meanings by lemma index
-            lemma_entries: DefaultDict[int, List[Tuple[int, int]]] = defaultdict(list)
+            lookup_lemmas: DefaultDict[int, List[Tuple[int, int]]] = defaultdict(list)
             for six, mix, kix in self._lookup_form[fix]:
-                lemma_entries[six].append((mix, kix))
+                lookup_lemmas[six].append((mix, kix))
             # Index of the meaning being written
             ix = 0
-            for six, mlist in lemma_entries.items():
+            for six, mlist in lookup_lemmas.items():
                 # Allocate bits for the lemma index
                 assert six < LEMMA_MAX
                 for mix, kix in mlist:

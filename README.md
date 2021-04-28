@@ -257,7 +257,7 @@ to dative case, commonly used in addresses.
 ```python
 >>> from islenska import Bin
 >>> b = Bin()
->>> m = b.lookup_variants("fallegur", "lo", ("EVB", "HK", "FT"))
+>>> m = b.lookup_variants("fallegur", "lo", ("EVB", "HK", "NF", "FT"))
 >>> # m contains a list of all inflectional forms that meet the given
 >>> # criteria. In this example, we use the first form in the list.
 >>> adj = m[0].bmynd
@@ -266,8 +266,8 @@ to dative case, commonly used in addresses.
 ```
 
 Here, we obtained the superlative degree, weak form (`EVB`, *efsta stig*,
-*veik beyging*), neutral gender (`HK`), plural (`FT`), of the adjective (`lo`)
-*fallegur* and used it in a sentence.
+*veik beyging*), neutral gender (`HK`), nominative case (`NF`), plural (`FT`),
+of the adjective (`lo`) *fallegur* and used it in a sentence.
 
 # Documentation
 
@@ -649,35 +649,35 @@ match the grammatical features requested in `to_inflection`. If no such
 instances exist, an empty list is returned.
 
 
-## `lemma_entries()` function
+## `lookup_lemmas()` function
 
 To look up all entries having the given string as a lemma/headword,
-call the `lemma_entries` function:
+call the `lookup_lemmas` function:
 
 ```python
->>> b.lemma_entries("þyrla")
+>>> b.lookup_lemmas("þyrla")
 ('þyrla', [
     (ord='þyrla', kvk/alm/16445, bmynd='þyrla', NFET),  # Feminine noun
     (ord='þyrla', so/alm/425096, bmynd='þyrla', GM-NH)  # Verb
 ])
->>> b.lemma_entries("þyrlast")
+>>> b.lookup_lemmas("þyrlast")
 ('þyrlast', [
     (ord='þyrla', so/alm/425096, bmynd='þyrlast', MM-NH)  # Middle voice infinitive
 ])
->>> b.lemma_entries("þyrlan")
+>>> b.lookup_lemmas("þyrlan")
 ('þyrlan', [])
 ```
 
 The function returns a `Tuple[str, List[BinEntry]]` like `lookup()`,
 but where the `BinEntry` list
 has been filtered to include only lemmas/headwords. This is the reason why
-`b.lemma_entries("þyrlan")` returns an empty list in the example above -
+`b.lookup_lemmas("þyrlan")` returns an empty list in the example above -
 *þyrlan* does not appear in BÍN as a lemma/headword.
 
 Lemmas/headwords of verbs include the middle voice (*miðmynd*) of the
 infinitive, `MM-NH`, as in the example for *þyrlast*.
 
-`lemma_entries()` has a single parameter:
+`lookup_lemmas()` has a single parameter:
 
 | Name | Type | Default | Description |
 |------|------|---------|-------------|

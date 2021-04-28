@@ -288,57 +288,57 @@ def test_bin() -> None:
 def test_bindb() -> None:
     db = GreynirBin()
     # Test the lemma lookup functionality
-    w, m = db.lemma_entries("eignast")
+    w, m = db.lookup_lemmas("eignast")
     assert w == "eignast"
     assert len(m) > 0
     assert m[0].ord == "eigna"
-    w, m = db.lemma_entries("ábyrgjast")
+    w, m = db.lookup_lemmas("ábyrgjast")
     assert w == "ábyrgjast"
     assert len(m) > 0
     assert m[0].ord == "ábyrgjast"
-    w, m = db.lemma_entries("ábyrgja")
+    w, m = db.lookup_lemmas("ábyrgja")
     assert w == "ábyrgja"
     assert len(m) > 0
     assert m[0].ord == "á-byrgja"
-    w, m = db.lemma_entries("ábyrgir")
+    w, m = db.lookup_lemmas("ábyrgir")
     assert w == "ábyrgir"
     assert len(m) == 0
-    w, m = db.lemma_entries("stór")
+    w, m = db.lookup_lemmas("stór")
     assert w == "stór"
     assert len(m) > 0
     assert m[0].ord == "stór"
-    w, m = db.lemma_entries("stórar")
+    w, m = db.lookup_lemmas("stórar")
     assert w == "stórar"
     assert len(m) == 0
-    w, m = db.lemma_entries("sig")
+    w, m = db.lookup_lemmas("sig")
     assert w == "sig"
     assert len(m) > 0
     assert any(mm.ofl == "abfn" for mm in m)
-    w, m = db.lemma_entries("sér")
+    w, m = db.lookup_lemmas("sér")
     assert w == "sér"
     assert len(m) > 0
     assert not any(mm.ofl == "abfn" for mm in m)
-    w, m = db.lemma_entries("hann")
+    w, m = db.lookup_lemmas("hann")
     assert w == "hann"
     assert len(m) > 0
     assert any(mm.ofl == "pfn" for mm in m)
-    w, m = db.lemma_entries("hán")
+    w, m = db.lookup_lemmas("hán")
     assert w == "hán"
     assert len(m) > 0
     assert any(mm.ofl == "pfn" for mm in m)
-    w, m = db.lemma_entries("háns")
+    w, m = db.lookup_lemmas("háns")
     assert w == "háns"
     assert len(m) == 0
-    w, m = db.lemma_entries("hinn")
+    w, m = db.lookup_lemmas("hinn")
     assert w == "hinn"
     assert len(m) > 0
     assert any(mm.ofl == "gr" for mm in m)
-    w, m = db.lemma_entries("einn")
+    w, m = db.lookup_lemmas("einn")
     assert w == "einn"
     assert len(m) > 0
     assert any(mm.ofl == "lo" for mm in m)
     assert any(mm.ofl == "fn" for mm in m)
-    w, m = db.lemma_entries("núll")
+    w, m = db.lookup_lemmas("núll")
     assert w == "núll"
     assert len(m) > 0
     assert any(mm.ofl == "töl" for mm in m)

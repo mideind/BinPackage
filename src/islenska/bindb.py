@@ -38,7 +38,6 @@
 
 """
 
-import re
 from typing import (
     Any,
     Optional,
@@ -55,6 +54,7 @@ from typing import (
 )
 from typing_extensions import Protocol
 
+import re
 from functools import lru_cache
 
 from .basics import (
@@ -702,7 +702,7 @@ class Bin:
         _, m = self._lookup(w, False, False, variant_lookup, Ksnid.make)
         return m
 
-    def lemma_entries(self, lemma: str) -> ResultTuple[BinEntry]:
+    def lookup_lemmas(self, lemma: str) -> ResultTuple[BinEntry]:
         """ Given a string, look up all entries matching it as a lemma """
         # Note: we consider middle voice infinitive verbs to be lemmas,
         # i.e. 'eignast' is recognized as a lemma as well as 'eigna'.
@@ -725,7 +725,7 @@ class Bin:
         return final_w, [m for m in entries if match(m)]
 
     # Backwards compatibility only
-    lemma_meanings = lemma_entries
+    lemma_meanings = lookup_lemmas
 
     @lru_cache(maxsize=CACHE_SIZE)
     def lookup_raw_nominative(self, w: str) -> BinEntryList:

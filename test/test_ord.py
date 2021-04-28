@@ -66,27 +66,27 @@ def test_ord() -> None:
     assert f"Hún {o:VH-ÞT-3P-ET} bókina" == "Hún læsi bókina"
 
     l = Orð("frábær", "lo")
-    assert f"Þessi pakki er alveg {l:kk-et-fsb}!" == "Þessi pakki er alveg frábær!"
-    assert f"Þessir pakkar eru alveg {l:kk-ft-fsb}!" == "Þessir pakkar eru alveg frábærir!"
+    assert f"Þessi pakki er alveg {l:kk-nf-et-fsb}!" == "Þessi pakki er alveg frábær!"
+    assert f"Þessir pakkar eru alveg {l:kk-nf-ft-fsb}!" == "Þessir pakkar eru alveg frábærir!"
 
-    assert f"Þessi {b:nf} er alveg {l:kvk-et-fsb}!" == "Þessi bók er alveg frábær!"
-    assert f"Þessar {b:nf-ft} eru alveg {l:kvk-ft-fsb}!" == "Þessar bækur eru alveg frábærar!"
+    assert f"Þessi {b:nf} er alveg {l:kvk-nf-et-fsb}!" == "Þessi bók er alveg frábær!"
+    assert f"Þessar {b:nf-ft} eru alveg {l:kvk-nf-ft-fsb}!" == "Þessar bækur eru alveg frábærar!"
 
-    assert f"Þessi {b:nf} er {l:kvk-et-esb}!" == "Þessi bók er frábærust!"
-    assert f"Þessar {b:nf-ft} eru {l:kvk-ft-esb}!" == "Þessar bækur eru frábærastar!"
+    assert f"Þessi {b:nf} er {l:kvk-nf-et-esb}!" == "Þessi bók er frábærust!"
+    assert f"Þessar {b:nf-ft} eru {l:kvk-nf-ft-esb}!" == "Þessar bækur eru frábærastar!"
 
     b = Orð("Bók")
 
-    assert f"{b:nf} er {l:kvk-et-esb}!" == "Bók er frábærust!"
-    assert f"{b:nf-ft} eru {l:kvk-ft-esb}!" == "Bækur eru frábærastar!"
+    assert f"{b:nf} er {l:kvk-nf-et-esb}!" == "Bók er frábærust!"
+    assert f"{b:nf-ft} eru {l:kvk-nf-ft-esb}!" == "Bækur eru frábærastar!"
   
     assert f"{l:kvk-et-evb} {b:nf-et-gr}!" == "frábærasta Bókin!"
     assert f"{l:kvk-ft-evb} {b:nf-ft-gr}!" == "frábærustu Bækurnar!"
   
     b = Orð("BÓK")
 
-    assert f"{b:nf} er {l:kvk-et-esb}!" == "BÓK er frábærust!"
-    assert f"{b:nf-ft} eru {l:kvk-ft-esb}!" == "BÆKUR eru frábærastar!"
+    assert f"{b:nf} er {l:kvk-nf-et-esb}!" == "BÓK er frábærust!"
+    assert f"{b:nf-ft} eru {l:kvk-nf-ft-esb}!" == "BÆKUR eru frábærastar!"
 
     b = Orð("Xxyy")
     assert f"{b:nf} er best" == "Xxyy er best"
@@ -110,7 +110,7 @@ def test_ord() -> None:
 
     b = Orð("Vestur-Húnavatnssýsla")
 
-    assert f"{b:nf} er {l:KVK-ET-ESB}!" == "Vestur-Húnavatnssýsla er frábærust!"
+    assert f"{b:nf} er {l:KVK-NF-ET-ESB}!" == "Vestur-Húnavatnssýsla er frábærust!"
     # assert f"{b:nf-ft} er {l:kvk-et-esb}!" == "Vestur-Húnavatnssýsla er frábærust!"
 
     assert f"Ég bý í {b:þgf}" == "Ég bý í Vestur-Húnavatnssýslu"

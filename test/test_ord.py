@@ -80,8 +80,8 @@ def test_ord() -> None:
     assert f"{b:nf} er {l:kvk-nf-et-esb}!" == "Bók er frábærust!"
     assert f"{b:nf-ft} eru {l:kvk-nf-ft-esb}!" == "Bækur eru frábærastar!"
   
-    assert f"{l:kvk-et-evb} {b:nf-et-gr}!" == "frábærasta Bókin!"
-    assert f"{l:kvk-ft-evb} {b:nf-ft-gr}!" == "frábærustu Bækurnar!"
+    assert f"{l:kvk-nf-et-evb} {b:nf-et-gr}!" == "frábærasta Bókin!"
+    assert f"{l:kvk-nf-ft-evb} {b:nf-ft-gr}!" == "frábærustu Bækurnar!"
   
     b = Orð("BÓK")
 

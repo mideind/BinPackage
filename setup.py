@@ -68,12 +68,11 @@ setup(
     ),
     long_description=(
     """
-        BinPackage is a Python package that embeds the vocabulary
-        of the Database of Icelandic Morphology (Beygingarlýsing íslensks
+        BinPackage, published by Miðeind ehf, is a Python package that embeds the
+        vocabulary of the Database of Icelandic Morphology (Beygingarlýsing íslensks
         nútímamáls, BÍN) and offers various lookups and queries of the data.
 
-        The database, maintained by Árni Magnússon Institute for
-        Icelandic Studies and edited by chief editor Kristín Bjarnadóttir,
+        The database, maintained by Árni Magnússon Institute for Icelandic Studies,
         contains over 6.5 million entries, over 3.1 million unique word forms,
         and about 300,000 distinct lemmas.
 

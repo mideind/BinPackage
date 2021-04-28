@@ -53,9 +53,9 @@ for each word form. Kristínarsnið is newer and more detailed,
 with up to 15 attributes for each word form.
 
 BinPackage supports both formats, with the augmented format (represented
-by the class `Ksnid`)
-being returned from several functions and the basic format (represented by
-the named tuple `BinEntry`) from others, as documented below.
+by the class `Ksnid`) being returned from several functions
+and the basic format (represented by the named tuple `BinEntry`)
+from others, as documented below.
 
 Further information in English about the word classes and the inflectional
 categories in the DMI/BÍN database can be found
@@ -206,7 +206,7 @@ The tag strings are documented in detail
 4
 ```
 
-`Bin.lookup_ksnid()` returns the matched search key and a list of matching
+`Bin.lookup_ksnid()` returns the matched search key and a list of all matching
 entries in the augmented format (*Kristínarsnið*). The fields of *Kristínarsnið*
 are documented in detail [here in Icelandic](https://bin.arnastofnun.is/gogn/k-snid)
 and [here in English](https://bin.arnastofnun.is/DMII/LTdata/k-format/).
@@ -237,8 +237,8 @@ respectively), and one verb (`so`), having the infinitive (*nafnháttur*) *að l
 ## Grammatical variants
 
 With BinPackage, it is easy to obtain grammatical variants
-(alternative inflection forms) of words: convert
-them between cases, singular and plural, persons, degrees, moods, etc. Let's look
+(alternative inflectional forms) of words: convert them between cases,
+singular and plural, persons, degrees, moods, etc. Let's look
 at an example:
 
 ```python
@@ -258,7 +258,7 @@ to dative case, commonly used in addresses.
 >>> from islenska import Bin
 >>> b = Bin()
 >>> m = b.lookup_variants("fallegur", "lo", ("EVB", "HK", "FT"))
->>> # m contains a list of all inflection forms that meet the
+>>> # m contains a list of all inflectional forms that meet the given
 >>> # criteria. In this example, we use the first form in the list.
 >>> adj = m[0].bmynd
 >>> f"Ég sá {adj} norðurljósin"
@@ -266,7 +266,7 @@ to dative case, commonly used in addresses.
 ```
 
 Here, we obtained the superlative degree, weak form (`EVB`, *efsta stig*,
-*veik mark*), neutral gender (`HK`), plural (`FT`), of the adjective (`lo`)
+*veik beyging*), neutral gender (`HK`), plural (`FT`), of the adjective (`lo`)
 *fallegur* and used it in a sentence.
 
 # Documentation
@@ -305,23 +305,51 @@ To look up word forms and return summarized data in the Basic Format
 (`BinEntry` tuples), call the `lookup` function:
 
 ```python
+>>> w, m = b.lookup("mæla")
+>>> w
+'mæla'
+>>> m
+[
+    (ord='mæla', kvk/alm/16302, bmynd='mæla', NFET),
+    (ord='mæla', kvk/alm/16302, bmynd='mæla', EFFT2),
+    (ord='mæla', so/alm/469211, bmynd='mæla', GM-NH),
+    (ord='mæla', so/alm/469211, bmynd='mæla', GM-FH-NT-3P-FT),
+    (ord='mæla', so/alm/469210, bmynd='mæla', GM-NH),
+    (ord='mæla', so/alm/469210, bmynd='mæla', GM-FH-NT-3P-FT),
+    (ord='mæli', hk/alm/2512, bmynd='mæla', EFFT),
+    (ord='mælir', kk/alm/4474, bmynd='mæla', ÞFFT),
+    (ord='mælir', kk/alm/4474, bmynd='mæla', EFFT)
+]
+```
+
+This function returns a `Tuple[str, List[BinEntry]]` containing the string that
+was actually used as a search key, and a list of `BinEntry` instances that
+match the search key. The list is empty if no matches were found, in which
+case the word is probably not Icelandic or at least not spelled correctly.
+
+In this example, however, the list has nine matching entries.
+We see that the word form *mæla* is an inflectional form of five different
+headwords (lemmas), including two verbs (`so`):
+(1) *mæla* meaning *to measure* (past tense *mældi*), and (2) *mæla* meaning *to speak*
+(past tense *mælti*). Other headwords are nouns, in all three genders:
+feminine (`kvk`), neutral (`hk`) and masculine (`kk`).
+
+Let's try a different twist:
+
+```python
 >>> w, m = b.lookup("síamskattarkjólanna")
 >>> w
 'síamskattarkjólanna'
 >>> m
-[(ord='síamskattar-kjóll', kk/alm/0, bmynd='síamskattar-kjólanna', EFFTgr)]
+[
+    (ord='síamskattar-kjóll', kk/alm/0, bmynd='síamskattar-kjólanna', EFFTgr)
+]
 ```
-
-This function returns a `Tuple[str, List[BinEntry]]` containing the word that
-was actually used as a search key,
-and a list of `BinEntry` instances that match the search key.
-The list is empty if no matches were found, in which
-case the word is probably not Icelandic or at least not spelled correctly.
 
 Here we see that *síamskattarkjólanna* is a compound word, amalgamated
 from *síamskattar* and *kjólanna*, with *kjóll* being the base lemma of the compound
 word. This is a masculine noun (`kk`), in the `alm` (general vocabulary) domain.
-It has an id number (*bin_id*) equal to 0 since it is constructed
+Note that it has an id number (*bin_id*) equal to 0 since it is constructed
 on-the-fly by BinPackage, rather than being found in BÍN. The grammatical
 tag string is `EFFTgr`, i.e. genitive (*eignarfall*, `EF`), plural (*fleirtala*,
 `FT`) and definite (*með greini*, `gr`).
@@ -331,16 +359,37 @@ BinPackage will also look for lower case words in BÍN even if the lookup word
 is upper case. As an example:
 
 ```python
+>>> _, m = b.lookup("Geysir", at_sentence_start=True)
+>>> m
+[
+    (ord='geysa', so/alm/483756, bmynd='geysir', GM-FH-NT-2P-ET),
+    (ord='geysa', so/alm/483756, bmynd='geysir', GM-FH-NT-3P-ET),
+    (ord='geysa', so/alm/483756, bmynd='geysir', GM-VH-NT-2P-ET),
+    (ord='Geysir', kk/bær/263617, bmynd='Geysir', NFET)
+]
+>>> _, m = b.lookup("Geysir", at_sentence_start=False)  # This is the default
+>>> m
+[
+    (ord='Geysir', kk/bær/263617, bmynd='Geysir', NFET)
+]
+```
+
+As you can see, the lowercase matches for *geysir* are returned as well
+as the single uppercase one, if `at_sentence_start` is set to `True`.
+
+Another example:
+
+```python
 >>> b.lookup("Heftaranum", at_sentence_start=True)
 ('heftaranum', [
     (ord='heftari', kk/alm/7958, bmynd='heftaranum', ÞGFETgr)
 ])
 ```
 
-Note that here, the returned search key (`w` in the first example above) is
-`heftaranum` in lower case, since `Heftaranum` in upper case was not found in BÍN.
+Note that here, the returned search key is `heftaranum` in lower case,
+since `Heftaranum` in upper case was not found in BÍN.
 
-Another option is `auto_uppercase`, which if set to True, causes the returned
+Another option is `auto_uppercase`, which if set to `True`, causes the returned
 search key to be in upper case if any upper case entry exists in BÍN for the
 lookup word. This can be helpful when attempting to normalize
 all-lowercase input, for example from voice recognition systems. (Additional
@@ -471,7 +520,7 @@ compounding algorithm, the function returns an empty set.
 
 ## `lookup_variants()` function
 
-This function returns grammatical variants (different inflectional forms)
+This function returns grammatical variants (particular inflectional forms)
 of a given word. For instance,
 it can return a noun in a different case, plural instead of singular,
 and/or with or without an attached definite article (*greinir*). It can return
@@ -506,6 +555,25 @@ Finally, we specify a conversion to indefinite form (`nogr`):
 
 Definite form is requested via `gr`, and indefinite form via `nogr`.
 
+To see how `lookup_variants()` handles ambiguous word forms, let's
+try our old friend *mæli* again:
+
+```python
+>>> b.lookup_variants("mæli", "no", "NF")
+[
+    <Ksnid: bmynd='mæli', ord/ofl/hluti/bin_id='mæli'/hk/alm/2512, mark=NFET, ksnid='1;;;;K;1;;;'>,
+    <Ksnid: bmynd='mæli', ord/ofl/hluti/bin_id='mæli'/hk/alm/2512, mark=NFFT, ksnid='1;;;;K;1;;;'>,
+    <Ksnid: bmynd='mælir', ord/ofl/hluti/bin_id='mælir'/kk/alm/4474, mark=NFET, ksnid='1;;;;K;1;;;'>
+]
+```
+
+We specified `no` (noun) as the word class constraint. The result thus contains
+nominative case forms of two nouns, one neutral (*mæli*, definite form *mælið*,
+with identical singular `NFET` and plural `NFFT` form), and one
+masculine (*mælir*, definite form *mælirinn*). If we had specified `hk` as the
+word class constraint, we would have gotten back the first two (neutral) entries only;
+for `kk` we would have gotten back the third entry (masculine) only.
+
 Let's try modifying a verb from subjunctive (*viðtengingarháttur*)
 (e.g., *Ég/hún hraðlæsi bókina ef ég hefði tíma til þess*) to
 indicative mood (*framsöguháttur*), present tense
@@ -513,9 +581,9 @@ indicative mood (*framsöguháttur*), present tense
 
 ```python
 >>> m = b.lookup_variants("hraðlæsi", "so", ("FH", "NT"))
->>> for mm in m: print(mm.ord, mm.bmynd, mm.mark)
-hraðlesa hraðles GM-FH-NT-1P-ET
-hraðlesa hraðles GM-FH-NT-3P-ET
+>>> for mm in m: print(f"{mm.ord} | {mm.bmynd} | {mm.mark}")
+hraðlesa | hraðles | GM-FH-NT-1P-ET
+hraðlesa | hraðles | GM-FH-NT-3P-ET
 ```
 
 We get back both the 1st and the 3rd person inflection forms,

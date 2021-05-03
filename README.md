@@ -28,7 +28,7 @@ The package maps this structure directly into memory (via `mmap`) for fast looku
 An algorithm for handling compound words is an important additional feature
 of the package.
 
-With BinPackage, `pip install islenska` is all you need to have almost all of
+With BinPackage, `pip install islenska` is all you need to have almost all
 of the commonly used vocabulary of the modern Icelandic language at your
 disposal via Python. Batteries are included; no additional databases,
 downloads or middleware are required.

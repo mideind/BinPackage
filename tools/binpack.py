@@ -507,6 +507,10 @@ class BinCompressor:
         # than the word form (which is a bug in BÍN)
         if m.ord[0].isupper() != m.bmynd[0].isupper():
             return False
+        # Skip this if the word form is a single letter but the stem is not;
+        # except for the words "eiga", "ýr" and "ær"
+        if len(m.bmynd) == 1 and len(m.ord) > 1 and m.ord not in {"ýr", "ær", "eiga"}:
+            return False
         return True
 
     def read(self, fnames: Iterable[str]) -> None:

@@ -15943,6 +15943,11 @@ Kolkuós;0;kk;örn;Kolkuós;ÞFET
 Kolkuós;0;kk;örn;Kolkuósi;ÞGFET
 Kolkuós;0;kk;örn;Kolkuóss;EFET
 
+Eyjar;0;kvk;örn;Eyjar;NFFT
+Eyjar;0;kvk;örn;Eyjar;ÞFFT
+Eyjar;0;kvk;örn;Eyjum;ÞGFFT
+Eyjar;0;kvk;örn;Eyja;EFFT
+
 hemúll;0;kk;alm;hemúll;NFET
 hemúll;0;kk;alm;hemúllinn;NFETgr
 hemúll;0;kk;alm;hemúl;ÞFET
@@ -25120,6 +25125,7 @@ sexismi;0;kk;alm;sexismans;EFETgr
 sisvona;0;ao;alm;sisvona;OBEYGJANLEGT
 
 ekkert;0;ao;alm;ekkert;OBEYGJANLEGT
+allt;0;ao;alm;allt;OBEYGJANLEGT
 
 áttfalt;0;ao;alm;áttfalt;OBEYGJANLEGT
 óhindrað;0;ao;alm;óhindrað;OBEYGJANLEGT
@@ -25143,6 +25149,7 @@ amen;0;uh;alm;amen;-
 bless;0;uh;alm;bless;-
 bravó;0;uh;alm;bravó;-
 bæ;0;uh;alm;bæ;-
+fokk;0;uh;alm;fokk;-
 ha;0;uh;alm;ha;-
 hallelúja;0;uh;alm;hallelúja;-
 halló;0;uh;alm;halló;-
@@ -25222,6 +25229,11 @@ ahh;0;uh;alm;ahh;-
 ahhh;0;uh;alm;ahhh;-
 bamm;0;uh;alm;bamm;-
 bambaló;0;uh;alm;bambaló;-
+
+ýkt;0;ao;alm;ýkt;-
+klikkað;0;ao;alm;klikkað;-
+geggjað;0;ao;alm;geggjað;-
+
 
 # a.k.a;0;uh;alm;a.k.a;-
 # a.m.k;0;uh;alm;a.m.k;-
@@ -25372,6 +25384,7 @@ bambaló;0;uh;alm;bambaló;-
 ýmis;0;fn;alm;ýmsu;HK-ÞGFFT
 ýmis;0;fn;alm;ýmsu;HK-EFFT
 
+# Sjálfvirkt útbúnar sagnir
 aðgreina;434475;so;spurn;aðgreinirðu;SP-GM-FH-NT-2P-ET
 aðgreina;434475;so;spurn;aðgreindirðu;SP-GM-FH-ÞT-2P-ET
 aðgreina;434475;so;spurn;aðgreinirðu;SP-GM-VH-NT-2P-ET

@@ -78,25 +78,6 @@ class AdjectiveTemplate:
         cls.ENDINGS.append((ending, form))
 
 
-class Preferences:
-
-    """ Wrapper around disambiguation hints, initialized from the config file """
-
-    # Dictionary keyed by word containing a list of tuples (worse, better)
-    # where each is a list of terminal prefixes
-    DICT: Dict[str, List[PreferenceTuple]] = defaultdict(list)
-
-    @staticmethod
-    def add(word: str, worse: List[str], better: List[str], factor: int) -> None:
-        """ Add a preference to the dictionary. Called from the config file handler. """
-        Preferences.DICT[word].append((worse, better, factor))
-
-    @staticmethod
-    def get(word: str) -> Optional[List[PreferenceTuple]]:
-        """ Return a list of (worse, better, factor) tuples for the given word """
-        return Preferences.DICT.get(word, None)
-
-
 class StemPreferences:
 
     """ Wrapper around lemma disambiguation hints, initialized from the config file """
@@ -186,35 +167,6 @@ class Settings:
     # Configuration settings from the GreynirPackage.conf file
 
     @staticmethod
-    def _handle_preferences(s: str) -> None:
-        """ Handle ambiguity preference hints in the settings section """
-        # Format: word worse1 worse2... < better
-        # If two less-than signs are used, the preference is even stronger (tripled)
-        # If three less-than signs are used, the preference is super strong (nine-fold)
-        factor = 9
-        a = s.lower().split("<<<", maxsplit=1)
-        if len(a) != 2:
-            factor = 3
-            a = s.lower().split("<<", maxsplit=1)
-            if len(a) != 2:
-                # Not doubled preference: try a normal one
-                a = s.lower().split("<", maxsplit=1)
-                factor = 1
-        if len(a) != 2:
-            raise ConfigError("Ambiguity preference missing less-than sign '<'")
-        w = a[0].split()
-        if len(w) < 2:
-            raise ConfigError(
-                "Ambiguity preference must have at least one 'worse' category"
-            )
-        b = a[1].split()
-        if len(b) < 1:
-            raise ConfigError(
-                "Ambiguity preference must have at least one 'better' category"
-            )
-        Preferences.add(w[0], w[1:], b, factor)
-
-    @staticmethod
     def _handle_stem_preferences(s: str) -> None:
         """ Handle lemma ambiguity preference hints in the settings section """
         # Format: word worse1 worse2... < better
@@ -298,7 +250,6 @@ class Settings:
                 return
 
             CONFIG_HANDLERS: Dict[str, Callable[[str], None]] = {
-                "preferences": Settings._handle_preferences,
                 "noun_preferences": Settings._handle_noun_preferences,
                 "stem_preferences": Settings._handle_stem_preferences,
                 "adjective_template": Settings._handle_adjective_template,

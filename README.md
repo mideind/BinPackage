@@ -1,11 +1,10 @@
+![GitHub](https://img.shields.io/github/license/mideind/BinPackage)
+![Python 3.6+](https://img.shields.io/badge/python-3.6-blue.svg)
+[![Python package](https://github.com/mideind/BinPackage/actions/workflows/python-package.yml/badge.svg)](https://github.com/mideind/BinPackage/actions/workflows/python-package.yml)
+
 # BinPackage
 
 **The Database of Icelandic Morphology (DIM, BÍN) encapsulated in a Python package**
-
-[![Python package](https://github.com/mideind/BinPackage/actions/workflows/python-package.yml/badge.svg)](https://github.com/mideind/BinPackage/actions/workflows/python-package.yml)
-
-![GitHub](https://img.shields.io/github/license/mideind/BinPackage)
-![Python 3.6+](https://img.shields.io/badge/python-3.6-blue.svg)
 
 <img src="img/greynir-logo-large.png" alt="Greynir" width="200" height="200" align="right" style="margin-left:20px; margin-bottom: 20px;">
 

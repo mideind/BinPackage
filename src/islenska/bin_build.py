@@ -46,6 +46,7 @@ import cffi  # type: ignore
 ffibuilder = cast(Any, cffi).FFI()
 
 WINDOWS = platform.system() == "Windows"
+MACOS = platform.system() == "Darwin"
 
 # What follows is the actual Python-wrapped C interface to bin.*.so
 
@@ -67,6 +68,10 @@ if WINDOWS:
 else:
     extra_compile_args = ["-std=c++11"]
 
+extra_link_args = []
+if MACOS:
+    extra_link_args = ["-stdlib=libc++", "-mmacosx-version-min=10.9"]
+
 ffibuilder.cdef(declarations)  # type: ignore
 
 ffibuilder.set_source(  # type: ignore
@@ -77,8 +82,8 @@ ffibuilder.set_source(  # type: ignore
     source_extension=".cpp",
     sources=["src/islenska/bin.cpp"],
     extra_compile_args=extra_compile_args,
+    extra_link_args=extra_link_args,
 )
 
 if __name__ == "__main__":
     ffibuilder.compile(verbose=False)  # type: ignore
-

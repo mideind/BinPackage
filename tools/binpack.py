@@ -576,12 +576,20 @@ class BinCompressor:
                             f"bmynd '{m.bmynd}'), line {cnt} in {fn}"
                         )
                         continue
-                    lemma = m.ord.encode("latin-1")
-                    ofl = m.ofl.encode("latin-1")
-                    hluti = m.hluti.encode("latin-1")
-                    form = m.bmynd.encode("latin-1")
-                    meaning = m.mark.encode("latin-1")
-                    ksnid = m.ksnid_string.encode("latin-1")
+                    try:
+                        lemma = m.ord.encode("latin-1")
+                        ofl = m.ofl.encode("latin-1")
+                        hluti = m.hluti.encode("latin-1")
+                        form = m.bmynd.encode("latin-1")
+                        meaning = m.mark.encode("latin-1")
+                        ksnid = m.ksnid_string.encode("latin-1")
+                    except UnicodeEncodeError:
+                        fn = fname.split("/")[-1]
+                        print(
+                            f"Skipping invalid data (lemma '{m.ord}', bin_id {m.bin_id}, "
+                            f"bmynd '{m.bmynd}'), line {cnt} in {fn}"
+                        )
+                        continue
                     self._alphabet |= set(form)
                     # Subcategory (hluti) index
                     cix = self._subcats.add(hluti)

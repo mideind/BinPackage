@@ -81,7 +81,6 @@ from .bincompress import BinCompressed
 
 # Type variable allowing BinEntry and Ksnid for its value
 _T = TypeVar("_T", BinEntry, Ksnid)
-_T_cov = TypeVar("_T_cov", BinEntry, Ksnid, covariant=True)
 
 ResultTuple = Tuple[str, List[_T]]
 
@@ -99,8 +98,8 @@ KsnidList = List[Ksnid]
 KsnidIterable = Iterable[Ksnid]
 
 
-class LookupFunc(Protocol[_T_cov]):
-    def __call__(self, key: str, compound: bool = False) -> List[_T_cov]:
+class LookupFunc(Protocol[_T]):
+    def __call__(self, key: str, compound: bool = False) -> List[_T]:
         ...
 
 

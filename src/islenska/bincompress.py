@@ -622,6 +622,12 @@ class BinCompressed:
                     elif not b.endswith("-SAGNB"):
                         # Thin ice here, probably a wrong target string
                         b += "-SAGNB"
+                elif t == "EXPL":
+                    b+="það"
+                elif t == "NONE":
+                    # Skip 'none', used in Greynir.grammar, for instance in
+                    # SagnliðurÁnF → so_subj_gm_none NhFylling
+                    continue
                 else:
                     raise ValueError(f"Unknown BÍN 'beyging' feature: '{t}'")
             return b

@@ -642,7 +642,8 @@ class BinCompressor:
         if not quiet:
             print("Highest bin_id (wix) is {0}".format(max_wix))
         # Convert alphabet set to contiguous byte array, sorted by ordinal
-        self._alphabet_bytes = bytes(sorted(self._alphabet))
+        alphabet: Set[int] = self._alphabet  # Line added to pacify Pylance
+        self._alphabet_bytes = bytes(sorted(alphabet))
 
     def print_stats(self) -> None:
         """ Print a few key statistics about the dictionary """

@@ -47,7 +47,6 @@ from typing import (
     Tuple,
     Iterable,
     Dict,
-    Type,
     Union,
     cast,
     TypeVar,
@@ -931,9 +930,6 @@ class GreynirBin(Bin):
         return m
 
 
-_T_Orð = TypeVar("_T_Orð", bound="Orð")
-
-
 class Orð:
 
     """ Encapsulates an Icelandic word along with its matching vocabulary entries,
@@ -964,7 +960,7 @@ class Orð:
         self._ksnid: Optional[Ksnid] = self._m[0] if self._m else None
 
     @classmethod
-    def from_ksnid(cls: Type[_T_Orð], ksnid: Ksnid) -> _T_Orð:
+    def from_ksnid(cls, ksnid: Ksnid) -> "Orð":
         """ Hacky constructor to create an Orð instance from a Ksnid instance """
         o = cls(ksnid.bmynd, ksnid.ofl)
         o._m = [ksnid]

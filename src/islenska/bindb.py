@@ -632,7 +632,7 @@ class Bin:
     def lookup_ksnid(
         self, w: str, at_sentence_start: bool = False, auto_uppercase: bool = False
     ) -> ResultTuple[Ksnid]:
-        """ Given a word form, look up all matchin entries in Ksnid form. """
+        """ Given a word form, look up all matching entries in Ksnid form. """
         return self._lookup(
             w, at_sentence_start, auto_uppercase, self._ksnid_cache_lookup, Ksnid.make,
         )

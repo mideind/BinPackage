@@ -821,6 +821,32 @@ def test_variants() -> None:
     assert len(m) == 1
     assert m[0].bmynd == "sjóntækjafræðinganna"
 
+    m = b.lookup_variants("margborga", "so", ("expl", "et", "nt"))
+    assert len(m) == 1
+    assert m[0].bmynd == "margborgar"
+
+    m = b.lookup_variants("margborga", "so", ("expl", "et", "þt"))
+    assert len(m) == 1
+    assert m[0].bmynd == "margborgaði"
+
+    m = b.lookup_variants("margborga", "so", ("expl", "et", "þt", "vh"))
+    assert len(m) == 1
+    assert m[0].bmynd == "margborgaði"
+
+    m = b.lookup_variants("margborga", "so", ("expl", "et", "nt", "vh"))
+    assert len(m) == 1
+    assert m[0].bmynd == "margborgi"
+
+    m = b.lookup_variants("margborgi", "so", ("expl", "þt", "gm"))
+    assert len(m) == 1
+    assert m[0].bmynd == "margborgaði"
+
+    m = b.lookup_variants("smíða", "so", ("expl", "et", "nt"))
+    assert len(m) == 0
+
+    m = b.lookup_variants("smíðar", "so", ("expl", "et", "nt"))
+    assert len(m) == 0
+
 
 def test_sorting() -> None:
     b = Bin()

@@ -113,6 +113,12 @@ from .basics import (
 )
 
 
+# Grammatical variants that can be safely ignored even if included
+# in the to_inflection parameter in lookup_variants(), i.e. they
+# have no corresponding content in the beyging field in BÍN
+IGNORED_VARIANTS = frozenset(("0", "1", "2", "subj", "none"))
+
+
 class BinCompressed:
 
     """ A wrapper for the compressed binary dictionary,
@@ -535,7 +541,11 @@ class BinCompressed:
                 result.update(
                     m
                     for m in self.lookup(
-                        c, cat=ofl, lemma=stofn, utg=wutg, inflection_filter=beyging_func,
+                        c,
+                        cat=ofl,
+                        lemma=stofn,
+                        utg=wutg,
+                        inflection_filter=beyging_func,
                     )
                 )
         return result
@@ -568,9 +578,14 @@ class BinCompressed:
             if t in {"p1", "p2", "p3"}:
                 # Allow Greynir-style person variants
                 return t[1] + "P"
+            if t == "expl":
+                # The _expl variant demands 'það' in the beyging string
+                return "það"
             return t.upper()
 
-        to_inflection_list = [xform(t) for t in to_inflection]
+        to_inflection_list = [
+            xform(t) for t in to_inflection if t not in IGNORED_VARIANTS
+        ]
 
         def make_target(b: str) -> str:
             """ Create a target beyging string by substituting the
@@ -622,12 +637,14 @@ class BinCompressed:
                     elif not b.endswith("-SAGNB"):
                         # Thin ice here, probably a wrong target string
                         b += "-SAGNB"
-                elif t == "EXPL":
-                    b+="það"
-                elif t == "NONE":
-                    # Skip 'none', used in Greynir.grammar, for instance in
-                    # SagnliðurÁnF → so_subj_gm_none NhFylling
-                    continue
+                elif t == "það":
+                    # Expletive; the beyging string should start with 'OP-það-'
+                    if b.startswith("OP-það-"):
+                        pass
+                    elif b.startswith("OP-"):
+                        b = "OP-það-" + b[3:]
+                    else:
+                        b = "OP-það-" + b
                 else:
                     raise ValueError(f"Unknown BÍN 'beyging' feature: '{t}'")
             return b

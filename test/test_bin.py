@@ -92,6 +92,18 @@ def test_lookup() -> None:
     assert k[0].mark == "NFETgr"
     assert k[0].malsnid == "URE"
 
+    k = b.lookup_id(495410)
+    assert len(k) == 1
+    assert k[0].bin_id == 495410
+    assert k[0].ofl == "uh"
+    assert k[0].ord == "sko"
+
+    k = b.lookup_id(495754)
+    assert len(k) == 1
+    assert k[0].bin_id == 495754
+    assert k[0].ofl == "ao"
+    assert k[0].ord == "sko"
+
 
 def test_bin() -> None:
     """ Test querying for different cases of words """
@@ -854,6 +866,32 @@ def test_sorting() -> None:
     assert b.lookup_ksnid("arfa")[1][-1].ofl == "kvk"
 
 
+def test_id() -> None:
+    b = Bin()
+
+    k = b.lookup_id(495410)
+    assert len(k) == 1
+    assert k[0].bin_id == 495410
+    assert k[0].ofl == "uh"
+    assert k[0].ord == "sko"
+
+    k = b.lookup_id(495754)
+    assert len(k) == 1
+    assert k[0].bin_id == 495754
+    assert k[0].ofl == "ao"
+    assert k[0].ord == "sko"
+
+    k = b.lookup_id(416784)  # 'köttur'
+    assert len(k) == 17
+    assert all(item.bin_id == 416784 for item in k)
+    assert all(item.ord == "köttur" for item in k)
+    assert all(item.ofl == "kk" for item in k)
+
+    assert b.lookup_id(-100) == []  # No such bin_id
+    assert b.lookup_id(77) == []  # No such bin_id
+    assert b.lookup_id(1000000) == []  # No such bin_id
+
+
 if __name__ == "__main__":
 
     test_lookup()
@@ -864,3 +902,4 @@ if __name__ == "__main__":
     test_casting()
     test_forms()
     test_sorting()
+    test_id()

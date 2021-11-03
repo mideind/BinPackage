@@ -60,27 +60,27 @@ INT32 = struct.Struct("<i")
 UINT32 = struct.Struct("<I")
 
 # BÍN compressed file format version (used in tools/binpack.py and bincompress.py)
-BIN_COMPRESSOR_VERSION = b"Greynir 02.00.00"
+BIN_COMPRESSOR_VERSION = b"Greynir 03.00.00"
 assert len(BIN_COMPRESSOR_VERSION) == 16
 BIN_COMPRESSED_FILE = "compressed.bin"
 
 # The following are encoded with each word form
-# Bits allocated for the lemma index (currently max 310787)
-LEMMA_BITS = 19
-LEMMA_MAX = 2 ** LEMMA_BITS
+# Bits allocated for the bin_id number (currently max 513582)
+BIN_ID_BITS = 23
+BIN_ID_MAX = 2 ** BIN_ID_BITS
+BIN_ID_MASK = BIN_ID_MAX - 1
 # Bits allocated for the meaning index (currently max 968)
 MEANING_BITS = 10
 MEANING_MAX = 2 ** MEANING_BITS
+MEANING_MASK = MEANING_MAX - 1
 # Make sure that we have at least three high bits available for other
 # purposes in a 32-bit word that already contains a lemma index and a meaning index
-assert LEMMA_BITS + MEANING_BITS <= 29
+# assert BIN_ID_BITS + MEANING_BITS <= 29
 # Bits allocated for the ksnid-string index (currently max 5826)
 KSNID_BITS = 13
 KSNID_MAX = 2 ** KSNID_BITS
+KSNID_MASK = KSNID_MAX - 1
 
-# The following are encoded with each lemma
-# Bits allocated for the bin_id number (currently max 513582)
-UTG_BITS = 23
 # Bits allocated for the subcategory index (hluti) (currently max 49)
 SUBCAT_BITS = 8
 

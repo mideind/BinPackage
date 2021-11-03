@@ -263,9 +263,7 @@ class Bin:
         mtlist = self._bc.lookup_ksnid(w)
         # If the lookup doesn't yield any results, [] is returned.
         # Otherwise, map the query results to a BinEntry tuple
-        if not mtlist:
-            return cast(KsnidList, [])
-        return self._filter_ksnid(mtlist)
+        return self._filter_ksnid(mtlist) if mtlist else []
 
     def _ksnid_cache_lookup(self, key: str, compound: bool = False) -> KsnidList:
         """ Attempt to lookup a word in the cache, calling
@@ -275,9 +273,16 @@ class Bin:
         # allow items where birting == 'S' (coming from ord.suffix.csv)
         return [k for k in klist if compound or k.birting != "S"]
 
-    def _meanings_cache_lookup(
-        self, key: str, compound: bool = False
-    ) -> BinEntryList:
+    def _ksnid_lookup_id(self, bin_id: int) -> KsnidList:
+        """ Low-level fetch of the BIN entries that have the given bin_id """
+        # Route the lookup request to the compressed binary file
+        assert self._bc is not None
+        mtlist = self._bc.lookup_id(bin_id)
+        # If the lookup doesn't yield any results, [] is returned.
+        # Otherwise, map the query results to a Ksnid tuple
+        return self._filter_ksnid(mtlist) if mtlist else []
+
+    def _meanings_cache_lookup(self, key: str, compound: bool = False) -> BinEntryList:
         """ Attempt to lookup a word in the cache,
             returning a list of BinEntry instances """
         klist = self._ksnid_cache_lookup(key, compound=compound)
@@ -637,6 +642,10 @@ class Bin:
             w, at_sentence_start, auto_uppercase, self._ksnid_cache_lookup, Ksnid.make,
         )
 
+    def lookup_id(self, bin_id: int) -> KsnidList:
+        """ Given a BÍN id, return all entries having that id in Ksnid form. """
+        return self._ksnid_lookup_id(bin_id)
+
     def lookup_cats(self, w: str, at_sentence_start: bool = False) -> Set[str]:
         """ Given a word form, look up all its possible categories
             ('kk', 'kvk', 'hk', 'so', 'lo', ...). """
@@ -769,10 +778,7 @@ class Bin:
         # an adjective is being used with an indefinite or definite noun,
         # or whether a word such as 'við' is actually a preposition.
         return self._cast_to_case(
-            w,
-            self.lookup,
-            self.lookup_accusative,
-            filter_func=filter_func,
+            w, self.lookup, self.lookup_accusative, filter_func=filter_func,
         )
 
     def cast_to_dative(
@@ -798,10 +804,7 @@ class Bin:
         # an adjective is being used with an indefinite or definite noun,
         # or whether a word such as 'við' is actually a preposition.
         return self._cast_to_case(
-            w,
-            self.lookup,
-            self.lookup_genitive,
-            filter_func=filter_func,
+            w, self.lookup, self.lookup_genitive, filter_func=filter_func,
         )
 
 

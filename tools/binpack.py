@@ -134,7 +134,6 @@ from typing import (
     Iterable,
     IO,
     TypeVar,
-    Union,
 )
 
 import os
@@ -144,23 +143,25 @@ import struct
 from collections import defaultdict
 
 from islenska.basics import (
-    BinEntry,
     Ksnid,
     BinEntryTuple,
     BIN_COMPRESSOR_VERSION,
     BIN_COMPRESSED_FILE,
-    LEMMA_MAX,
-    MEANING_MAX,
-    MEANING_BITS,
-    KSNID_MAX,
-    UTG_BITS,
-    SUBCAT_BITS,
     UINT32,
+    BIN_ID_BITS,
+    BIN_ID_MAX,
+    KSNID_BITS,
+    KSNID_MAX,
+    MEANING_MAX,
+    SUBCAT_BITS,
     KSNID_COMMON_0,
     KSNID_COMMON_1,
     COMMON_KIX_0,
     COMMON_KIX_1,
 )
+
+
+MeaningTuple = Tuple[bytes, bytes]  # ordfl, beyging
 
 
 _path, _ = os.path.split(os.path.realpath(__file__))
@@ -390,12 +391,49 @@ class Indexer(Generic[_V]):
         return str(self._d)
 
 
-class LemmaIndexer(Indexer[Tuple[bytes, int, int]]):
-    pass
+class MeaningsIndexer(Indexer[MeaningTuple]):
 
+    """ Maintain an index of integer keys to meaning tuples,
+        where each meaning tuple is (ordfl, beyging) """
 
-class MeaningsIndexer(Indexer[Tuple[bytes, bytes]]):
-    pass
+    def __init__(self) -> None:
+        super().__init__()
+        # Add an occurrence counter
+        self._count: DefaultDict[int, int] = defaultdict(int)
+        # Add a map from original indices to frequency-ordered indices, and back
+        self._freq_map: Dict[int, int] = dict()
+        self._inv_freq_map: Dict[int, int] = dict()
+
+    def add(self, s: MeaningTuple) -> int:
+        """ Add a value and count distinct occurrences """
+        ix = super().add(s)
+        self._count[ix] += 1
+        return ix
+
+    def freq_index(self, key: int) -> int:
+        """ Cast a meaning index to a frequency-ordered index, so that the
+            most common meaning is at index 0, etc. """
+        if not self._freq_map:
+            # The ground truth source: a list of (original index, count) tuples
+            sorted_items = sorted(
+                self._count.items(), key=lambda item: item[1], reverse=True
+            )
+            self._freq_map = {
+                # Map original index to new
+                item[0]: new_ix
+                for new_ix, item in enumerate(sorted_items)
+            }
+            # Create the inverse map
+            self._inv_freq_map = {
+                # Map new index to original
+                new_ix: item[0]
+                for new_ix, item in enumerate(sorted_items)
+            }
+        return self._freq_map[key]
+
+    def by_freq_index(self, freq_index: int) -> MeaningTuple:
+        """ Return a meaning tuple from a frequency index """
+        return self._inv_d[self._inv_freq_map[freq_index]]
 
 
 class KsnidIndexer(Indexer[bytes]):
@@ -443,15 +481,17 @@ class BinCompressor:
 
     def __init__(self) -> None:
         self._forms = Trie()  # bmynd
-        self._lemmas = LemmaIndexer()  # ord
+        self._lemmas: Dict[
+            int, Tuple[bytes, int]
+        ] = dict()  # bin_id -> (lemma, category index)
         self._meanings = MeaningsIndexer()  # mark
         self._ksnid_strings = KsnidIndexer()  # ksnid additional fields
         self._subcats = SubcatIndexer()  # hluti
         self._alphabet: Set[int] = set()
         self._alphabet_bytes = bytes()
-        # map form index -> { (lemma_ix, meaning_ix, ksnid_ix) }
+        # map form index -> { (bin_id, meaning_ix, ksnid_ix) }
         self._lookup_form: Dict[int, Set[Tuple[int, int, int]]] = defaultdict(set)
-        # map lemma index -> set of all associated word forms
+        # map bin_id -> set of all associated word forms
         self._lemma_forms: Dict[int, Set[bytes]] = defaultdict(set)
         # Count of lemma word categories
         self._lemma_cat_count: Dict[str, int] = defaultdict(int)
@@ -461,6 +501,8 @@ class BinCompressor:
         self._utg = 0
         # The starting bin_id index of Greynir additions
         self._begin_greynir_utg = 0
+        # Highest bin_id
+        self._max_bin_id = 0
         # The indices of the most common ksnid_strings
         common_kix_0 = self._ksnid_strings.add(KSNID_COMMON_0.encode("latin-1"))
         assert COMMON_KIX_0 == common_kix_0
@@ -468,7 +510,7 @@ class BinCompressor:
         assert COMMON_KIX_1 == common_kix_1
 
     @staticmethod
-    def fix_bugs(m: Union[BinEntry, Ksnid]) -> bool:
+    def fix_bugs(m: Ksnid) -> bool:
         """ Fix known bugs in BÍN. Return False if the record should
             be skipped entirely; otherwise True. """
         if not m.ord or not m.bmynd or m.bmynd in {"num", "ir", "irnir", "i", "ina"}:
@@ -517,7 +559,6 @@ class BinCompressor:
         """ Read the given .csv text files in turn and add them to the
             compressed data structures """
         cnt = 0
-        lemma_cnt = -1
         max_wix = 0
         start_time = time.time()
         last_stofn = ""
@@ -593,19 +634,17 @@ class BinCompressor:
                     self._alphabet |= set(form)
                     # Subcategory (hluti) index
                     cix = self._subcats.add(hluti)
-                    # Utg number (unique lemma id)
+                    # BIN id number (unique lemma id)
                     wix = m.bin_id
                     if wix > max_wix:
                         max_wix = wix
-                    if wix in utg_to_lemma:
+                    if wix in self._lemmas:
                         # We have seen this bin_id number before: make some sanity checks
-                        p_six = utg_to_lemma[wix]
-                        p_lemma, p_wix, p_cix = self._lemmas[p_six]
-                        assert p_wix == wix
+                        p_lemma, p_cix = self._lemmas[wix]
                         if p_lemma != lemma:
                             print(
-                                f"Warning: bin_id {wix} refers to different lemmas, i.e. "
-                                f"{lemma.decode('latin-1')}/{cix} and "
+                                f"Warning: bin_id {wix} refers to different lemmas, "
+                                f"i.e. {lemma.decode('latin-1')}/{cix} and "
                                 f"{p_lemma.decode('latin-1')}/{p_cix}"
                             )
                             print("Skipping this record")
@@ -614,33 +653,35 @@ class BinCompressor:
                             # Different subcategory index: replace it to conform
                             # with the previously seen one
                             cix = p_cix
-                    # Add a (lemma index, bin_id, subcat index) tuple
-                    six = self._lemmas.add((lemma, wix, cix))
-                    # When putting something into memory, remember where you put it
-                    utg_to_lemma[wix] = six
-                    if six > lemma_cnt:
+                    else:
                         # New lemma, not seen before: count its category (ofl)
                         self._lemma_cat_count[m.ofl] += 1
-                        lemma_cnt = six
+                    # Add a (lemma index, subcat index) tuple
+                    self._lemmas[wix] = (lemma, cix)
                     # Form index
                     fix = self._forms.add(form)
                     # Combined (ofl, meaning) index
                     mix = self._meanings.add((ofl, meaning))
                     # Ksnid string index
                     kix = self._ksnid_strings.add(ksnid)
-                    self._lookup_form[fix].add((six, mix, kix))
+                    self._lookup_form[fix].add((wix, mix, kix))
                     # Add this word form to the set of word forms
                     # of its lemma, if it is different from the lemma
                     if lemma != form:
-                        self._lemma_forms[six].add(form)
+                        self._lemma_forms[wix].add(form)
                     # Progress indicator
                     if not quiet:
                         if cnt % 10000 == 0:
                             print(cnt, end="\r")
+        self._max_bin_id = max_wix
         print("{0} done\n".format(cnt))
         print("Time: {0:.1f} seconds".format(time.time() - start_time))
         if not quiet:
             print("Highest bin_id (wix) is {0}".format(max_wix))
+            sorted_utg = sorted(utg_to_lemma.keys())
+            if sorted_utg:
+                print(f"Distinct bin_ids are {len(sorted_utg)}")
+                print(f"Lowest bin_id is {sorted_utg[0]}, highest is {sorted_utg[-1]}")
         # Convert alphabet set to contiguous byte array, sorted by ordinal
         alphabet: Set[int] = self._alphabet  # Line added to pacify Pylance
         self._alphabet_bytes = bytes(sorted(alphabet))
@@ -667,20 +708,21 @@ class BinCompressor:
             values = self._lookup_form[self._forms[form_latin]]
             # Obtain the lemma and meaning tuples corresponding to the word form
             result = [
-                (self._lemmas[six], self._meanings[mix]) for six, mix, _ in values
+                (bin_id, self._lemmas[bin_id], self._meanings[mix])
+                for bin_id, mix, _ in values
             ]
             # Convert to Unicode and return a 5-tuple
             # (ord, bin_id, ofl, hluti, bmynd, mark)
             return [
                 (
                     s[0].decode("latin-1"),  # ord
-                    s[1],  # bin_id
+                    bin_id,
                     m[0].decode("latin-1"),  # ofl
-                    self._subcats[s[2]].decode("latin-1"),  # hluti
+                    self._subcats[s[1]].decode("latin-1"),  # hluti
                     form,  # bmynd
                     m[1].decode("latin-1"),  # mark
                 )
-                for s, m in result
+                for bin_id, s, m in result
             ]
         except KeyError:
             return []
@@ -692,13 +734,13 @@ class BinCompressor:
             result: List[Ksnid] = []
             values = self._lookup_form[self._forms[form_latin]]
             # Obtain the lemma and meaning tuples corresponding to the word form
-            for six, mix, kix in values:
-                ord, bin_id, fl_ix = self._lemmas[six]
+            for bin_id, mix, kix in values:
+                word, fl_ix = self._lemmas[bin_id]
                 ofl, mark = self._meanings[mix]
                 ksnid = self._ksnid_strings[kix]
                 result.append(
                     Ksnid.from_parameters(
-                        ord.decode("latin-1"),
+                        word.decode("latin-1"),
                         bin_id,
                         ofl.decode("latin-1"),
                         self._subcats[fl_ix].decode("latin-1"),  # hluti
@@ -720,12 +762,12 @@ class BinCompressor:
             # Obtain the lemma and meaning tuples corresponding to the word form
             v: Set[Tuple[bytes, bytes]] = set()
             # Go through the distinct lemmas found for this word form
-            for six in set(vv[0] for vv in values):
+            for bin_id in set(vv[0] for vv in values):
                 # Look at all word forms of this lemma
-                lemma = self._lemmas[six][0]
-                for canonical in [lemma] + list(self._lemma_forms.get(six, [])):
+                lemma = self._lemmas[bin_id][0]
+                for canonical in [lemma] + list(self._lemma_forms.get(bin_id, [])):
                     for s, m, _ in self._lookup_form[self._forms[canonical]]:
-                        if s == six:
+                        if s == bin_id:
                             b = self._meanings[m][1]
                             if case_latin in b:
                                 # The 'mark' string contains the requested case
@@ -839,6 +881,9 @@ class BinCompressor:
         # Store the lowest Greynir-specific bin_id number
         f.write(UINT32.pack(self._begin_greynir_utg))
 
+        # Store the highest allowed BÍN id
+        f.write(UINT32.pack(self._max_bin_id))
+
         def write_padded(b: bytes, n: int) -> None:
             assert len(b) <= n
             f.write(b + b"\x00" * (n - len(b)))
@@ -947,6 +992,7 @@ class BinCompressor:
         cnt_entries = 0
         # Count of the 32-bit words written
         cnt_32 = 0
+        cnt_identical_bin = 0
         # Loop through word forms
         for fix in range(len(self._forms)):
             lookup_map.append(cnt_32)
@@ -954,41 +1000,85 @@ class BinCompressor:
             # loop through them
             num_meanings = len(self._lookup_form[fix])
             assert num_meanings > 0
-            # Bucket the meanings by lemma index
+            # Bucket the meanings by BÍN id
             lookup_lemmas: DefaultDict[int, List[Tuple[int, int]]] = defaultdict(list)
-            for six, mix, kix in self._lookup_form[fix]:
-                lookup_lemmas[six].append((mix, kix))
+            for bin_id, mix, kix in self._lookup_form[fix]:
+                lookup_lemmas[bin_id].append((mix, kix))
             # Index of the meaning being written
             ix = 0
-            for six, mlist in lookup_lemmas.items():
+            for bin_id, mlist in lookup_lemmas.items():
                 # Allocate bits for the lemma index
-                assert six < LEMMA_MAX
+                assert bin_id < BIN_ID_MAX
+                last_bin_id: Optional[int] = None
                 for mix, kix in mlist:
-                    # Allocate 11 bits for the meaning index
                     assert mix < MEANING_MAX
-                    # Allocate 13 bits for the ksnid index
                     assert kix < KSNID_MAX
+                    # Map the meaning index to a frequency-ordered index
+                    freq_ix = self._meanings.freq_index(mix)
+                    assert freq_ix < MEANING_MAX
                     # Mark the last meaning with the high bit
                     w = 0x80000000 if ix == num_meanings - 1 else 0
-                    if kix == COMMON_KIX_0:
-                        # If this is one of the most common ksnid strings, use
-                        # a single bit to indicate it
-                        w |= 0x40000000
-                    elif kix == COMMON_KIX_1:
-                        # If this is one of the most common ksnid strings, use
-                        # a single bit to indicate it
-                        w |= 0x20000000
-                    w |= (six << MEANING_BITS) | mix
-                    f.write(UINT32.pack(w))
-                    cnt_32 += 1
-                    if w & 0x60000000 == 0:
-                        # Not a common ksnid_string: write its full index
-                        f.write(UINT32.pack(kix))
+                    if (kix == COMMON_KIX_0 or kix == COMMON_KIX_1) and freq_ix < 127:
+                        # We can pack this into a single 32-bit entry:
+                        # bin_id is 23 bits
+                        # kix is 1 bit
+                        # meaning index is 7 bits
+                        # Layout:
+                        # LKMMMMMM|MBBBBBBB|BBBBBBBB|BBBBBBBB
+                        # MMMMMMM > 0
+                        if kix == COMMON_KIX_1:
+                            w |= 0x40000000
+                        w |= (freq_ix + 1) << BIN_ID_BITS
+                        # Low 23 bits contain the BÍN id
+                        w |= bin_id
+                        f.write(UINT32.pack(w))
+                        cnt_32 += 1
+                        last_bin_id = bin_id
+                    elif bin_id == last_bin_id:
+                        # The BÍN id is the same as the last one: Use that fact to
+                        # squeeze the meaning and the ksnid index into a single word
+                        # Layout:
+                        # L1000000|0MMMMMMM|MMMKKKKK|KKKKKKKK
+                        cnt_identical_bin += 1
+                        w |= 0x40000000  # Flag that cannot be set in the two-entry case
+                        w |= (freq_ix << KSNID_BITS) | kix
+                        f.write(UINT32.pack(w))
+                        cnt_32 += 1
+                    else:
+                        # We need two 32-bit entries
+                        last_bin_id = bin_id
+                        # First, write the BÍN id and the last meaning bit
+                        # Note that in this case, the 7 bits for the meaning
+                        # index are 0, which cannot happen in the single-word case
+                        # Layout:
+                        # L0000000|0BBBBBBB|BBBBBBBB|BBBBBBBB
+                        w |= bin_id
+                        f.write(UINT32.pack(w))
+                        cnt_32 += 1
+                        # Then, write the meaning index (frequency-ordered) and the
+                        # ksnid index. The meaning index can be up to 10 bits
+                        # and the ksnid up to 13 bits.
+                        w = (freq_ix << KSNID_BITS) | kix
+                        # Layout:
+                        # 00000000|0MMMMMMM|MMMKKKKK|KKKKKKKK
+                        f.write(UINT32.pack(w))
                         cnt_32 += 1
                     ix += 1
                     cnt_entries += 1
 
-        print(f"Word meaning entries are {cnt_entries}")
+        cnt_double = cnt_32 - cnt_entries
+        cnt_single = cnt_entries - cnt_double
+        assert cnt_32 == cnt_single + cnt_double * 2
+        assert cnt_entries == cnt_single + cnt_double
+        print(f"Word meaning entries are {cnt_entries}; 32-bit words are {cnt_32}")
+        print(
+            f"Single-word entries are {cnt_single}, "
+            f"double-word entries are {cnt_double}"
+        )
+        print(
+            f"Double-word entries having identical BÍN ids "
+            f"to previous ones are {cnt_identical_bin}"
+        )
         # Write the the compact radix trie structure that
         # holds the word forms themselves, mapping them
         # to indices
@@ -998,20 +1088,22 @@ class BinCompressor:
         # Write the lemmas
         write_padded(b"[lemmas]", 16)
         lookup_map = []
-        f.write(UINT32.pack(len(self._lemmas)))
         # Keep track of the number of bytes that have been written
         # to the template buffer
         template_bytes = 0
-        for ix in range(len(self._lemmas)):
+        for bin_id in range(self._max_bin_id + 1):
+            if bin_id not in self._lemmas:
+                # We have no lemma with this bin_id: store a null pointer (offset)
+                lookup_map.append(0)
+                continue
+            lemma, cix = self._lemmas[bin_id]
             lookup_map.append(f.tell())
-            # Squeeze the bin_id (word id) and subcategory index into the lower 31 bits.
+            # Squeeze the subcategory index into the lower 31 bits.
             # The uppermost bit flags whether a canonical forms list is present.
-            lemma, bin_id, cix = self._lemmas[ix]
-            assert 0 <= bin_id < 2 ** UTG_BITS
             assert 0 <= cix < 2 ** SUBCAT_BITS
-            bits = (bin_id << SUBCAT_BITS) | cix
+            bits = cix
             has_template = False
-            if ix in self._lemma_forms:
+            if bin_id in self._lemma_forms:
                 # We have a set of word forms for this lemma
                 # (that differ from the lemma itself)
                 bits |= 0x80000000
@@ -1022,7 +1114,7 @@ class BinCompressor:
             # Write the inflection template, compressed, if the lemma
             # has multiple associated word forms
             if has_template:
-                b = bytes(compress_set(self._lemma_forms[ix], base=lemma))
+                b = bytes(compress_set(self._lemma_forms[bin_id], base=lemma))
                 # Have we seen this inflection template before?
                 template_offset = self._templates.get(b)
                 if template_offset is None:
@@ -1035,7 +1127,7 @@ class BinCompressor:
         print("Distinct inflection templates are {0}".format(len(self._templates)))
         print("Bytes used for templates are {0}".format(template_bytes))
 
-        # Write the index-to-offset mapping table for lemmas
+        # Write the bin_id-to-offset mapping table for lemmas
         fixup(lemmas_offset)
         for offset in lookup_map:
             f.write(UINT32.pack(offset))
@@ -1063,7 +1155,7 @@ class BinCompressor:
         f.write(UINT32.pack(num_meanings))
         for ix in range(num_meanings):
             lookup_map.append(f.tell())
-            write_spaced(b" ".join(self._meanings[ix]))  # ofl, mark
+            write_spaced(b" ".join(self._meanings.by_freq_index(ix)))  # ofl, mark
         f.write(b" " * 24)
 
         # Write the index-to-offset mapping table for meanings

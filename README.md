@@ -22,7 +22,7 @@ and about 300,000 distinct lemmas.
 
 Miðeind has encapsulated the database in an easy-to-install Python package,
 compressing it
-from a 400+ megabyte CSV file into an ~80 megabyte indexed binary structure.
+from a 400+ megabyte CSV file into an ~82 megabyte indexed binary structure.
 The package maps this structure directly into memory (via `mmap`) for fast lookup.
 An algorithm for handling compound words is an important additional feature
 of the package.
@@ -232,6 +232,17 @@ and the classes/categories to which it may belong.
 Here we see, perhaps unexpectedly, that the word form *laga* has five possible lemmas:
 four nouns (*lag*, *lög*, *lagi* and *lögur*, neutral (`hk`) and masculine (`kk`)
 respectively), and one verb (`so`), having the infinitive (*nafnháttur*) *að laga*.
+
+## Lookup by BÍN identifier
+
+Given a BÍN identifier (id number), BinPackage can return all entries for that id:
+
+```python
+>>> from islenska import Bin
+>>> b = Bin()
+>>> b.lookup_id(495410)
+[<Ksnid: bmynd='sko', ord/ofl/hluti/bin_id='sko'/uh/alm/495410, mark=OBEYGJANLEGT, ksnid='1;;;;K;1;;;'>]
+```
 
 ## Grammatical variants
 
@@ -470,6 +481,27 @@ The function returns a tuple of type `Tuple[str, List[Ksnid]]`.
 The first element of the tuple is the search key that was matched in BÍN,
 and the second element is the list of matching entries, each represented
 by an instance of class `Ksnid`.
+
+
+## `lookup_id()` function
+
+If you have a BÍN identifier (integer id) and need to look up the associated
+augmented format (*Kristínarsnið*) entries, call the `lookup_id()` function:
+
+```python
+>>> b.lookup_id(495410)
+[<Ksnid: bmynd='sko', ord/ofl/hluti/bin_id='sko'/uh/alm/495410, mark=OBEYGJANLEGT, ksnid='1;;;;K;1;;;'>]
+
+```
+
+`lookup_id()` has a single mandatory parameter:
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| bin_id | `int` | | The BÍN identifier of the entries to look up. |
+
+The function returns a list of type `List[Ksnid]`. If the given id number is not found
+in BÍN, an empty list is returned.
 
 
 ## `lookup_cats()` function

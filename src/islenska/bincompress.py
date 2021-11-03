@@ -89,6 +89,10 @@ bin_cffi = cast(Any, lib_unknown)
 ffi = cast(Any, ffi_unknown)
 
 from .basics import (
+    BIN_ID_BITS,
+    BIN_ID_MASK,
+    COMMON_KIX_0,
+    COMMON_KIX_1,
     InflectionFilter,
     BinEntryTuple,
     Ksnid,
@@ -103,13 +107,11 @@ from .basics import (
     ALL_BIN_VOICES,
     BIN_COMPRESSOR_VERSION,
     BIN_COMPRESSED_FILE,
-    LEMMA_MAX,
-    MEANING_MAX,
-    MEANING_BITS,
-    SUBCAT_BITS,
     UINT32,
-    COMMON_KIX_0,
-    COMMON_KIX_1,
+    SUBCAT_BITS,
+    KSNID_BITS,
+    KSNID_MASK,
+    MEANING_MASK,
 )
 
 
@@ -139,7 +141,9 @@ class BinCompressed:
         # Check that the file version matches what we expect
         assert (
             self._b[0:16] == BIN_COMPRESSOR_VERSION
-        ), "Invalid signature in ord.compressed (git-lfs might be missing)"
+        ), "Invalid signature in ord.compressed; file missing or version mismatch?"
+        self._begin_greynir_utg = 0
+        self._max_bin_id = 0
         (
             mappings_offset,
             forms_offset,
@@ -150,7 +154,8 @@ class BinCompressed:
             subcats_offset,
             ksnid_offset,
             self._begin_greynir_utg,
-        ) = struct.unpack("<IIIIIIIII", self._b[16:52])
+            self._max_bin_id,
+        ) = struct.unpack("<IIIIIIIIII", self._b[16:56])
         self._forms_offset: int = forms_offset
         self._mappings: bytes = self._b[mappings_offset:]
         self._lemmas: bytes = self._b[lemmas_offset:]
@@ -220,11 +225,11 @@ class BinCompressed:
         lw = self._b[off]  # Length byte
         return self._b[off + 1 : off + 1 + lw].decode("latin-1")
 
-    def lemma(self, ix: int) -> Tuple[str, int, str]:
-        """ Find and decode a lemma (stofn, utg, subcat) tuple, given its index """
-        (off,) = UINT32.unpack_from(self._lemmas, ix * 4)
+    def lemma(self, bin_id: int) -> Tuple[str, str]:
+        """ Find and decode a lemma (stofn, subcat) tuple, given its bin_id """
+        (off,) = UINT32.unpack_from(self._lemmas, bin_id * 4)
+        assert off != 0  # Unknown BÍN id
         bits = self._UINT(off) & 0x7FFFFFFF
-        utg = bits >> SUBCAT_BITS
         # Subcategory (fl) index
         cix = bits & (2 ** SUBCAT_BITS - 1)
         p = off + 4
@@ -232,11 +237,11 @@ class BinCompressed:
         lw = self._b[p]  # Length byte
         p += 1
         b = bytes(self._b[p : p + lw])
-        return b.decode("latin-1"), utg, self._subcats[cix]  # stofn, utg, fl
+        return b.decode("latin-1"), self._subcats[cix]  # stofn, fl
 
-    def lemma_forms(self, lemma_ix: int) -> List[bytes]:
-        """ Return all word forms having the given case, that are
-            associated with the lemma whose index is in ix """
+    def lemma_forms(self, bin_id: int) -> List[bytes]:
+        """ Return all word forms that are associated with the lemma
+            whose bin_id is given """
 
         def read_set(p: int, base: bytes) -> List[bytes]:
             """ Decompress a set of strings compressed by compress_set() """
@@ -276,7 +281,13 @@ class BinCompressed:
             # Return the set as a list of byte strings
             return c
 
-        (off,) = UINT32.unpack_from(self._lemmas, lemma_ix * 4)
+        # Sanity check on the BÍN id
+        if not 0 <= bin_id <= self._max_bin_id:
+            return []
+        (off,) = UINT32.unpack_from(self._lemmas, bin_id * 4)
+        if off == 0:
+            # No entry with this BÍN id
+            return []
         bits = self._UINT(off)
         # Skip past the lemma itself
         assert self._b is not None
@@ -300,7 +311,6 @@ class BinCompressed:
         try:
             if isinstance(word, str):
                 word = word.encode("latin-1")
-            assert isinstance(word, bytes)
             m: int = bin_cffi.mapping(self._mmap_ptr, word)
             return None if m == 0xFFFFFFFF else m
         except UnicodeEncodeError:
@@ -318,24 +328,32 @@ class BinCompressed:
         # Found the word in the trie; return potentially multiple entries
         # Fetch the mapping-to-lemma/meaning tuples
         result: List[Tuple[int, int, int]] = []
-        lemma_mask = LEMMA_MAX - 1
-        meaning_mask = MEANING_MAX - 1
+        bin_id = -1
         while True:
-            (lemma_meaning,) = self._partial_mappings(mapping * 4)
-            meaning_index = lemma_meaning & meaning_mask
-            lemma_index = (lemma_meaning >> MEANING_BITS) & lemma_mask
-            if lemma_meaning & 0x40000000:
-                ksnid_index = COMMON_KIX_0
-            elif lemma_meaning & 0x20000000:
-                ksnid_index = COMMON_KIX_1
+            (w0,) = self._partial_mappings(mapping * 4)
+            mapping += 1
+            meaning_index = (w0 >> BIN_ID_BITS) & 0x7F
+            if meaning_index > 0:
+                # This is a packed meaning, one 32-bit word
+                bin_id = w0 & BIN_ID_MASK
+                meaning_index -= 1
+                ksnid_index = COMMON_KIX_1 if w0 & 0x40000000 else COMMON_KIX_0
+            elif w0 & 0x40000000:
+                # This is a packed meaning with the same bin_id as the previous one
+                assert bin_id != -1
+                meaning_index = (w0 >> KSNID_BITS) & MEANING_MASK
+                ksnid_index = w0 & KSNID_MASK
             else:
+                # This meaning is stored in two 32-bit words
+                bin_id = w0 & BIN_ID_MASK
+                (w1,) = self._partial_mappings(mapping * 4)
                 mapping += 1
-                (ksnid_index,) = self._partial_mappings(mapping * 4)
-            result.append((lemma_index, meaning_index, ksnid_index))
-            if lemma_meaning & 0x80000000:
+                meaning_index = (w1 >> KSNID_BITS) & MEANING_MASK
+                ksnid_index = w1 & KSNID_MASK
+            result.append((bin_id, meaning_index, ksnid_index))
+            if w0 & 0x80000000:
                 # Last mapping indicator: we're done
                 break
-            mapping += 1
         return result
 
     def contains(self, word: str) -> bool:
@@ -367,23 +385,23 @@ class BinCompressed:
         else:
             cats = frozenset([cat])
         result: List[BinEntryTuple] = []
-        for lemma_index, meaning_index, _ in self._raw_lookup(word):
+        for bin_id, meaning_index, _ in self._raw_lookup(word):
+            if utg is not None and bin_id != utg:
+                # Fails the utg filter
+                continue
             ofl, beyging = self.meaning(meaning_index)
             if cats is not None and ofl not in cats:
                 # Fails the word category constraint
                 continue
-            stofn, wutg, fl = self.lemma(lemma_index)
+            stofn, fl = self.lemma(bin_id)
             if lemma is not None and stofn != lemma:
                 # Fails the lemma filter
-                continue
-            if utg is not None and wutg != utg:
-                # Fails the utg filter
                 continue
             if inflection_filter is not None and not inflection_filter(beyging):
                 # Fails the beyging_func filter
                 continue
             # stofn, utg, ofl, fl, ordmynd, beyging
-            result.append((stofn, wutg, ofl, fl, word, beyging))
+            result.append((stofn, bin_id, ofl, fl, word, beyging))
         return result
 
     def lookup_ksnid(
@@ -409,17 +427,17 @@ class BinCompressed:
         else:
             cats = frozenset([cat])
         result: List[Ksnid] = []
-        for lemma_index, meaning_index, ksnid_index in self._raw_lookup(word):
+        for bin_id, meaning_index, ksnid_index in self._raw_lookup(word):
+            if utg is not None and bin_id != utg:
+                # Fails the utg filter
+                continue
             ofl, beyging = self.meaning(meaning_index)
             if cats is not None and ofl not in cats:
                 # Fails the word category constraint
                 continue
-            stofn, wutg, fl = self.lemma(lemma_index)
+            stofn, fl = self.lemma(bin_id)
             if lemma is not None and stofn != lemma:
                 # Fails the lemma filter
-                continue
-            if utg is not None and wutg != utg:
-                # Fails the utg filter
                 continue
             if inflection_filter is not None and not inflection_filter(beyging):
                 # Fails the beyging_func filter
@@ -427,7 +445,7 @@ class BinCompressed:
             ksnid_string = self.ksnid_string(ksnid_index)
             result.append(
                 Ksnid.from_parameters(
-                    stofn, wutg, ofl, fl, word, beyging, ksnid_string,
+                    stofn, bin_id, ofl, fl, word, beyging, ksnid_string,
                 )
             )
         return result
@@ -513,24 +531,24 @@ class BinCompressed:
             # from, except for the case
             return simplify_beyging(beyging) == wanted_beyging
 
-        for lemma_index, meaning_index, _ in self._raw_lookup(word):
+        for bin_id, meaning_index, _ in self._raw_lookup(word):
+            if utg is not None and utg != bin_id:
+                # Not the utg we're looking for
+                continue
             # Check the category filter, if present
             ofl, beyging = self.meaning(meaning_index)
             if cats is not None:
                 if ofl not in cats:
                     # Not the category we're looking for
                     continue
-            stofn, wutg, _ = self.lemma(lemma_index)
+            stofn, _ = self.lemma(bin_id)
             if lemma is not None and lemma != stofn:
                 # Not the lemma we're looking for
-                continue
-            if utg is not None and utg != wutg:
-                # Not the utg we're looking for
                 continue
             # Go through the variants of this
             # lemma, for the requested case
             wanted_beyging = simplify_beyging(beyging)
-            for c_latin in self.lemma_forms(lemma_index):
+            for c_latin in self.lemma_forms(bin_id):
                 # TODO: Encoding and decoding back and forth is not terribly efficient
                 c = c_latin.decode("latin-1")
                 # Make sure we only include each result once.
@@ -544,11 +562,37 @@ class BinCompressed:
                         c,
                         cat=ofl,
                         lemma=stofn,
-                        utg=wutg,
+                        utg=bin_id,
                         inflection_filter=beyging_func,
                     )
                 )
         return result
+
+    def lookup_id(self, bin_id: int) -> List[Ksnid]:
+        """ Given a BÍN id number, return a set of matching Ksnid entries """
+        result: Set[Ksnid] = set()
+        forms = self.lemma_forms(bin_id)
+        if forms:
+            stofn, fl = self.lemma(bin_id)
+            for form_latin in forms:
+                for form_id, mix, kix in self._raw_lookup(form_latin):
+                    if form_id != bin_id:
+                        continue
+                    # Found a word form of the same lemma
+                    ofl, beyging = self.meaning(mix)
+                    ksnid_string = self.ksnid_string(kix)
+                    result.add(
+                        Ksnid.from_parameters(
+                            stofn,
+                            bin_id,
+                            ofl,
+                            fl,
+                            form_latin.decode("latin-1"),
+                            beyging,
+                            ksnid_string,
+                        )
+                    )
+        return list(result)
 
     def lookup_variants(
         self,
@@ -657,17 +701,17 @@ class BinCompressed:
         else:
             cats = frozenset([cat])
         result: Set[Ksnid] = set()
-        for lemma_index, meaning_index, _ in self._raw_lookup(word):
+        for bin_id, meaning_index, _ in self._raw_lookup(word):
+            if utg is not None and bin_id != utg:
+                # Fails the utg filter
+                continue
             ofl, beyging = self.meaning(meaning_index)
             if ofl not in cats:
                 # Fails the word category constraint
                 continue
-            stofn, wutg, fl = self.lemma(lemma_index)
+            stofn, fl = self.lemma(bin_id)
             if lemma is not None and stofn != lemma:
                 # Fails the lemma filter
-                continue
-            if utg is not None and wutg != utg:
-                # Fails the utg filter
                 continue
             if inflection_filter is not None and not inflection_filter(beyging):
                 # The user-defined filter fails
@@ -677,9 +721,9 @@ class BinCompressed:
                 # This target beyging string does not contain
                 # our desired variants and is therefore not relevant
                 continue
-            for form_latin in self.lemma_forms(lemma_index):
-                for lix, mix, kix in self._raw_lookup(form_latin):
-                    if lix != lemma_index:
+            for form_latin in self.lemma_forms(bin_id):
+                for form_id, mix, kix in self._raw_lookup(form_latin):
+                    if form_id != bin_id:
                         continue
                     # Found a word form of the same lemma
                     _, this_beyging = self.meaning(mix)
@@ -689,7 +733,7 @@ class BinCompressed:
                         result.add(
                             Ksnid.from_parameters(
                                 stofn,
-                                wutg,
+                                bin_id,
                                 ofl,
                                 fl,
                                 form_latin.decode("latin-1"),

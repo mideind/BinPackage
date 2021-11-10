@@ -149,6 +149,10 @@ _LEMMA_FILTERS: Dict[str, InflectionFilter] = {
     "to": lambda b: b.startswith("KK_NF") or b == "OBEYGJANLEGT",
 }
 
+# Word meanings that are marked in BÍN as obsolete, rare, errors or old;
+# these are sorted last in the lookup functions
+_LOW_PRIORITY_FORMS = frozenset(("URE", "SJALD", "VILLA", "GAM"))
+
 
 class Bin:
 
@@ -896,17 +900,26 @@ class GreynirBin(Bin):
     def _priority(m: Ksnid) -> int:
         """ Return a relative priority for the word meaning tuple
             in m. A lower number means more priority, a higher number
-            means less priority. """
-        if m.ofl != "so":
-            # Not a verb: Prioritize forms with non-NULL bin_id
-            # +1 if bin_id is 0, or 0 otherwise
+            means less priority. The final list of meanings is sorted
+            so that higher-priority meanings occur before lower-priority ones. """
+        prio = (
+            # +1 if bin_id is 0 (constructed word form, not originally in BÍN)
             # +1 if einkunn (grammatical correctness grade) is not 1 (normal)
-            return int(m.bin_id == 0) + int(m.einkunn != 1)
+            # +1 if malsnid (lemma semantic category) is a low priority category
+            # +1 if bmalsnid (word semantic category) is a low priority category
+            int(m.bin_id == 0)
+            + int(m.einkunn != 1)
+            + int(m.malsnid in _LOW_PRIORITY_FORMS)
+            + int(m.bmalsnid in _LOW_PRIORITY_FORMS)
+        )
+        if m.ofl != "so":
+            # Not a verb: Prioritize forms by general acceptability only
+            return prio
         # Verb priorities
         # Order "VH" verbs (viðtengingarháttur) after other forms
         # Also order past tense ("ÞT") after present tense
         # plural after singular and 2p after 3p
-        prio = 4 if "VH" in m.mark else 0
+        prio += 4 if "VH" in m.mark else 0
         prio += 2 if "ÞT" in m.mark else 0
         prio += 1 if "FT" in m.mark else 0
         prio += 1 if "2P" in m.mark else 0

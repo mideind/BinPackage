@@ -194,7 +194,7 @@ class Ksnid:
             f"ksnid='{self.ksnid_string}'>"
         )
 
-    __repr__ = __str__
+    __repr__ = __str__  # type: ignore  # TODO: Update when Pylance is fixed
 
     def __eq__(self, o: object) -> bool:
         if not isinstance(o, Ksnid):

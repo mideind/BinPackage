@@ -862,8 +862,9 @@ def test_variants() -> None:
 
 def test_sorting() -> None:
     b = Bin()
-    assert b.lookup_ksnid("arfa")[1][0].ofl == "kk"
-    assert b.lookup_ksnid("arfa")[1][-1].ofl == "kvk"
+    _, r = b.lookup_ksnid("arfa")
+    assert r[0].ofl == "kk"
+    assert r[-1].ofl == "kvk"
 
 
 def test_id() -> None:

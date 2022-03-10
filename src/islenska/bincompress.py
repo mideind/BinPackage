@@ -681,6 +681,9 @@ class BinCompressed:
                     elif not b.endswith("-SAGNB"):
                         # Thin ice here, probably a wrong target string
                         b += "-SAGNB"
+                elif t == "LHÞT":
+                    # No need to alter the beyging string
+                    pass
                 elif t == "það":
                     # Expletive; the beyging string should start with 'OP-það-'
                     if b.startswith("OP-það-"):

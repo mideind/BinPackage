@@ -385,11 +385,11 @@ def test_compounds() -> None:
     lc = db.lookup_lemmas_and_cats("færi")
     assert set(lc) == {("færi", "hk"), ("fær", "lo"), ("fara", "so"), ("færa", "so")}
 
-    cats = db.lookup_cats("borgarstjórnarmeirihlutinn")
+    cats = db.lookup_cats("borgarstjórnarminnihlutinn")
     assert set(cats) == {"kk"}
 
-    cats = db.lookup_lemmas_and_cats("borgarstjórnarmeirihlutinn")
-    assert set(cats) == {("borgarstjórnar-meirihluti", "kk")}
+    cats = db.lookup_lemmas_and_cats("borgarstjórnarminnihlutinn")
+    assert set(cats) == {("borgarstjórnar-minnihluti", "kk")}
 
     cats = db.lookup_cats("xyz")
     assert set(cats) == set()

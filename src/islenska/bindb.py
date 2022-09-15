@@ -675,7 +675,7 @@ class Bin:
             a more flexible alternative to this function. """
         assert self._bc is not None
         mset = self._bc.lookup_case(
-            lemma, case.upper(), lemma=lemma, cat=cat, all_forms=True
+            lemma, case.upper().replace("GR","gr"), lemma=lemma, cat=cat, all_forms=True
         )
         return self._filter_meanings(mset)
 

@@ -418,12 +418,12 @@ def test_compounds() -> None:
 
 def test_key() -> None:
     db = Bin()
-    w, m = db.lookup("Farmiðasala")
-    assert w == "farmiðasala"
-    assert all(mm.ord in ("far-miðasala", "far-miðasali") for mm in m)
-    w, m = db.lookup("farmiðasala")
-    assert w == "farmiðasala"
-    assert all(mm.ord in ("far-miðasala", "far-miðasali") for mm in m)
+    w, m = db.lookup("Rússíbanamiðasala")
+    assert w == "rússíbanamiðasala"
+    assert all(mm.ord in ("rússíbana-miðasala", "rússíbana-miðasali") for mm in m)
+    w, m = db.lookup("rússíbanamiðasala")
+    assert w == "rússíbanamiðasala"
+    assert all(mm.ord in ("rússíbana-miðasala", "rússíbana-miðasali") for mm in m)
     w, m = db.lookup("lízt")
     assert w == "líst"
     assert all(mm.ord == "líta" for mm in m)

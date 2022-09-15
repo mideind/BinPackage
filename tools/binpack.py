@@ -165,12 +165,12 @@ MeaningTuple = Tuple[bytes, bytes]  # ordfl, beyging
 
 
 _path, _ = os.path.split(os.path.realpath(__file__))
-if _path.endswith("/tools"):
+if _path.endswith(f"{os.sep}tools"):
     # Running from the tools directory (./tools)
-    _path += "/../src/islenska"
+    _path = os.path.join(_path, "..", "src", "islenska")
 else:
     # Running from the base directory (.)
-    _path += "/src/islenska"
+    _path = os.path.join(_path, "src", "islenska")
 
 # If running under a CI environment (such as GitHub Actions),
 # limit output to the essentials
@@ -566,7 +566,7 @@ class BinCompressor:
         utg_to_lemma: Dict[int, int] = dict()
         for fname in fnames:
             print("Reading file '{0}'...".format(fname))
-            with open(fname, "r") as f:
+            with open(fname, "r", encoding="utf-8") as f:
                 for line in f:
                     cnt += 1
                     line = line.strip()

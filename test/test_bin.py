@@ -385,11 +385,11 @@ def test_compounds() -> None:
     lc = db.lookup_lemmas_and_cats("færi")
     assert set(lc) == {("færi", "hk"), ("fær", "lo"), ("fara", "so"), ("færa", "so")}
 
-    cats = db.lookup_cats("borgarstjórnarmeirihlutinn")
+    cats = db.lookup_cats("borgarstjórnarminnihlutinn")
     assert set(cats) == {"kk"}
 
-    cats = db.lookup_lemmas_and_cats("borgarstjórnarmeirihlutinn")
-    assert set(cats) == {("borgarstjórnar-meirihluti", "kk")}
+    cats = db.lookup_lemmas_and_cats("borgarstjórnarminnihlutinn")
+    assert set(cats) == {("borgarstjórnar-minnihluti", "kk")}
 
     cats = db.lookup_cats("xyz")
     assert set(cats) == set()
@@ -418,12 +418,12 @@ def test_compounds() -> None:
 
 def test_key() -> None:
     db = Bin()
-    w, m = db.lookup("Farmiðasala")
-    assert w == "farmiðasala"
-    assert all(mm.ord in ("far-miðasala", "far-miðasali") for mm in m)
-    w, m = db.lookup("farmiðasala")
-    assert w == "farmiðasala"
-    assert all(mm.ord in ("far-miðasala", "far-miðasali") for mm in m)
+    w, m = db.lookup("Rússíbanamiðasala")
+    assert w == "rússíbanamiðasala"
+    assert all(mm.ord in ("rússíbana-miðasala", "rússíbana-miðasali") for mm in m)
+    w, m = db.lookup("rússíbanamiðasala")
+    assert w == "rússíbanamiðasala"
+    assert all(mm.ord in ("rússíbana-miðasala", "rússíbana-miðasali") for mm in m)
     w, m = db.lookup("lízt")
     assert w == "líst"
     assert all(mm.ord == "líta" for mm in m)

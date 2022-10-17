@@ -190,20 +190,20 @@ fimmti;0;lo;alm;5tu;FSB-HK-ÞFFT
 fimmti;0;lo;alm;5tu;FSB-HK-ÞGFFT
 fimmti;0;lo;alm;5tu;FSB-HK-EFFT
 
-tvisvar;0;ao;ob;2svar;-
-þrisvar;0;ao;ob;3svar;-
+tvisvar;0;ao;ob;2svar;OBEYGJANLEGT
+þrisvar;0;ao;ob;3svar;OBEYGJANLEGT
 
-tveir;0;to;alm;2ja;KK_EFFT
-tveir;0;to;alm;2ja;KVK_EFFT
-tveir;0;to;alm;2ja;HK_EFFT
+tveir;0;to;alm;2ja;KK-EFFT
+tveir;0;to;alm;2ja;KVK-EFFT
+tveir;0;to;alm;2ja;HK-EFFT
 
-þrír;0;to;alm;3ja;KK_EFFT
-þrír;0;to;alm;3ja;KVK_EFFT
-þrír;0;to;alm;3ja;HK_EFFT
+þrír;0;to;alm;3ja;KK-EFFT
+þrír;0;to;alm;3ja;KVK-EFFT
+þrír;0;to;alm;3ja;HK-EFFT
 
-fjórir;0;to;alm;4ra;KK_EFFT
-fjórir;0;to;alm;4ra;KVK_EFFT
-fjórir;0;to;alm;4ra;HK_EFFT
+fjórir;0;to;alm;4ra;KK-EFFT
+fjórir;0;to;alm;4ra;KVK-EFFT
+fjórir;0;to;alm;4ra;HK-EFFT
 
 Desdemóna;0;kvk;ism;Desdemóna;NFET
 Desdemóna;0;kvk;ism;Desdemónan;NFETgr
@@ -1805,7 +1805,7 @@ fótósjoppa;0;so;alm;fótósjoppuðu;GM-VH-ÞT-3P-FT
 fótósjoppa;0;so;alm;fótósjoppa;GM-BH-ST
 fótósjoppa;0;so;alm;fótósjoppaðu;GM-BH-ET
 fótósjoppa;0;so;alm;fótósjoppið;GM-BH-FT
-fótósjoppa;0;so;alm;fótósjoppandi;LH-NT
+fótósjoppa;0;so;alm;fótósjoppandi;LHNT
 fótósjoppa;0;so;alm;fótósjoppað;GM-SAGNB
 fótósjoppa;0;so;alm;fótósjoppaður;LHÞT-SB-KK-NFET
 fótósjoppa;0;so;alm;fótósjoppaðan;LHÞT-SB-KK-ÞFET
@@ -1884,7 +1884,7 @@ blörra;0;so;alm;blörruðu;GM-VH-ÞT-3P-FT
 blörra;0;so;alm;blörra;GM-BH-ST
 blörra;0;so;alm;blörraðu;GM-BH-ET
 blörra;0;so;alm;blörrið;GM-BH-FT
-blörra;0;so;alm;blörrandi;LH-NT
+blörra;0;so;alm;blörrandi;LHNT
 blörra;0;so;alm;blörrað;GM-SAGNB
 blörra;0;so;alm;blörraður;LHÞT-SB-KK-NFET
 blörra;0;so;alm;blörraðan;LHÞT-SB-KK-ÞFET
@@ -1963,7 +1963,7 @@ böska;0;so;alm;böskuðu;GM-VH-ÞT-3P-FT
 böska;0;so;alm;böska;GM-BH-ST
 böska;0;so;alm;böskaðu;GM-BH-ET
 böska;0;so;alm;böskið;GM-BH-FT
-böska;0;so;alm;böskandi;LH-NT
+böska;0;so;alm;böskandi;LHNT
 böska;0;so;alm;böskað;GM-SAGNB
 böska;0;so;alm;böskaður;LHÞT-SB-KK-NFET
 böska;0;so;alm;böskaðan;LHÞT-SB-KK-ÞFET
@@ -2042,7 +2042,7 @@ bulka;0;so;alm;bulkuðu;GM-VH-ÞT-3P-FT
 bulka;0;so;alm;bulka;GM-BH-ST
 bulka;0;so;alm;bulkaðu;GM-BH-ET
 bulka;0;so;alm;bulkið;GM-BH-FT
-bulka;0;so;alm;bulkandi;LH-NT
+bulka;0;so;alm;bulkandi;LHNT
 bulka;0;so;alm;bulkað;GM-SAGNB
 bulka;0;so;alm;bulkaður;LHÞT-SB-KK-NFET
 bulka;0;so;alm;bulkaðan;LHÞT-SB-KK-ÞFET
@@ -2121,7 +2121,7 @@ bubbla;0;so;alm;bubbluðu;GM-VH-ÞT-3P-FT
 bubbla;0;so;alm;bubbla;GM-BH-ST
 bubbla;0;so;alm;bubblaðu;GM-BH-ET
 bubbla;0;so;alm;bubblið;GM-BH-FT
-bubbla;0;so;alm;bubblandi;LH-NT
+bubbla;0;so;alm;bubblandi;LHNT
 bubbla;0;so;alm;bubblað;GM-SAGNB
 bubbla;0;so;alm;bubblaður;LHÞT-SB-KK-NFET
 bubbla;0;so;alm;bubblaðan;LHÞT-SB-KK-ÞFET
@@ -2200,7 +2200,7 @@ delera;0;so;alm;deleruðu;GM-VH-ÞT-3P-FT
 delera;0;so;alm;delera;GM-BH-ST
 delera;0;so;alm;deleraðu;GM-BH-ET
 delera;0;so;alm;delerið;GM-BH-FT
-delera;0;so;alm;delerandi;LH-NT
+delera;0;so;alm;delerandi;LHNT
 delera;0;so;alm;delerað;GM-SAGNB
 delera;0;so;alm;deleraður;LHÞT-SB-KK-NFET
 delera;0;so;alm;deleraðan;LHÞT-SB-KK-ÞFET
@@ -2279,7 +2279,7 @@ detoxa;0;so;alm;detoxuðu;GM-VH-ÞT-3P-FT
 detoxa;0;so;alm;detoxa;GM-BH-ST
 detoxa;0;so;alm;detoxaðu;GM-BH-ET
 detoxa;0;so;alm;detoxið;GM-BH-FT
-detoxa;0;so;alm;detoxandi;LH-NT
+detoxa;0;so;alm;detoxandi;LHNT
 detoxa;0;so;alm;detoxað;GM-SAGNB
 detoxa;0;so;alm;detoxaður;LHÞT-SB-KK-NFET
 detoxa;0;so;alm;detoxaðan;LHÞT-SB-KK-ÞFET
@@ -2358,7 +2358,7 @@ drippla;0;so;alm;drippluðu;GM-VH-ÞT-3P-FT
 drippla;0;so;alm;drippla;GM-BH-ST
 drippla;0;so;alm;dripplaðu;GM-BH-ET
 drippla;0;so;alm;dripplið;GM-BH-FT
-drippla;0;so;alm;dripplandi;LH-NT
+drippla;0;so;alm;dripplandi;LHNT
 drippla;0;so;alm;dripplað;GM-SAGNB
 drippla;0;so;alm;dripplaður;LHÞT-SB-KK-NFET
 drippla;0;so;alm;dripplaðan;LHÞT-SB-KK-ÞFET
@@ -2437,7 +2437,7 @@ djöggla;0;so;alm;djöggluðu;GM-VH-ÞT-3P-FT
 djöggla;0;so;alm;djöggla;GM-BH-ST
 djöggla;0;so;alm;djögglaðu;GM-BH-ET
 djöggla;0;so;alm;djögglið;GM-BH-FT
-djöggla;0;so;alm;djögglandi;LH-NT
+djöggla;0;so;alm;djögglandi;LHNT
 djöggla;0;so;alm;djögglað;GM-SAGNB
 djöggla;0;so;alm;djögglaður;LHÞT-SB-KK-NFET
 djöggla;0;so;alm;djögglaðan;LHÞT-SB-KK-ÞFET
@@ -2516,7 +2516,7 @@ drauga;0;so;alm;drauguðu;GM-VH-ÞT-3P-FT
 drauga;0;so;alm;drauga;GM-BH-ST
 drauga;0;so;alm;draugaðu;GM-BH-ET
 drauga;0;so;alm;draugið;GM-BH-FT
-drauga;0;so;alm;draugandi;LH-NT
+drauga;0;so;alm;draugandi;LHNT
 drauga;0;so;alm;draugað;GM-SAGNB
 drauga;0;so;alm;draugaður;LHÞT-SB-KK-NFET
 drauga;0;so;alm;draugaðan;LHÞT-SB-KK-ÞFET
@@ -2693,7 +2693,7 @@ googla;0;so;alm;googluðu;GM-VH-ÞT-3P-FT
 googla;0;so;alm;googla;GM-BH-ST
 googla;0;so;alm;googlaðu;GM-BH-ET
 googla;0;so;alm;googlið;GM-BH-FT
-googla;0;so;alm;googlandi;LH-NT
+googla;0;so;alm;googlandi;LHNT
 googla;0;so;alm;googlað;GM-SAGNB
 googla;0;so;alm;googlaður;LHÞT-SB-KK-NFET
 googla;0;so;alm;googlaðan;LHÞT-SB-KK-ÞFET
@@ -2772,7 +2772,7 @@ gúggla;0;so;alm;gúggluðu;GM-VH-ÞT-3P-FT
 gúggla;0;so;alm;gúggla;GM-BH-ST
 gúggla;0;so;alm;gúgglaðu;GM-BH-ET
 gúggla;0;so;alm;gúgglið;GM-BH-FT
-gúggla;0;so;alm;gúgglandi;LH-NT
+gúggla;0;so;alm;gúgglandi;LHNT
 gúggla;0;so;alm;gúgglað;GM-SAGNB
 gúggla;0;so;alm;gúgglaður;LHÞT-SB-KK-NFET
 gúggla;0;so;alm;gúgglaðan;LHÞT-SB-KK-ÞFET
@@ -2900,7 +2900,7 @@ húlla;0;so;alm;húlluðu;GM-VH-ÞT-3P-FT
 húlla;0;so;alm;húlla;GM-BH-ST
 húlla;0;so;alm;húllaðu;GM-BH-ET
 húlla;0;so;alm;húllið;GM-BH-FT
-húlla;0;so;alm;húllandi;LH-NT
+húlla;0;so;alm;húllandi;LHNT
 húlla;0;so;alm;húllað;GM-SAGNB
 húlla;0;so;alm;húllaður;LHÞT-SB-KK-NFET
 húlla;0;so;alm;húllaðan;LHÞT-SB-KK-ÞFET
@@ -2979,7 +2979,7 @@ jinxa;0;so;alm;jinxuðu;GM-VH-ÞT-3P-FT
 jinxa;0;so;alm;jinxa;GM-BH-ST
 jinxa;0;so;alm;jinxaðu;GM-BH-ET
 jinxa;0;so;alm;jinxið;GM-BH-FT
-jinxa;0;so;alm;jinxandi;LH-NT
+jinxa;0;so;alm;jinxandi;LHNT
 jinxa;0;so;alm;jinxað;GM-SAGNB
 jinxa;0;so;alm;jinxaður;LHÞT-SB-KK-NFET
 jinxa;0;so;alm;jinxaðan;LHÞT-SB-KK-ÞFET
@@ -3058,7 +3058,7 @@ kjöta;0;so;alm;kjötuðu;GM-VH-ÞT-3P-FT
 kjöta;0;so;alm;kjöta;GM-BH-ST
 kjöta;0;so;alm;kjötaðu;GM-BH-ET
 kjöta;0;so;alm;kjötið;GM-BH-FT
-kjöta;0;so;alm;kjötandi;LH-NT
+kjöta;0;so;alm;kjötandi;LHNT
 kjöta;0;so;alm;kjötað;GM-SAGNB
 kjöta;0;so;alm;kjötaður;LHÞT-SB-KK-NFET
 kjöta;0;so;alm;kjötaðan;LHÞT-SB-KK-ÞFET
@@ -3137,7 +3137,7 @@ klobba;0;so;alm;klobbuðu;GM-VH-ÞT-3P-FT
 klobba;0;so;alm;klobba;GM-BH-ST
 klobba;0;so;alm;klobbaðu;GM-BH-ET
 klobba;0;so;alm;klobbið;GM-BH-FT
-klobba;0;so;alm;klobbandi;LH-NT
+klobba;0;so;alm;klobbandi;LHNT
 klobba;0;so;alm;klobbað;GM-SAGNB
 klobba;0;so;alm;klobbaður;LHÞT-SB-KK-NFET
 klobba;0;so;alm;klobbaðan;LHÞT-SB-KK-ÞFET
@@ -3216,7 +3216,7 @@ normalísera;0;so;alm;normalíseruðu;GM-VH-ÞT-3P-FT
 normalísera;0;so;alm;normalísera;GM-BH-ST
 normalísera;0;so;alm;normalíseraðu;GM-BH-ET
 normalísera;0;so;alm;normalíserið;GM-BH-FT
-normalísera;0;so;alm;normalíserandi;LH-NT
+normalísera;0;so;alm;normalíserandi;LHNT
 normalísera;0;so;alm;normalíserað;GM-SAGNB
 normalísera;0;so;alm;normalíseraður;LHÞT-SB-KK-NFET
 normalísera;0;so;alm;normalíseraðan;LHÞT-SB-KK-ÞFET
@@ -3295,7 +3295,7 @@ slæda;0;so;alm;slæduðu;GM-VH-ÞT-3P-FT
 slæda;0;so;alm;slæda;GM-BH-ST
 slæda;0;so;alm;slædaðu;GM-BH-ET
 slæda;0;so;alm;slædið;GM-BH-FT
-slæda;0;so;alm;slædandi;LH-NT
+slæda;0;so;alm;slædandi;LHNT
 slæda;0;so;alm;slædað;GM-SAGNB
 slæda;0;so;alm;slædaður;LHÞT-SB-KK-NFET
 slæda;0;so;alm;slædaðan;LHÞT-SB-KK-ÞFET
@@ -3374,7 +3374,7 @@ spritta;0;so;alm;sprittuðu;GM-VH-ÞT-3P-FT
 spritta;0;so;alm;spritta;GM-BH-ST
 spritta;0;so;alm;sprittaðu;GM-BH-ET
 spritta;0;so;alm;sprittið;GM-BH-FT
-spritta;0;so;alm;sprittandi;LH-NT
+spritta;0;so;alm;sprittandi;LHNT
 spritta;0;so;alm;sprittað;GM-SAGNB
 spritta;0;so;alm;sprittaður;LHÞT-SB-KK-NFET
 spritta;0;so;alm;sprittaðan;LHÞT-SB-KK-ÞFET
@@ -3453,7 +3453,7 @@ stílisera;0;so;alm;stíliseruðu;GM-VH-ÞT-3P-FT
 stílisera;0;so;alm;stílisera;GM-BH-ST
 stílisera;0;so;alm;stíliseraðu;GM-BH-ET
 stílisera;0;so;alm;stíliserið;GM-BH-FT
-stílisera;0;so;alm;stíliserandi;LH-NT
+stílisera;0;so;alm;stíliserandi;LHNT
 stílisera;0;so;alm;stíliserað;GM-SAGNB
 stílisera;0;so;alm;stíliseraður;LHÞT-SB-KK-NFET
 stílisera;0;so;alm;stíliseraðan;LHÞT-SB-KK-ÞFET
@@ -3532,7 +3532,7 @@ stílísera;0;so;alm;stílíseruðu;GM-VH-ÞT-3P-FT
 stílísera;0;so;alm;stílísera;GM-BH-ST
 stílísera;0;so;alm;stílíseraðu;GM-BH-ET
 stílísera;0;so;alm;stílíserið;GM-BH-FT
-stílísera;0;so;alm;stílíserandi;LH-NT
+stílísera;0;so;alm;stílíserandi;LHNT
 stílísera;0;so;alm;stílíserað;GM-SAGNB
 stílísera;0;so;alm;stílíseraður;LHÞT-SB-KK-NFET
 stílísera;0;so;alm;stílíseraðan;LHÞT-SB-KK-ÞFET
@@ -3611,7 +3611,7 @@ tjékka;0;so;alm;tjékkuðu;GM-VH-ÞT-3P-FT
 tjékka;0;so;alm;tjékka;GM-BH-ST
 tjékka;0;so;alm;tjékkaðu;GM-BH-ET
 tjékka;0;so;alm;tjékkið;GM-BH-FT
-tjékka;0;so;alm;tjékkandi;LH-NT
+tjékka;0;so;alm;tjékkandi;LHNT
 tjékka;0;so;alm;tjékkað;GM-SAGNB
 tjékka;0;so;alm;tjékkaður;LHÞT-SB-KK-NFET
 tjékka;0;so;alm;tjékkaðan;LHÞT-SB-KK-ÞFET
@@ -3690,7 +3690,7 @@ tjilla;0;so;alm;tjilluðu;GM-VH-ÞT-3P-FT
 tjilla;0;so;alm;tjilla;GM-BH-ST
 tjilla;0;so;alm;tjillaðu;GM-BH-ET
 tjilla;0;so;alm;tjillið;GM-BH-FT
-tjilla;0;so;alm;tjillandi;LH-NT
+tjilla;0;so;alm;tjillandi;LHNT
 tjilla;0;so;alm;tjillað;GM-SAGNB
 tjilla;0;so;alm;tjillaður;LHÞT-SB-KK-NFET
 tjilla;0;so;alm;tjillaðan;LHÞT-SB-KK-ÞFET
@@ -3769,7 +3769,7 @@ tvíta;0;so;alm;tvítuðu;GM-VH-ÞT-3P-FT
 tvíta;0;so;alm;tvíta;GM-BH-ST
 tvíta;0;so;alm;tvítaðu;GM-BH-ET
 tvíta;0;so;alm;tvítið;GM-BH-FT
-tvíta;0;so;alm;tvítandi;LH-NT
+tvíta;0;so;alm;tvítandi;LHNT
 tvíta;0;so;alm;tvítað;GM-SAGNB
 tvíta;0;so;alm;tvítaður;LHÞT-SB-KK-NFET
 tvíta;0;so;alm;tvítaðan;LHÞT-SB-KK-ÞFET
@@ -3946,7 +3946,7 @@ víra;483500;so;alm;víruðu;LHÞT-VB-HK-EFFT
 þvætta;0;so;alm;þvætta;GM-BH-ST
 þvætta;0;so;alm;þvættaðu;GM-BH-ET
 þvætta;0;so;alm;þvættið;GM-BH-FT
-þvætta;0;so;alm;þvættandi;LH-NT
+þvætta;0;so;alm;þvættandi;LHNT
 þvætta;0;so;alm;þvættað;GM-SAGNB
 þvætta;0;so;alm;þvættaður;LHÞT-SB-KK-NFET
 þvætta;0;so;alm;þvættaðan;LHÞT-SB-KK-ÞFET
@@ -4026,7 +4026,7 @@ bróka;0;so;alm;brókuðu;GM-VH-ÞT-3P-FT
 bróka;0;so;alm;bróka;GM-BH-ST
 bróka;0;so;alm;brókaðu;GM-BH-ET
 bróka;0;so;alm;brókið;GM-BH-FT
-bróka;0;so;alm;brókandi;LH-NT
+bróka;0;so;alm;brókandi;LHNT
 bróka;0;so;alm;brókað;GM-SAGNB
 bróka;0;so;alm;brókaður;LHÞT-SB-KK-NFET
 bróka;0;so;alm;brókaðan;LHÞT-SB-KK-ÞFET
@@ -4105,7 +4105,7 @@ múltítaska;0;so;alm;múltítöskuðu;GM-VH-ÞT-3P-FT
 múltítaska;0;so;alm;múltítaska;GM-BH-ST
 múltítaska;0;so;alm;múltítaskaðu;GM-BH-ET
 múltítaska;0;so;alm;múltítaskið;GM-BH-FT
-múltítaska;0;so;alm;múltítaskandi;LH-NT
+múltítaska;0;so;alm;múltítaskandi;LHNT
 múltítaska;0;so;alm;múltítaskað;GM-SAGNB
 
 battla;0;so;alm;battla;GM-NH
@@ -4136,7 +4136,7 @@ battla;0;so;alm;böttluðu;GM-VH-ÞT-3P-FT
 battla;0;so;alm;battla;GM-BH-ST
 battla;0;so;alm;battlaðu;GM-BH-ET
 battla;0;so;alm;battlið;GM-BH-FT
-battla;0;so;alm;battlandi;LH-NT
+battla;0;so;alm;battlandi;LHNT
 battla;0;so;alm;battlað;GM-SAGNB
 
 úllendúlla;0;so;alm;úllendúlla;GM-NH
@@ -4167,7 +4167,7 @@ battla;0;so;alm;battlað;GM-SAGNB
 úllendúlla;0;so;alm;úllendúlla;GM-BH-ST
 úllendúlla;0;so;alm;úllendúllaðu;GM-BH-ET
 úllendúlla;0;so;alm;úllendúllið;GM-BH-FT
-úllendúlla;0;so;alm;úllendúllandi;LH-NT
+úllendúlla;0;so;alm;úllendúllandi;LHNT
 úllendúlla;0;so;alm;úllendúllað;GM-SAGNB
 úllendúlla;0;so;alm;úllendúllaður;LHÞT-SB-KK-NFET
 úllendúlla;0;so;alm;úllendúllaðan;LHÞT-SB-KK-ÞFET
@@ -4246,7 +4246,7 @@ veipa;0;so;alm;veipuðu;GM-VH-ÞT-3P-FT
 veipa;0;so;alm;veipa;GM-BH-ST
 veipa;0;so;alm;veipaðu;GM-BH-ET
 veipa;0;so;alm;veipið;GM-BH-FT
-veipa;0;so;alm;veipandi;LH-NT
+veipa;0;so;alm;veipandi;LHNT
 veipa;0;so;alm;veipað;GM-SAGNB
 veipa;0;so;alm;veipaður;LHÞT-SB-KK-NFET
 veipa;0;so;alm;veipaðan;LHÞT-SB-KK-ÞFET
@@ -4325,7 +4325,7 @@ ranta;0;so;alm;röntuðu;GM-VH-ÞT-3P-FT
 ranta;0;so;alm;ranta;GM-BH-ST
 ranta;0;so;alm;rantaðu;GM-BH-ET
 ranta;0;so;alm;rantið;GM-BH-FT
-ranta;0;so;alm;rantandi;LH-NT
+ranta;0;so;alm;rantandi;LHNT
 ranta;0;so;alm;rantað;GM-SAGNB
 
 fúnkera;0;so;alm;fúnkera;GM-NH
@@ -4356,7 +4356,7 @@ fúnkera;0;so;alm;fúnkeruðu;GM-VH-ÞT-3P-FT
 fúnkera;0;so;alm;fúnkera;GM-BH-ST
 fúnkera;0;so;alm;fúnkeraðu;GM-BH-ET
 fúnkera;0;so;alm;fúnkerið;GM-BH-FT
-fúnkera;0;so;alm;fúnkerandi;LH-NT
+fúnkera;0;so;alm;fúnkerandi;LHNT
 fúnkera;0;so;alm;fúnkerað;GM-SAGNB
 fúnkera;0;so;alm;fúnkeraður;LHÞT-SB-KK-NFET
 fúnkera;0;so;alm;fúnkeraðan;LHÞT-SB-KK-ÞFET
@@ -7010,7 +7010,7 @@ músíkant;0;kk;alm;músíkantanna;EFFTgr
 örvfættur;0;lo;alm;örvfættu;FVB-HK-NFFT
 örvfættur;0;lo;alm;örvfættu;FVB-HK-ÞFFT
 örvfættur;0;lo;alm;örvfættu;FVB-HK-ÞGFFT
-örvfættur;0;lo;alm;örvfættu;FVB-HK-EFFT)
+örvfættur;0;lo;alm;örvfættu;FVB-HK-EFFT
 
 sveiflóttur;0;lo;alm;sveiflóttur;FSB-KK-NFET
 sveiflóttur;0;lo;alm;sveiflóttan;FSB-KK-ÞFET
@@ -8081,7 +8081,7 @@ nóbel;0;kk;alm;nóbelinn;ÞFETgr
 nóbel;0;kk;alm;nóbel;ÞGFET
 nóbel;0;kk;alm;nóbelnum;ÞGFETgr
 nóbel;0;kk;alm;nóbeli;ÞGFET2
-nóbel;0;kk;alm;nóbelinum;ÞGFET2gr
+nóbel;0;kk;alm;nóbelinum;ÞGFETgr2
 nóbel;0;kk;alm;nóbels;EFET
 nóbel;0;kk;alm;nóbelsins;EFETgr
 
@@ -8092,7 +8092,7 @@ aðjúnkt;0;kk;alm;aðjúnktinn;ÞFETgr
 aðjúnkt;0;kk;alm;aðjúnkt;ÞGFET
 aðjúnkt;0;kk;alm;aðjúnktnum;ÞGFETgr
 aðjúnkt;0;kk;alm;aðjúnkti;ÞGFET2
-aðjúnkt;0;kk;alm;aðjúnktinum;ÞGFET2gr
+aðjúnkt;0;kk;alm;aðjúnktinum;ÞGFETgr2
 aðjúnkt;0;kk;alm;aðjúnkts;EFET
 aðjúnkt;0;kk;alm;aðjúnktsins;EFETgr
 
@@ -19808,7 +19808,7 @@ unglingatarfur;0;kk;alm;unglingatarfanna;EFFTgr
 örvingla;0;so;alm;örvingla;GM-BH-ST
 örvingla;0;so;alm;örvinglaðu;GM-BH-ET
 örvingla;0;so;alm;örvinglið;GM-BH-FT
-örvingla;0;so;alm;örvinglandi;LH-NT
+örvingla;0;so;alm;örvinglandi;LHNT
 örvingla;0;so;alm;örvinglað;GM-SAGNB
 
 ítra;0;so;alm;ítra;GM-NH
@@ -19839,7 +19839,7 @@ unglingatarfur;0;kk;alm;unglingatarfanna;EFFTgr
 ítra;0;so;alm;ítra;GM-BH-ST
 ítra;0;so;alm;ítraðu;GM-BH-ET
 ítra;0;so;alm;ítrið;GM-BH-FT
-ítra;0;so;alm;ítrandi;LH-NT
+ítra;0;so;alm;ítrandi;LHNT
 ítra;0;so;alm;ítrað;GM-SAGNB
 
 djók;0;hk;alm;djók;NFET
@@ -20380,7 +20380,7 @@ valdefla;0;so;alm;valdefldust;MM-VH-ÞT-3P-FT
 valdefla;0;so;alm;valdefl;GM-BH-ST
 valdefla;0;so;alm;valdefldu;GM-BH-ET
 valdefla;0;so;alm;valdeflið;GM-BH-FT
-valdefla;0;so;alm;valdeflandi;LH-NT
+valdefla;0;so;alm;valdeflandi;LHNT
 valdefla;0;so;alm;valdeflt;GM-SAGNB
 valdefla;0;so;alm;valdeflst;MM-SAGNB
 valdefla;0;so;alm;valdefldur;LHÞT-SB-KK-NFET
@@ -20432,54 +20432,54 @@ valdefla;0;so;alm;valdefldu;LHÞT-VB-HK-ÞFFT
 valdefla;0;so;alm;valdefldu;LHÞT-VB-HK-ÞGFFT
 valdefla;0;so;alm;valdefldu;LHÞT-VB-HK-EFFT
 
-vanrækja;0;so;alm;vanræktur;FSB-KK-NFET
-vanrækja;0;so;alm;vanræktan;FSB-KK-ÞFET
-vanrækja;0;so;alm;vanræktum;FSB-KK-ÞGFET
-vanrækja;0;so;alm;vanrækts;FSB-KK-EFET
-vanrækja;0;so;alm;vanræktir;FSB-KK-NFFT
-vanrækja;0;so;alm;vanrækta;FSB-KK-ÞFFT
-vanrækja;0;so;alm;vanræktum;FSB-KK-ÞGFFT
-vanrækja;0;so;alm;vanræktra;FSB-KK-EFFT
-vanrækja;0;so;alm;vanrækt;FSB-KVK-NFET
-vanrækja;0;so;alm;vanrækta;FSB-KVK-ÞFET
-vanrækja;0;so;alm;vanræktri;FSB-KVK-ÞGFET
-vanrækja;0;so;alm;vanræktrar;FSB-KVK-EFET
-vanrækja;0;so;alm;vanræktar;FSB-KVK-NFFT
-vanrækja;0;so;alm;vanræktar;FSB-KVK-ÞFFT
-vanrækja;0;so;alm;vanræktum;FSB-KVK-ÞGFFT
-vanrækja;0;so;alm;vanræktra;FSB-KVK-EFFT
-vanrækja;0;so;alm;vanrækt;FSB-HK-NFET
-vanrækja;0;so;alm;vanrækt;FSB-HK-ÞFET
-vanrækja;0;so;alm;vanræktu;FSB-HK-ÞGFET
-vanrækja;0;so;alm;vanrækts;FSB-HK-EFET
-vanrækja;0;so;alm;vanrækt;FSB-HK-NFFT
-vanrækja;0;so;alm;vanrækt;FSB-HK-ÞFFT
-vanrækja;0;so;alm;vanræktum;FSB-HK-ÞGFFT
-vanrækja;0;so;alm;vanræktra;FSB-HK-EFFT
-vanrækja;0;so;alm;vanrækti;FVB-KK-NFET
-vanrækja;0;so;alm;vanrækta;FVB-KK-ÞFET
-vanrækja;0;so;alm;vanrækta;FVB-KK-ÞGFET
-vanrækja;0;so;alm;vanrækta;FVB-KK-EFET
-vanrækja;0;so;alm;vanræktu;FVB-KK-NFFT
-vanrækja;0;so;alm;vanræktu;FVB-KK-ÞFFT
-vanrækja;0;so;alm;vanræktu;FVB-KK-ÞGFFT
-vanrækja;0;so;alm;vanræktu;FVB-KK-EFFT
-vanrækja;0;so;alm;vanrækta;FVB-KVK-NFET
-vanrækja;0;so;alm;vanræktu;FVB-KVK-ÞFET
-vanrækja;0;so;alm;vanræktu;FVB-KVK-ÞGFET
-vanrækja;0;so;alm;vanræktu;FVB-KVK-EFET
-vanrækja;0;so;alm;vanræktu;FVB-KVK-NFFT
-vanrækja;0;so;alm;vanræktu;FVB-KVK-ÞFFT
-vanrækja;0;so;alm;vanræktu;FVB-KVK-ÞGFFT
-vanrækja;0;so;alm;vanræktu;FVB-KVK-EFFT
-vanrækja;0;so;alm;vanrækta;FVB-HK-NFET
-vanrækja;0;so;alm;vanrækta;FVB-HK-ÞFET
-vanrækja;0;so;alm;vanrækta;FVB-HK-ÞGFET
-vanrækja;0;so;alm;vanrækta;FVB-HK-EFET
-vanrækja;0;so;alm;vanræktu;FVB-HK-NFFT
-vanrækja;0;so;alm;vanræktu;FVB-HK-ÞFFT
-vanrækja;0;so;alm;vanræktu;FVB-HK-ÞGFFT
-vanrækja;0;so;alm;vanræktu;FVB-HK-EFFT
+vanrækja;0;so;alm;vanræktur;LHÞT-SB-KK-NFET
+vanrækja;0;so;alm;vanræktan;LHÞT-SB-KK-ÞFET
+vanrækja;0;so;alm;vanræktum;LHÞT-SB-KK-ÞGFET
+vanrækja;0;so;alm;vanrækts;LHÞT-SB-KK-EFET
+vanrækja;0;so;alm;vanræktir;LHÞT-SB-KK-NFFT
+vanrækja;0;so;alm;vanrækta;LHÞT-SB-KK-ÞFFT
+vanrækja;0;so;alm;vanræktum;LHÞT-SB-KK-ÞGFFT
+vanrækja;0;so;alm;vanræktra;LHÞT-SB-KK-EFFT
+vanrækja;0;so;alm;vanrækt;LHÞT-SB-KVK-NFET
+vanrækja;0;so;alm;vanrækta;LHÞT-SB-KVK-ÞFET
+vanrækja;0;so;alm;vanræktri;LHÞT-SB-KVK-ÞGFET
+vanrækja;0;so;alm;vanræktrar;LHÞT-SB-KVK-EFET
+vanrækja;0;so;alm;vanræktar;LHÞT-SB-KVK-NFFT
+vanrækja;0;so;alm;vanræktar;LHÞT-SB-KVK-ÞFFT
+vanrækja;0;so;alm;vanræktum;LHÞT-SB-KVK-ÞGFFT
+vanrækja;0;so;alm;vanræktra;LHÞT-SB-KVK-EFFT
+vanrækja;0;so;alm;vanrækt;LHÞT-SB-HK-NFET
+vanrækja;0;so;alm;vanrækt;LHÞT-SB-HK-ÞFET
+vanrækja;0;so;alm;vanræktu;LHÞT-SB-HK-ÞGFET
+vanrækja;0;so;alm;vanrækts;LHÞT-SB-HK-EFET
+vanrækja;0;so;alm;vanrækt;LHÞT-SB-HK-NFFT
+vanrækja;0;so;alm;vanrækt;LHÞT-SB-HK-ÞFFT
+vanrækja;0;so;alm;vanræktum;LHÞT-SB-HK-ÞGFFT
+vanrækja;0;so;alm;vanræktra;LHÞT-SB-HK-EFFT
+vanrækja;0;so;alm;vanrækti;LHÞT-VB-KK-NFET
+vanrækja;0;so;alm;vanrækta;LHÞT-VB-KK-ÞFET
+vanrækja;0;so;alm;vanrækta;LHÞT-VB-KK-ÞGFET
+vanrækja;0;so;alm;vanrækta;LHÞT-VB-KK-EFET
+vanrækja;0;so;alm;vanræktu;LHÞT-VB-KK-NFFT
+vanrækja;0;so;alm;vanræktu;LHÞT-VB-KK-ÞFFT
+vanrækja;0;so;alm;vanræktu;LHÞT-VB-KK-ÞGFFT
+vanrækja;0;so;alm;vanræktu;LHÞT-VB-KK-EFFT
+vanrækja;0;so;alm;vanrækta;LHÞT-VB-KVK-NFET
+vanrækja;0;so;alm;vanræktu;LHÞT-VB-KVK-ÞFET
+vanrækja;0;so;alm;vanræktu;LHÞT-VB-KVK-ÞGFET
+vanrækja;0;so;alm;vanræktu;LHÞT-VB-KVK-EFET
+vanrækja;0;so;alm;vanræktu;LHÞT-VB-KVK-NFFT
+vanrækja;0;so;alm;vanræktu;LHÞT-VB-KVK-ÞFFT
+vanrækja;0;so;alm;vanræktu;LHÞT-VB-KVK-ÞGFFT
+vanrækja;0;so;alm;vanræktu;LHÞT-VB-KVK-EFFT
+vanrækja;0;so;alm;vanrækta;LHÞT-VB-HK-NFET
+vanrækja;0;so;alm;vanrækta;LHÞT-VB-HK-ÞFET
+vanrækja;0;so;alm;vanrækta;LHÞT-VB-HK-ÞGFET
+vanrækja;0;so;alm;vanrækta;LHÞT-VB-HK-EFET
+vanrækja;0;so;alm;vanræktu;LHÞT-VB-HK-NFFT
+vanrækja;0;so;alm;vanræktu;LHÞT-VB-HK-ÞFFT
+vanrækja;0;so;alm;vanræktu;LHÞT-VB-HK-ÞGFFT
+vanrækja;0;so;alm;vanræktu;LHÞT-VB-HK-EFFT
 
 bróka;0;so;alm;bróka;GM-NH
 bróka;0;so;alm;bróka;GM-FH-NT-1P-ET
@@ -20509,7 +20509,7 @@ bróka;0;so;alm;brókuðu;GM-VH-ÞT-3P-FT
 bróka;0;so;alm;bróka;GM-BH-ST
 bróka;0;so;alm;brókaðu;GM-BH-ET
 bróka;0;so;alm;brókið;GM-BH-FT
-bróka;0;so;alm;brókandi;LH-NT
+bróka;0;so;alm;brókandi;LHNT
 bróka;0;so;alm;brókað;GM-SAGNB
 bróka;0;so;alm;brókaður;LHÞT-SB-KK-NFET
 bróka;0;so;alm;brókaðan;LHÞT-SB-KK-ÞFET
@@ -20588,7 +20588,7 @@ sæta;0;so;alm;sætuðu;GM-VH-ÞT-3P-FT
 sæta;0;so;alm;sæta;GM-BH-ST
 sæta;0;so;alm;sætaðu;GM-BH-ET
 sæta;0;so;alm;sætið;GM-BH-FT
-sæta;0;so;alm;sætandi;LH-NT
+sæta;0;so;alm;sætandi;LHNT
 sæta;0;so;alm;sætað;GM-SAGNB
 sæta;0;so;alm;sætaður;LHÞT-SB-KK-NFET
 sæta;0;so;alm;sætaðan;LHÞT-SB-KK-ÞFET
@@ -20692,7 +20692,7 @@ tugta;0;so;alm;tugtuðust;MM-VH-ÞT-3P-FT
 tugta;0;so;alm;tugta;GM-BH-ST
 tugta;0;so;alm;tugtaðu;GM-BH-ET
 tugta;0;so;alm;tugtið;GM-BH-FT
-tugta;0;so;alm;tugtandi;LH-NT
+tugta;0;so;alm;tugtandi;LHNT
 tugta;0;so;alm;tugtað;GM-SAGNB
 tugta;0;so;alm;tugtast;MM-SAGNB
 tugta;0;so;alm;tugtaður;LHÞT-SB-KK-NFET
@@ -20772,7 +20772,7 @@ mótívera;0;so;alm;mótíveruðu;GM-VH-ÞT-3P-FT
 mótívera;0;so;alm;mótívera;GM-BH-ST
 mótívera;0;so;alm;mótíveraðu;GM-BH-ET
 mótívera;0;so;alm;mótíverið;GM-BH-FT
-mótívera;0;so;alm;mótíverandi;LH-NT
+mótívera;0;so;alm;mótíverandi;LHNT
 mótívera;0;so;alm;mótíverað;GM-SAGNB
 mótívera;0;so;alm;mótíveraður;LHÞT-SB-KK-NFET
 mótívera;0;so;alm;mótíveraðan;LHÞT-SB-KK-ÞFET
@@ -20851,7 +20851,7 @@ prófílera;0;so;alm;prófíleruðu;GM-VH-ÞT-3P-FT
 prófílera;0;so;alm;prófílera;GM-BH-ST
 prófílera;0;so;alm;prófíleraðu;GM-BH-ET
 prófílera;0;so;alm;prófílerið;GM-BH-FT
-prófílera;0;so;alm;prófílerandi;LH-NT
+prófílera;0;so;alm;prófílerandi;LHNT
 prófílera;0;so;alm;prófílerað;GM-SAGNB
 prófílera;0;so;alm;prófíleraður;LHÞT-SB-KK-NFET
 prófílera;0;so;alm;prófíleraðan;LHÞT-SB-KK-ÞFET
@@ -20930,7 +20930,7 @@ púllera;0;so;alm;púlleruðu;GM-VH-ÞT-3P-FT
 púllera;0;so;alm;púllera;GM-BH-ST
 púllera;0;so;alm;púlleraðu;GM-BH-ET
 púllera;0;so;alm;púllerið;GM-BH-FT
-púllera;0;so;alm;púllerandi;LH-NT
+púllera;0;so;alm;púllerandi;LHNT
 púllera;0;so;alm;púllerað;GM-SAGNB
 púllera;0;so;alm;púlleraður;LHÞT-SB-KK-NFET
 púllera;0;so;alm;púlleraðan;LHÞT-SB-KK-ÞFET
@@ -21010,7 +21010,7 @@ krítíkera;0;so;alm;krítíkeruðu;GM-VH-ÞT-3P-FT
 krítíkera;0;so;alm;krítíkera;GM-BH-ST
 krítíkera;0;so;alm;krítíkeraðu;GM-BH-ET
 krítíkera;0;so;alm;krítíkerið;GM-BH-FT
-krítíkera;0;so;alm;krítíkerandi;LH-NT
+krítíkera;0;so;alm;krítíkerandi;LHNT
 krítíkera;0;so;alm;krítíkerað;GM-SAGNB
 krítíkera;0;so;alm;krítíkeraður;LHÞT-SB-KK-NFET
 krítíkera;0;so;alm;krítíkeraðan;LHÞT-SB-KK-ÞFET
@@ -21089,7 +21089,7 @@ formúlera;0;so;alm;formúleruðu;GM-VH-ÞT-3P-FT
 formúlera;0;so;alm;formúlera;GM-BH-ST
 formúlera;0;so;alm;formúleraðu;GM-BH-ET
 formúlera;0;so;alm;formúlerið;GM-BH-FT
-formúlera;0;so;alm;formúlerandi;LH-NT
+formúlera;0;so;alm;formúlerandi;LHNT
 formúlera;0;so;alm;formúlerað;GM-SAGNB
 formúlera;0;so;alm;formúleraður;LHÞT-SB-KK-NFET
 formúlera;0;so;alm;formúleraðan;LHÞT-SB-KK-ÞFET
@@ -21168,7 +21168,7 @@ kalkúlera;0;so;alm;kalkúleruðu;GM-VH-ÞT-3P-FT
 kalkúlera;0;so;alm;kalkúlera;GM-BH-ST
 kalkúlera;0;so;alm;kalkúleraðu;GM-BH-ET
 kalkúlera;0;so;alm;kalkúlerið;GM-BH-FT
-kalkúlera;0;so;alm;kalkúlerandi;LH-NT
+kalkúlera;0;so;alm;kalkúlerandi;LHNT
 kalkúlera;0;so;alm;kalkúlerað;GM-SAGNB
 kalkúlera;0;so;alm;kalkúleraður;LHÞT-SB-KK-NFET
 kalkúlera;0;so;alm;kalkúleraðan;LHÞT-SB-KK-ÞFET
@@ -21247,7 +21247,7 @@ prógrammera;0;so;alm;prógrammeruðu;GM-VH-ÞT-3P-FT
 prógrammera;0;so;alm;prógrammera;GM-BH-ST
 prógrammera;0;so;alm;prógrammeraðu;GM-BH-ET
 prógrammera;0;so;alm;prógrammerið;GM-BH-FT
-prógrammera;0;so;alm;prógrammerandi;LH-NT
+prógrammera;0;so;alm;prógrammerandi;LHNT
 prógrammera;0;so;alm;prógrammerað;GM-SAGNB
 prógrammera;0;so;alm;prógrammeraður;LHÞT-SB-KK-NFET
 prógrammera;0;so;alm;prógrammeraðan;LHÞT-SB-KK-ÞFET
@@ -21326,7 +21326,7 @@ strúktúrera;0;so;alm;strúktúreruðu;GM-VH-ÞT-3P-FT
 strúktúrera;0;so;alm;strúktúrera;GM-BH-ST
 strúktúrera;0;so;alm;strúktúreraðu;GM-BH-ET
 strúktúrera;0;so;alm;strúktúrerið;GM-BH-FT
-strúktúrera;0;so;alm;strúktúrerandi;LH-NT
+strúktúrera;0;so;alm;strúktúrerandi;LHNT
 strúktúrera;0;so;alm;strúktúrerað;GM-SAGNB
 strúktúrera;0;so;alm;strúktúreraður;LHÞT-SB-KK-NFET
 strúktúrera;0;so;alm;strúktúreraðan;LHÞT-SB-KK-ÞFET
@@ -21405,7 +21405,7 @@ sponsera;0;so;alm;sponseruðu;GM-VH-ÞT-3P-FT
 sponsera;0;so;alm;sponsera;GM-BH-ST
 sponsera;0;so;alm;sponseraðu;GM-BH-ET
 sponsera;0;so;alm;sponserið;GM-BH-FT
-sponsera;0;so;alm;sponserandi;LH-NT
+sponsera;0;so;alm;sponserandi;LHNT
 sponsera;0;so;alm;sponserað;GM-SAGNB
 sponsera;0;so;alm;sponseraður;LHÞT-SB-KK-NFET
 sponsera;0;so;alm;sponseraðan;LHÞT-SB-KK-ÞFET
@@ -21485,7 +21485,7 @@ panikkera;0;so;alm;panikkeruðu;GM-VH-ÞT-3P-FT
 panikkera;0;so;alm;panikkera;GM-BH-ST
 panikkera;0;so;alm;panikkeraðu;GM-BH-ET
 panikkera;0;so;alm;panikkerið;GM-BH-FT
-panikkera;0;so;alm;panikkerandi;LH-NT
+panikkera;0;so;alm;panikkerandi;LHNT
 panikkera;0;so;alm;panikkerað;GM-SAGNB
 panikkera;0;so;alm;panikkeraður;LHÞT-SB-KK-NFET
 panikkera;0;so;alm;panikkeraðan;LHÞT-SB-KK-ÞFET
@@ -23579,7 +23579,7 @@ restarta;0;so;alm;restörtuðust;MM-VH-ÞT-3P-FT
 restarta;0;so;alm;restarta;GM-BH-ST
 restarta;0;so;alm;restartaðu;GM-BH-ET
 restarta;0;so;alm;restartið;GM-BH-FT
-restarta;0;so;alm;restartandi;LH-NT
+restarta;0;so;alm;restartandi;LHNT
 restarta;0;so;alm;restartað;GM-SAGNB
 restarta;0;so;alm;restartast;MM-SAGNB
 restarta;0;so;alm;restartaður;LHÞT-SB-KK-NFET
@@ -23684,7 +23684,7 @@ planka;0;so;alm;plönkuðust;MM-VH-ÞT-3P-FT
 planka;0;so;alm;planka;GM-BH-ST
 planka;0;so;alm;plankaðu;GM-BH-ET
 planka;0;so;alm;plankið;GM-BH-FT
-planka;0;so;alm;plankandi;LH-NT
+planka;0;so;alm;plankandi;LHNT
 planka;0;so;alm;plankað;GM-SAGNB
 planka;0;so;alm;plankast;MM-SAGNB
 planka;0;so;alm;plankaður;LHÞT-SB-KK-NFET
@@ -23789,7 +23789,7 @@ fólka;0;so;alm;fólkuðust;MM-VH-ÞT-3P-FT
 fólka;0;so;alm;fólka;GM-BH-ST
 fólka;0;so;alm;fólkaðu;GM-BH-ET
 fólka;0;so;alm;fólkið;GM-BH-FT
-fólka;0;so;alm;fólkandi;LH-NT
+fólka;0;so;alm;fólkandi;LHNT
 fólka;0;so;alm;fólkað;GM-SAGNB
 fólka;0;so;alm;fólkast;MM-SAGNB
 fólka;0;so;alm;fólkaður;LHÞT-SB-KK-NFET
@@ -25139,38 +25139,38 @@ allt;0;ao;alm;allt;OBEYGJANLEGT
 bittinú;0;ao;alm;bittinú;OBEYGJANLEGT
 bittenú;0;ao;alm;bittenú;OBEYGJANLEGT
 
-úps;0;uh;alm;úps;-
-dísess;0;uh;alm;dísess;-
-díses;0;uh;alm;díses;-
-hei;0;uh;alm;hei;-
+úps;0;uh;alm;úps;OBEYGJANLEGT
+dísess;0;uh;alm;dísess;OBEYGJANLEGT
+díses;0;uh;alm;díses;OBEYGJANLEGT
+hei;0;uh;alm;hei;OBEYGJANLEGT
 
 # Upphrópanir
-amen;0;uh;alm;amen;-
-bless;0;uh;alm;bless;-
-bravó;0;uh;alm;bravó;-
-bæ;0;uh;alm;bæ;-
-fokk;0;uh;alm;fokk;-
-ha;0;uh;alm;ha;-
-hallelúja;0;uh;alm;hallelúja;-
-halló;0;uh;alm;halló;-
-hananú;0;uh;alm;hananú;-
-hæ;0;uh;alm;hæ;-
-húrra;0;uh;alm;húrra;-
-iss;0;uh;alm;iss;-
-já;0;uh;alm;já;-
-jæja;0;uh;alm;jæja;-
-jú;0;uh;alm;jú;-
-jújú;0;uh;alm;jújú;-
-nei;0;uh;alm;nei;-
-ó;0;uh;alm;ó;-
-skamm;0;uh;alm;skamm;-
-suss;0;uh;alm;suss;-
-svei;0;uh;alm;svei;-
-takk;0;uh;alm;takk;-
-uss;0;uh;alm;uss;-
-vá;0;uh;alm;vá;-
-vei;0;uh;alm;vei;-
-úff;0;uh;alm;úff;-
+amen;0;uh;alm;amen;OBEYGJANLEGT
+bless;0;uh;alm;bless;OBEYGJANLEGT
+bravó;0;uh;alm;bravó;OBEYGJANLEGT
+bæ;0;uh;alm;bæ;OBEYGJANLEGT
+fokk;0;uh;alm;fokk;OBEYGJANLEGT
+ha;0;uh;alm;ha;OBEYGJANLEGT
+hallelúja;0;uh;alm;hallelúja;OBEYGJANLEGT
+halló;0;uh;alm;halló;OBEYGJANLEGT
+hananú;0;uh;alm;hananú;OBEYGJANLEGT
+hæ;0;uh;alm;hæ;OBEYGJANLEGT
+húrra;0;uh;alm;húrra;OBEYGJANLEGT
+iss;0;uh;alm;iss;OBEYGJANLEGT
+já;0;uh;alm;já;OBEYGJANLEGT
+jæja;0;uh;alm;jæja;OBEYGJANLEGT
+jú;0;uh;alm;jú;OBEYGJANLEGT
+jújú;0;uh;alm;jújú;OBEYGJANLEGT
+nei;0;uh;alm;nei;OBEYGJANLEGT
+ó;0;uh;alm;ó;OBEYGJANLEGT
+skamm;0;uh;alm;skamm;OBEYGJANLEGT
+suss;0;uh;alm;suss;OBEYGJANLEGT
+svei;0;uh;alm;svei;OBEYGJANLEGT
+takk;0;uh;alm;takk;OBEYGJANLEGT
+uss;0;uh;alm;uss;OBEYGJANLEGT
+vá;0;uh;alm;vá;OBEYGJANLEGT
+vei;0;uh;alm;vei;OBEYGJANLEGT
+úff;0;uh;alm;úff;OBEYGJANLEGT
 
 absalút;0;ao;alm;absalút;OBEYGJANLEGT
 absolút;0;ao;alm;absolút;OBEYGJANLEGT
@@ -25180,7 +25180,7 @@ annað;0;ao;alm;annað;OBEYGJANLEGT
 áttfalt;0;ao;alm;áttfalt;OBEYGJANLEGT
 beisiklí;0;ao;alm;beisiklí;OBEYGJANLEGT
 bévítans;0;ao;alm;bévítans;OBEYGJANLEGT
-ekkert;0;ao;alm;ekkert;ao
+ekkert;0;ao;alm;ekkert;OBEYGJANLEGT
 fimmfalt;0;ao;alm;fimmfalt;OBEYGJANLEGT
 fjórfalt;0;ao;alm;fjórfalt;OBEYGJANLEGT
 helvítis;0;ao;alm;helvítis;OBEYGJANLEGT
@@ -25221,155 +25221,155 @@ vonandi;0;ao;alm;vonandi;OBEYGJANLEGT
 þúsundfalt;0;ao;alm;þúsundfalt;OBEYGJANLEGT
 öðruvísi;0;ao;alm;öðruvísi;OBEYGJANLEGT
 
-úps;0;uh;alm;úps;-
-hei;0;uh;alm;hei;-
-æji;0;uh;alm;æji;-
-aha;0;uh;alm;aha;-
-ahh;0;uh;alm;ahh;-
-ahhh;0;uh;alm;ahhh;-
-bamm;0;uh;alm;bamm;-
-bambaló;0;uh;alm;bambaló;-
+úps;0;uh;alm;úps;OBEYGJANLEGT
+hei;0;uh;alm;hei;OBEYGJANLEGT
+æji;0;uh;alm;æji;OBEYGJANLEGT
+aha;0;uh;alm;aha;OBEYGJANLEGT
+ahh;0;uh;alm;ahh;OBEYGJANLEGT
+ahhh;0;uh;alm;ahhh;OBEYGJANLEGT
+bamm;0;uh;alm;bamm;OBEYGJANLEGT
+bambaló;0;uh;alm;bambaló;OBEYGJANLEGT
 
-ýkt;0;ao;alm;ýkt;-
-klikkað;0;ao;alm;klikkað;-
-geggjað;0;ao;alm;geggjað;-
+ýkt;0;ao;alm;ýkt;OBEYGJANLEGT
+klikkað;0;ao;alm;klikkað;OBEYGJANLEGT
+geggjað;0;ao;alm;geggjað;OBEYGJANLEGT
 
 
-# a.k.a;0;uh;alm;a.k.a;-
-# a.m.k;0;uh;alm;a.m.k;-
-# alþm;0;uh;alm;alþm;-
-# amk;0;uh;alm;amk;-
-# Arnarsd;0;uh;alm;Arnarsd;-
-# ath;0;uh;alm;ath;-
-# atkv;0;uh;alm;atkv;-
-# aðg;0;uh;alm;aðg;-
-# B.Ed;0;uh;alm;B.Ed;-
-# bls;0;uh;alm;bls;-
-# brt;0;uh;alm;brt;-
-# BSc;0;uh;alm;BSc;-
-# ca;0;uh;alm;ca;-
-# dkr;0;uh;alm;dkr;-
-# e.Kr;0;uh;alm;e.Kr;-
-# e.kr;0;uh;alm;e.kr;-
-# e.t.v;0;uh;alm;e.t.v;-
-# efh;0;uh;alm;ehf.;-
-# Egilsst;0;uh;alm;Egilsst.;-
-# erle;0;uh;alm;erl.;-
-# etv;0;uh;alm;e.t.v.;-
-# f.Kr;0;uh;alm;f.Kr.;-
-# f.kr;0;uh;alm;f.Kr.;-
-# f.v;0;uh;alm;fv.;-
-# Fbl;0;uh;alm;Fbl.;-
-# feb;0;uh;alm;feb.;-
-# febr;0;uh;alm;febr.;-
-# fftl;0;uh;alm;fftl.;-
-# Fjarðab;0;uh;alm;Fjarðab.;-
-# Fjölb;0;uh;alm;Fjölb.;-
-# fnr;0;uh;alm;fnr.;-
-# forsv.m;0;uh;alm;forsvm.;-
-# Frj;0;uh;alm;Frj.;-
-# frkvstj;0;uh;alm;frkvstj.;-
-# Frumv;0;uh;alm;Frumv.;-
-# frv;0;uh;alm;frv.;-
-# fyrrv;0;uh;alm;fyrrv.;-
-# Félagsvísindast;0;uh;alm;Félagsvísindast.;-
-# fös;0;uh;alm;fös.;-
-# Guðjónss;0;uh;alm;Guðjónss.;-
-# hdl;0;uh;alm;hdl.;-
-# helv;0;uh;alm;helv.;-
-# hgl;0;uh;alm;hgl.;-
-# hkd;0;uh;alm;hkd.;-
-# Hrd;0;uh;alm;Hrd.;-
-# hrl;0;uh;alm;hrl.;-
-# innsk.blm;0;uh;alm;innsk.blm.;-
-# isl;0;uh;alm;ísl.;-
-# Jak;0;uh;alm;Jak.;-
-# jur;0;uh;alm;jur.;-
-# Jóh;0;uh;alm;Jóh.;-
-# Jónss;0;uh;alm;Jónss.;-
-# kef;0;uh;alm;Kef.;-
-# Kjartanss;0;uh;alm;Kjartanss.;-
-# Kjörd;0;uh;alm;Kjörd.;-
-# klst;0;uh;alm;klst.;-
-# Kristinsd;0;uh;alm;Kristinsd.;-
-# kvk;0;uh;alm;kvk.;-
-# landam;0;uh;alm;landam.;-
-# lau;0;uh;alm;lau.;-
-# ltr;0;uh;alm;ltr.;-
-# m.a;0;uh;alm;m.a.;-
-# M.Ed;0;uh;alm;M.Ed.;-
-# m.kr;0;uh;alm;m.kr.;-
-# ma.kr;0;uh;alm;ma.kr.;-
-# matsk;0;uh;alm;matsk.;-
-# meistaram;0;uh;alm;meistaram.;-
-# Melabr;0;uh;alm;Melabr.;-
-# meðf;0;uh;alm;meðf.;-
-# mfl;0;uh;alm;mfl.;-
-# mgr;0;uh;alm;mgr.;-
-# millj;0;uh;alm;millj.;-
-# mkr;0;uh;alm;m.kr.;-
-# mrd;0;uh;alm;mrd.;-
-# msk;0;uh;alm;msk.;-
-# mtt;0;uh;alm;m.t.t.;-
-# málsl;0;uh;alm;málsl.;-
-# mán;0;uh;alm;mán.;-
-# n.k;0;uh;alm;nk.;-
-# n.t.t;0;uh;alm;n.tt.;-
-# Nesk;0;uh;alm;Nesk.;-
-# nóv;0;uh;alm;nóv.;-
-# o.fl;0;uh;alm;o.fl.;-
-# o.m.fl;0;uh;alm;o.m.fl.;-
-# o.s;0;uh;alm;o.s.frv.;-
-# o.s.frv;0;uh;alm;o.s.frv.;-
-# o.þ.h;0;uh;alm;o.þ.h.;-
-# ofl;0;uh;alm;o.fl.;-
-# okt;0;uh;alm;okt.;-
-# osfr;0;uh;alm;o.s.frv.;-
-# osfrv;0;uh;alm;o.s.frv.;-
-# Reykv;0;uh;alm;Reykv.;-
-# Rvk;0;uh;alm;Rvk.;-
-# ríkisstj;0;uh;alm;ríkisstj.;-
-# s.k;0;uh;alm;sk.;-
-# s.l;0;uh;alm;sl.;-
-# s.s;0;uh;alm;s.s.;-
-# S.Þ;0;uh;alm;S.Þ.;-
-# Sameiginl;0;uh;alm;Sameiginl.;-
-# sbr;0;uh;alm;sbr.;-
-# sept;0;uh;alm;sept.;-
-# Sjstfl;0;uh;alm;Sjstfl.;-
-# Sjúkrah;0;uh;alm;Sjúkrah.;-
-# skv;0;uh;alm;skv.;-
-# Smáaugl;0;uh;alm;Smáaugl.;-
-# stk;0;uh;alm;stk.;-
-# stml;0;uh;alm;stml.;-
-# stoðs;0;uh;alm;stoðs.;-
-# Suðurk;0;uh;alm;Suðurk.;-
-# svf;0;uh;alm;svf.;-
-# t.a.m;0;uh;alm;t.a.m.;-
-# t.d;0;uh;alm;t.d.;-
-# td;0;uh;alm;t.d.;-
-# tiln;0;uh;alm;tiln.;-
-# tsk;0;uh;alm;tsk.;-
-# u.þ.b;0;uh;alm;u.þ.b.;-
-# umf;0;uh;alm;umf.;-
-# uþb;0;uh;alm;u.þ.b.;-
-# vsk;0;uh;alm;vsk.;-
-# vvl;0;uh;alm;vvl.;-
-# ákv;0;uh;alm;ákv.;-
-# ísl;0;uh;alm;ísl.;-
-# ísl.kr;0;uh;alm;ísl. kr.;-
-# úrsl;0;uh;alm;úrsl.;-
-# þ.e;0;uh;alm;þ.e.;-
-# þ.e.a.s;0;uh;alm;þ.e.a.s.;-
-# þ.m.t;0;uh;alm;þ.m.t.;-
-# þ.á;0;uh;alm;þ.á.;-
-# þ.á.m;0;uh;alm;þ. á m.;-
-# þe;0;uh;alm;þ.e.;-
-# þea;0;uh;alm;þ.e.a.s.;-
-# þeas;0;uh;alm;þ.e.a.s.;-
-# Þorl;0;uh;alm;Þorl.;-
-# þri;0;uh;alm;þri.;-
-# þús;0;uh;alm;þús.;-
+# a.k.a;0;uh;alm;a.k.a;OBEYGJANLEGT
+# a.m.k;0;uh;alm;a.m.k;OBEYGJANLEGT
+# alþm;0;uh;alm;alþm;OBEYGJANLEGT
+# amk;0;uh;alm;amk;OBEYGJANLEGT
+# Arnarsd;0;uh;alm;Arnarsd;OBEYGJANLEGT
+# ath;0;uh;alm;ath;OBEYGJANLEGT
+# atkv;0;uh;alm;atkv;OBEYGJANLEGT
+# aðg;0;uh;alm;aðg;OBEYGJANLEGT
+# B.Ed;0;uh;alm;B.Ed;OBEYGJANLEGT
+# bls;0;uh;alm;bls;OBEYGJANLEGT
+# brt;0;uh;alm;brt;OBEYGJANLEGT
+# BSc;0;uh;alm;BSc;OBEYGJANLEGT
+# ca;0;uh;alm;ca;OBEYGJANLEGT
+# dkr;0;uh;alm;dkr;OBEYGJANLEGT
+# e.Kr;0;uh;alm;e.Kr;OBEYGJANLEGT
+# e.kr;0;uh;alm;e.kr;OBEYGJANLEGT
+# e.t.v;0;uh;alm;e.t.v;OBEYGJANLEGT
+# efh;0;uh;alm;ehf.;OBEYGJANLEGT
+# Egilsst;0;uh;alm;Egilsst.;OBEYGJANLEGT
+# erle;0;uh;alm;erl.;OBEYGJANLEGT
+# etv;0;uh;alm;e.t.v.;OBEYGJANLEGT
+# f.Kr;0;uh;alm;f.Kr.;OBEYGJANLEGT
+# f.kr;0;uh;alm;f.Kr.;OBEYGJANLEGT
+# f.v;0;uh;alm;fv.;OBEYGJANLEGT
+# Fbl;0;uh;alm;Fbl.;OBEYGJANLEGT
+# feb;0;uh;alm;feb.;OBEYGJANLEGT
+# febr;0;uh;alm;febr.;OBEYGJANLEGT
+# fftl;0;uh;alm;fftl.;OBEYGJANLEGT
+# Fjarðab;0;uh;alm;Fjarðab.;OBEYGJANLEGT
+# Fjölb;0;uh;alm;Fjölb.;OBEYGJANLEGT
+# fnr;0;uh;alm;fnr.;OBEYGJANLEGT
+# forsv.m;0;uh;alm;forsvm.;OBEYGJANLEGT
+# Frj;0;uh;alm;Frj.;OBEYGJANLEGT
+# frkvstj;0;uh;alm;frkvstj.;OBEYGJANLEGT
+# Frumv;0;uh;alm;Frumv.;OBEYGJANLEGT
+# frv;0;uh;alm;frv.;OBEYGJANLEGT
+# fyrrv;0;uh;alm;fyrrv.;OBEYGJANLEGT
+# Félagsvísindast;0;uh;alm;Félagsvísindast.;OBEYGJANLEGT
+# fös;0;uh;alm;fös.;OBEYGJANLEGT
+# Guðjónss;0;uh;alm;Guðjónss.;OBEYGJANLEGT
+# hdl;0;uh;alm;hdl.;OBEYGJANLEGT
+# helv;0;uh;alm;helv.;OBEYGJANLEGT
+# hgl;0;uh;alm;hgl.;OBEYGJANLEGT
+# hkd;0;uh;alm;hkd.;OBEYGJANLEGT
+# Hrd;0;uh;alm;Hrd.;OBEYGJANLEGT
+# hrl;0;uh;alm;hrl.;OBEYGJANLEGT
+# innsk.blm;0;uh;alm;innsk.blm.;OBEYGJANLEGT
+# isl;0;uh;alm;ísl.;OBEYGJANLEGT
+# Jak;0;uh;alm;Jak.;OBEYGJANLEGT
+# jur;0;uh;alm;jur.;OBEYGJANLEGT
+# Jóh;0;uh;alm;Jóh.;OBEYGJANLEGT
+# Jónss;0;uh;alm;Jónss.;OBEYGJANLEGT
+# kef;0;uh;alm;Kef.;OBEYGJANLEGT
+# Kjartanss;0;uh;alm;Kjartanss.;OBEYGJANLEGT
+# Kjörd;0;uh;alm;Kjörd.;OBEYGJANLEGT
+# klst;0;uh;alm;klst.;OBEYGJANLEGT
+# Kristinsd;0;uh;alm;Kristinsd.;OBEYGJANLEGT
+# kvk;0;uh;alm;kvk.;OBEYGJANLEGT
+# landam;0;uh;alm;landam.;OBEYGJANLEGT
+# lau;0;uh;alm;lau.;OBEYGJANLEGT
+# ltr;0;uh;alm;ltr.;OBEYGJANLEGT
+# m.a;0;uh;alm;m.a.;OBEYGJANLEGT
+# M.Ed;0;uh;alm;M.Ed.;OBEYGJANLEGT
+# m.kr;0;uh;alm;m.kr.;OBEYGJANLEGT
+# ma.kr;0;uh;alm;ma.kr.;OBEYGJANLEGT
+# matsk;0;uh;alm;matsk.;OBEYGJANLEGT
+# meistaram;0;uh;alm;meistaram.;OBEYGJANLEGT
+# Melabr;0;uh;alm;Melabr.;OBEYGJANLEGT
+# meðf;0;uh;alm;meðf.;OBEYGJANLEGT
+# mfl;0;uh;alm;mfl.;OBEYGJANLEGT
+# mgr;0;uh;alm;mgr.;OBEYGJANLEGT
+# millj;0;uh;alm;millj.;OBEYGJANLEGT
+# mkr;0;uh;alm;m.kr.;OBEYGJANLEGT
+# mrd;0;uh;alm;mrd.;OBEYGJANLEGT
+# msk;0;uh;alm;msk.;OBEYGJANLEGT
+# mtt;0;uh;alm;m.t.t.;OBEYGJANLEGT
+# málsl;0;uh;alm;málsl.;OBEYGJANLEGT
+# mán;0;uh;alm;mán.;OBEYGJANLEGT
+# n.k;0;uh;alm;nk.;OBEYGJANLEGT
+# n.t.t;0;uh;alm;n.tt.;OBEYGJANLEGT
+# Nesk;0;uh;alm;Nesk.;OBEYGJANLEGT
+# nóv;0;uh;alm;nóv.;OBEYGJANLEGT
+# o.fl;0;uh;alm;o.fl.;OBEYGJANLEGT
+# o.m.fl;0;uh;alm;o.m.fl.;OBEYGJANLEGT
+# o.s;0;uh;alm;o.s.frv.;OBEYGJANLEGT
+# o.s.frv;0;uh;alm;o.s.frv.;OBEYGJANLEGT
+# o.þ.h;0;uh;alm;o.þ.h.;OBEYGJANLEGT
+# ofl;0;uh;alm;o.fl.;OBEYGJANLEGT
+# okt;0;uh;alm;okt.;OBEYGJANLEGT
+# osfr;0;uh;alm;o.s.frv.;OBEYGJANLEGT
+# osfrv;0;uh;alm;o.s.frv.;OBEYGJANLEGT
+# Reykv;0;uh;alm;Reykv.;OBEYGJANLEGT
+# Rvk;0;uh;alm;Rvk.;OBEYGJANLEGT
+# ríkisstj;0;uh;alm;ríkisstj.;OBEYGJANLEGT
+# s.k;0;uh;alm;sk.;OBEYGJANLEGT
+# s.l;0;uh;alm;sl.;OBEYGJANLEGT
+# s.s;0;uh;alm;s.s.;OBEYGJANLEGT
+# S.Þ;0;uh;alm;S.Þ.;OBEYGJANLEGT
+# Sameiginl;0;uh;alm;Sameiginl.;OBEYGJANLEGT
+# sbr;0;uh;alm;sbr.;OBEYGJANLEGT
+# sept;0;uh;alm;sept.;OBEYGJANLEGT
+# Sjstfl;0;uh;alm;Sjstfl.;OBEYGJANLEGT
+# Sjúkrah;0;uh;alm;Sjúkrah.;OBEYGJANLEGT
+# skv;0;uh;alm;skv.;OBEYGJANLEGT
+# Smáaugl;0;uh;alm;Smáaugl.;OBEYGJANLEGT
+# stk;0;uh;alm;stk.;OBEYGJANLEGT
+# stml;0;uh;alm;stml.;OBEYGJANLEGT
+# stoðs;0;uh;alm;stoðs.;OBEYGJANLEGT
+# Suðurk;0;uh;alm;Suðurk.;OBEYGJANLEGT
+# svf;0;uh;alm;svf.;OBEYGJANLEGT
+# t.a.m;0;uh;alm;t.a.m.;OBEYGJANLEGT
+# t.d;0;uh;alm;t.d.;OBEYGJANLEGT
+# td;0;uh;alm;t.d.;OBEYGJANLEGT
+# tiln;0;uh;alm;tiln.;OBEYGJANLEGT
+# tsk;0;uh;alm;tsk.;OBEYGJANLEGT
+# u.þ.b;0;uh;alm;u.þ.b.;OBEYGJANLEGT
+# umf;0;uh;alm;umf.;OBEYGJANLEGT
+# uþb;0;uh;alm;u.þ.b.;OBEYGJANLEGT
+# vsk;0;uh;alm;vsk.;OBEYGJANLEGT
+# vvl;0;uh;alm;vvl.;OBEYGJANLEGT
+# ákv;0;uh;alm;ákv.;OBEYGJANLEGT
+# ísl;0;uh;alm;ísl.;OBEYGJANLEGT
+# ísl.kr;0;uh;alm;ísl. kr.;OBEYGJANLEGT
+# úrsl;0;uh;alm;úrsl.;OBEYGJANLEGT
+# þ.e;0;uh;alm;þ.e.;OBEYGJANLEGT
+# þ.e.a.s;0;uh;alm;þ.e.a.s.;OBEYGJANLEGT
+# þ.m.t;0;uh;alm;þ.m.t.;OBEYGJANLEGT
+# þ.á;0;uh;alm;þ.á.;OBEYGJANLEGT
+# þ.á.m;0;uh;alm;þ. á m.;OBEYGJANLEGT
+# þe;0;uh;alm;þ.e.;OBEYGJANLEGT
+# þea;0;uh;alm;þ.e.a.s.;OBEYGJANLEGT
+# þeas;0;uh;alm;þ.e.a.s.;OBEYGJANLEGT
+# Þorl;0;uh;alm;Þorl.;OBEYGJANLEGT
+# þri;0;uh;alm;þri.;OBEYGJANLEGT
+# þús;0;uh;alm;þús.;OBEYGJANLEGT
 
 ýmis;0;fn;alm;ýmsu;KK-NFFT
 ýmis;0;fn;alm;ýmsu;KK-ÞFFT
@@ -55238,3 +55238,6 @@ fylgja;434725;so;spurn;fylgistu;GM-FH-NT-2P-ET
 fylgja;434725;so;spurn;fylgdistu;GM-FH-ÞT-2P-ET
 fylgja;434725;so;spurn;fylgistu;GM-VH-NT-2P-ET
 fylgja;434725;so;spurn;fylgdistu;GM-VH-ÞT-2P-ET
+
+margur;478739;lo;alm;fleiru;MST-HK-ÞGFET-SERST
+margur;047873;lo;alm;fleirum;MST-KK-ÞGFFT-SERST

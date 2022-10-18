@@ -71,7 +71,7 @@ log/
 console/
 
 # Virtual environments
-venv/
+venv
 p3*/
 
 # Installer logs

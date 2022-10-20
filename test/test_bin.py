@@ -41,7 +41,7 @@ BeygingFunc = Callable[[str], bool]
 
 
 def test_lookup() -> None:
-    """ Test querying for different cases of words """
+    """Test querying for different cases of words"""
 
     b = BinCompressed()
 
@@ -106,7 +106,7 @@ def test_lookup() -> None:
 
 
 def test_bin() -> None:
-    """ Test querying for different cases of words """
+    """Test querying for different cases of words"""
 
     b = BinCompressed()
 
@@ -513,10 +513,14 @@ def test_compatibility() -> None:
     assert len(m) == 0
     _, m = db_bin.lookup("sexdagsleikanum")
     assert len(m) == 0
+    m = db_bin.lookup_variants("aðdáun", "kvk", "FT")
+    assert len(m) == 0
     m = db_bin.lookup_variants("aðdáunin", "kvk", "FT")
     assert len(m) == 0
+    m = db_greynir.lookup_variants("aðdáun", "kvk", "FT")
+    assert m and all("FT" in mm.mark for mm in m)
     m = db_greynir.lookup_variants("aðdáunin", "kvk", "FT")
-    assert m and all(mm.bmynd == "aðdáanirnar" for mm in m)
+    assert m and all("FT" in mm.mark for mm in m) and "gr" in m[0].mark
     m = db_bin.lookup_variants("yrðið", "hk", "FT")
     assert len(m) == 0
     m = db_greynir.lookup_variants("yrðið", "hk", "FT")
@@ -524,7 +528,7 @@ def test_compatibility() -> None:
     m = db_bin.lookup_variants("merkikertisyrðið", "hk", "FT")
     assert len(m) == 0
     m = db_greynir.lookup_variants("merkikertisyrðið", "hk", "FT")
-    assert m and all(mm.bmynd == "merkikertis-yrðin" for mm in m)
+    assert m and all("FT" in mm.mark for mm in m) and m[0].bmynd == "merkikertis-yrðin"
 
 
 def test_legur() -> None:
@@ -570,7 +574,7 @@ def test_legur() -> None:
 
 
 def test_casting() -> None:
-    """ Test functions to cast words in nominative case to other cases """
+    """Test functions to cast words in nominative case to other cases"""
     db = Bin()
 
     assert db.cast_to_accusative("") == ""
@@ -682,27 +686,47 @@ def test_variants() -> None:
     b = Bin()
 
     m = b.lookup_variants("borgarstjórnin", "no", "EF")
-    assert all(mm.bmynd == "borgarstjórnarinnar" for mm in m)
+    assert (
+        len(m) == 4
+        and all("EF" in mm.mark for mm in m)
+        and m[0].bmynd == "borgarstjórnarinnar"
+    )
     m = b.lookup_variants("borgarstjórnin", "kvk", "EF")
-    assert all(mm.bmynd == "borgarstjórnarinnar" for mm in m)
+    assert (
+        len(m) == 4
+        and all("EF" in mm.mark for mm in m)
+        and m[0].bmynd == "borgarstjórnarinnar"
+    )
     m = b.lookup_variants("borgarstjórnin", "hk", "EF")
     assert not m
     m = b.lookup_variants("borgarstjórnin", "no", ("EF", "nogr"))
-    assert all(mm.bmynd == "borgarstjórnar" for mm in m)
+    assert m[0].bmynd == "borgarstjórnar" and all(
+        "EF" in mm.mark and "gr" not in mm.mark for mm in m
+    )
     m = b.lookup_variants("borgarstjórnin", "kvk", ("EF", "nogr"))
-    assert all(mm.bmynd == "borgarstjórnar" for mm in m)
+    assert m[0].bmynd == "borgarstjórnar" and all(
+        "EF" in mm.mark and "gr" not in mm.mark for mm in m
+    )
     m = b.lookup_variants("borgarstjórnin", "hk", ("EF", "nogr"))
     assert not m
     m = b.lookup_variants("borgarstjórnin", "no", ("EF", "FT"))
-    assert all(mm.bmynd == "borgarstjórnanna" for mm in m)
+    assert m[0].bmynd == "borgarstjórnanna" and all(
+        "EF" in mm.mark and "FT" in mm.mark for mm in m
+    )
     m = b.lookup_variants("borgarstjórnin", "kvk", ("EF", "FT"))
-    assert all(mm.bmynd == "borgarstjórnanna" for mm in m)
+    assert m[0].bmynd == "borgarstjórnanna" and all(
+        "EF" in mm.mark and "FT" in mm.mark for mm in m
+    )
     m = b.lookup_variants("borgarstjórnin", "kk", ("EF", "FT"))
     assert not m
     m = b.lookup_variants("borgarstjórn", "no", ("EF", "gr"))
-    assert all(mm.bmynd == "borgarstjórnarinnar" for mm in m)
+    assert m[0].bmynd == "borgarstjórnarinnar" and all(
+        "EF" in mm.mark and "gr" in mm.mark for mm in m
+    )
     m = b.lookup_variants("borgarstjórn", "kvk", ("EF", "gr"))
-    assert all(mm.bmynd == "borgarstjórnarinnar" for mm in m)
+    assert m[0].bmynd == "borgarstjórnarinnar" and all(
+        "EF" in mm.mark and "gr" in mm.mark for mm in m
+    )
     m = b.lookup_variants("borgarstjórn", "kk", ("EF", "gr"))
     assert not m
     m = b.lookup_variants("borgarstjórn", "no", ("EF", "FT", "gr"))
@@ -719,9 +743,9 @@ def test_variants() -> None:
     assert not m
 
     m = b.lookup_variants("fór", "so", ("VH", "ÞT"), lemma="fara")
-    assert all(mm.bmynd == "færi" for mm in m)
+    assert m[0].bmynd == "færi" and all("VH" in mm.mark and "ÞT" in mm.mark for mm in m)
     m = b.lookup_variants("fór", "so", ("VH", "NT"), lemma="fara")
-    assert all(mm.bmynd == "fari" for mm in m)
+    assert m[0].bmynd == "fari" and all("VH" in mm.mark and "NT" in mm.mark for mm in m)
     m = b.lookup_variants(
         "fór",
         "so",
@@ -729,7 +753,10 @@ def test_variants() -> None:
         lemma="fara",
         inflection_filter=lambda b: "OP" not in b,
     )
-    assert all(mm.bmynd == "förum" for mm in m)
+    assert m[0].bmynd == "förum" and all(
+        all(x in mm.mark for x in ("VH", "FT", "NT", "1P")) and "OP" not in mm.mark
+        for mm in m
+    )
     m = b.lookup_variants(
         "fór",
         "so",
@@ -737,7 +764,10 @@ def test_variants() -> None:
         lemma="fara",
         inflection_filter=lambda b: "OP" not in b,
     )
-    assert all(mm.bmynd == "færum" for mm in m)
+    assert m[0].bmynd == "færum" and all(
+        all(x in mm.mark for x in ("VH", "FT", "ÞT", "1P")) and "OP" not in mm.mark
+        for mm in m
+    )
     m = b.lookup_variants(
         "fór",
         "so",
@@ -745,13 +775,18 @@ def test_variants() -> None:
         lemma="fara",
         inflection_filter=lambda b: "OP" not in b,
     )
-    assert all(mm.bmynd == "færum" for mm in m)
+    assert m[0].bmynd == "færum" and all(
+        all(x in mm.mark for x in ("VH", "FT", "ÞT", "1P")) and "OP" not in mm.mark
+        for mm in m
+    )
     m = b.lookup_variants("fór", "so", ("NT",), lemma="fara")
-    assert all(mm.bmynd == "fer" for mm in m)
+    assert m[0].bmynd == "fer" and all("NT" in mm.mark for mm in m)
     m = b.lookup_variants("fór", "so", ("MM",), lemma="fara")
-    assert all(mm.bmynd == "fórst" for mm in m)
+    assert m[0].bmynd == "fórst" and all("MM" in mm.mark for mm in m)
     m = b.lookup_variants("fór", "so", ("MM", "NT"), lemma="fara")
-    assert all(mm.bmynd == "ferst" for mm in m)
+    assert m[0].bmynd == "ferst" and all(
+        all(x in mm.mark for x in ("MM", "NT")) for mm in m
+    )
     m = b.lookup_variants(
         "fór",
         "so",
@@ -759,7 +794,10 @@ def test_variants() -> None:
         lemma="fara",
         inflection_filter=lambda b: "OP" not in b,
     )
-    assert all(mm.bmynd == "farist" for mm in m)
+    assert m[0].bmynd == "farist" and all(
+        all(x in mm.mark for x in ("MM", "NT", "2P", "FT")) and "OP" not in mm.mark
+        for mm in m
+    )
     m = b.lookup_variants(
         "fór",
         "so",
@@ -767,50 +805,76 @@ def test_variants() -> None:
         lemma="fara",
         inflection_filter=lambda b: "OP" not in b,
     )
-    assert all(mm.bmynd == "farist" for mm in m)
+    assert m[0].bmynd == "farist" and all(
+        all(x in mm.mark for x in ("MM", "NT", "2P", "FT")) and "OP" not in mm.mark
+        for mm in m
+    )
     m = b.lookup_variants("skrifar", "so", ("ÞT", "1P"))
-    assert all(mm.bmynd == "skrifaði" for mm in m)
+    assert m[0].bmynd == "skrifaði" and all(
+        all(x in mm.mark for x in ("ÞT", "1P")) for mm in m
+    )
+
     m = b.lookup_variants("skrifar", "so", ("ÞT", "2P"))
-    assert all(mm.bmynd == "skrifaðir" for mm in m)
+    assert m[0].bmynd == "skrifaðir" and all(
+        all(x in mm.mark for x in ("ÞT", "2P")) for mm in m
+    )
     m = b.lookup_variants("skrifuðu", "so", ("FH", "ET", "NT"))
-    assert all(mm.bmynd == "skrifar" for mm in m)
+    assert m[0].bmynd == "skrifar" and all(
+        all(x in mm.mark for x in ("FH", "ET", "NT")) for mm in m
+    )
     m = b.lookup_variants("skrifuðu", "so", "LHNT")
-    assert all(mm.bmynd == "skrifandi" for mm in m)
+    assert m[0].bmynd == "skrifandi" and m[0].mark == "LHNT" and len(m) == 1
 
     m = b.lookup_variants("fallegur", "lo", "MST")
-    assert all(mm.bmynd == "fallegri" for mm in m)
+    assert m[0].bmynd == "fallegri" and all("MST" in mm.mark for mm in m)
     m = b.lookup_variants("fallegur", "lo", ("MST", "HK"))
-    assert all(mm.bmynd == "fallegra" for mm in m)
+    assert m[0].bmynd == "fallegra" and all(
+        all(x in mm.mark for x in ("MST", "HK")) for mm in m
+    )
     m = b.lookup_variants("fallegur", "lo", ("MST", "KVK"))
-    assert all(mm.bmynd == "fallegri" for mm in m)
+    assert m[0].bmynd == "fallegri" and all(
+        all(x in mm.mark for x in ("MST", "KVK")) for mm in m
+    )
     m = b.lookup_variants("fallegur", "lo", "EVB")
-    assert all(mm.bmynd == "fallegasti" for mm in m)
+    assert m[0].bmynd == "fallegasti" and all(
+        all(x in mm.mark for x in ("EVB",)) for mm in m
+    )
     m = b.lookup_variants("fallegur", "lo", "ESB")
-    assert all(mm.bmynd == "fallegastur" for mm in m)
+    assert m[0].bmynd == "fallegastur" and all(
+        all(x in mm.mark for x in ("ESB",)) for mm in m
+    )
     m = b.lookup_variants("fallegur", "lo", ("EVB", "KVK"))
-    assert all(mm.bmynd == "fallegasta" for mm in m)
+    assert m[0].bmynd == "fallegasta" and all(
+        all(x in mm.mark for x in ("EVB", "KVK")) for mm in m
+    )
     m = b.lookup_variants("fallegur", "lo", ("ESB", "KVK"))
-    assert all(mm.bmynd == "fallegust" for mm in m)
+    assert m[0].bmynd == "fallegust" and all(
+        all(x in mm.mark for x in ("ESB", "KVK")) for mm in m
+    )
     m = b.lookup_variants("fallegur", "lo", ("EVB", "HK"))
-    assert all(mm.bmynd == "fallegasta" for mm in m)
+    assert m[0].bmynd == "fallegasta" and all(
+        all(x in mm.mark for x in ("EVB", "HK")) for mm in m
+    )
     m = b.lookup_variants("fallegur", "lo", ("ESB", "HK"))
-    assert all(mm.bmynd == "fallegast" for mm in m)
+    assert m[0].bmynd == "fallegast" and all(
+        all(x in mm.mark for x in ("ESB", "HK")) for mm in m
+    )
 
     m = b.lookup_variants("höfuðborgarstjórnarmeirihluti", "kk", ("ÞF", "FT", "gr"))
     assert len(m) == 1
     assert m[0].bmynd == "höfuð-borgarstjórnar-meirihlutana"
 
     m = b.lookup_variants("höndinni", "kvk", ("NF", "nogr"))
-    assert len(m) == 1
-    assert m[0].bmynd == "hönd"
+    assert len(m) == 2
+    assert m[0].bmynd == "hönd" and m[1].bmynd == "hendur"
 
     m = b.lookup_variants("hendinni", "kvk", ("NF", "nogr"))
-    assert len(m) == 1
-    assert m[0].bmynd == "hönd"
+    assert len(m) == 2
+    assert m[0].bmynd == "hönd" and m[1].bmynd == "hendur"
 
     m = b.lookup_variants("langifrjádagur", "kk", ("NF", "FT"))
-    assert len(m) == 1
-    assert m[0].bmynd == "löngufrjádagar"
+    assert len(m) == 2
+    assert m[0].bmynd == "löngufrjádagar" and m[1].bmynd == "löngufrjádagarnir"
 
     m = b.lookup_variants("langifrjádagur", "kk", ("EF", "FT", "gr"))
     assert len(m) == 1
@@ -818,8 +882,8 @@ def test_variants() -> None:
 
     # Test lower case variant specifications (should also work)
     m = b.lookup_variants("langifrjádagur", "kk", ("nf", "ft"))
-    assert len(m) == 1
-    assert m[0].bmynd == "löngufrjádagar"
+    assert len(m) == 2
+    assert m[0].bmynd == "löngufrjádagar" and m[1].bmynd == "löngufrjádagarnir"
 
     m = b.lookup_variants("langifrjádagur", "kk", ("ef", "ft", "gr"))
     assert len(m) == 1
@@ -830,16 +894,16 @@ def test_variants() -> None:
     assert m[0].bmynd == "löngufrjádaga"
 
     m = b.lookup_variants("sjóntækjafræðinga", "no", ("ef", "gr"))
-    assert len(m) == 1
-    assert m[0].bmynd == "sjóntækjafræðinganna"
+    assert len(m) == 2
+    assert m[0].bmynd == "sjóntækjafræðinganna" and m[1].bmynd == "sjóntækjafræðingsins"
 
     m = b.lookup_variants("margborga", "so", ("expl", "et", "nt"))
-    assert len(m) == 1
-    assert m[0].bmynd == "margborgar"
+    assert len(m) == 2
+    assert m[0].bmynd == "margborgar" and m[1].bmynd == "margborgi"
 
     m = b.lookup_variants("margborga", "so", ("expl", "et", "þt"))
-    assert len(m) == 1
-    assert m[0].bmynd == "margborgaði"
+    assert len(m) == 2
+    assert m[0].bmynd == "margborgaði" and m[1].bmynd == "margborgaði"
 
     m = b.lookup_variants("margborga", "so", ("expl", "et", "þt", "vh"))
     assert len(m) == 1
@@ -850,8 +914,8 @@ def test_variants() -> None:
     assert m[0].bmynd == "margborgi"
 
     m = b.lookup_variants("margborgi", "so", ("expl", "þt", "gm"))
-    assert len(m) == 1
-    assert m[0].bmynd == "margborgaði"
+    assert len(m) == 2
+    assert m[0].bmynd == "margborgaði" and m[1].bmynd == "margborgaði"
 
     m = b.lookup_variants("smíða", "so", ("expl", "et", "nt"))
     assert len(m) == 0

@@ -34,9 +34,11 @@
 """
 
 from typing import (
+    Iterable,
     Iterator,
     NamedTuple,
     Sequence,
+    Set,
     Type,
     TypeVar,
     Generic,
@@ -45,9 +47,11 @@ from typing import (
     Counter,
     Tuple,
     Optional,
+    Union,
 )
 
 import os
+import re
 import struct
 from heapq import nsmallest
 from operator import itemgetter
@@ -117,6 +121,80 @@ ALL_BIN_MOODS = frozenset(("LHNT", "NH", "FH", "VH", "BH"))
 
 CASES = ("NF", "ÞF", "ÞGF", "EF")
 CASES_LATIN = tuple(case.encode("latin-1") for case in CASES)
+
+# Symbols that make up a mark,
+# mapped to the format str argument for the mark form
+_MARK_ATOMS = ALL_CASES.union(
+    ALL_GENDERS,
+    ALL_NUMBERS,
+    (x.casefold() for x in ALL_BIN_PERSONS),
+    (x.casefold() for x in ALL_BIN_DEGREES),
+    (x.casefold() for x in ALL_BIN_TENSES),
+    (x.casefold() for x in ALL_BIN_VOICES),
+    (x.casefold() for x in ALL_BIN_MOODS),
+    (
+        "obeygjanlegt",
+        "serst",
+        "nogr",
+        "gr",
+        "það",
+        "st",
+        "lhþt",
+        "op",
+        "sp",
+        "sagnb",
+        "2",
+        "3",
+    ),
+)
+
+
+def mark_to_set(mark: Union[str, Iterable[str]]) -> Set[str]:
+    """
+    Transform mark string into set of
+    inflection category specifiers.
+    """
+    if isinstance(mark, str):
+        mark = set(mark.split("-"))
+
+    atom_set: Set[str] = set()
+    for at in mark:
+        if "-" in at:
+            # Recurse if item in iterable contains more than one atom
+            atom_set.update(mark_to_set(at))
+            continue
+        # Make atoms casefolded
+        at = at.casefold()
+        # (the expl variant demands 'það' in the beyging string)
+        at = re.sub(r"expl", r"það", at)
+        # (we also allow Greynir-style person variants
+        # ('p1','p2' & 'p3', but don't change 'op2'))
+        at = re.sub(r"[^o]?p([123])", r"\1p", at)
+        if at in _MARK_ATOMS:
+            # Found an atom
+            atom_set.add(at)
+        else:
+            if "1p" in at:
+                atom_set.add("1p")
+            if "2p" in at:
+                atom_set.add("2p")
+            if "3p" in at:
+                atom_set.add("3p")
+            at = re.sub(r"(1p|2p|3p)", "", at)
+            # Might be more than one atom
+            # combined in a single str,
+            # try to split it up
+            start = 0
+            for i in range(1, len(at) + 1):
+                if at[start:i] in _MARK_ATOMS:
+                    atom_set.add(at[start:i])
+                    start = i
+            if at[start : len(at)]:
+                # If there is something left in the string,
+                # it is an unknown mark
+                raise ValueError(f"Unknown BÍN 'beyging' feature: '{at[start : len(at)]}'")
+    return atom_set
+
 
 InflectionFilter = Callable[[str], bool]
 

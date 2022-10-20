@@ -66,6 +66,7 @@ from typing import (
     Any,
     AnyStr,
     FrozenSet,
+    Iterable,
     Set,
     Tuple,
     List,
@@ -75,7 +76,6 @@ from typing import (
 )
 
 import struct
-import re
 import functools
 import mmap
 import pkg_resources
@@ -105,6 +105,7 @@ from .basics import (
     ALL_BIN_TENSES,
     ALL_BIN_MOODS,
     ALL_BIN_VOICES,
+    mark_to_set,
     BIN_COMPRESSOR_VERSION,
     BIN_COMPRESSED_FILE,
     UINT32,
@@ -598,103 +599,23 @@ class BinCompressed:
         self,
         word: str,
         cat: str,
-        to_inflection: Union[str, Tuple[str, ...]],
+        to_inflection: Union[str, Iterable[str]],
         lemma: Optional[str] = None,
         utg: Optional[int] = None,
         inflection_filter: Optional[InflectionFilter] = None,
-    ) -> Set[Ksnid]:
+    ) -> List[Ksnid]:
 
-        """ Returns a list of BÍN meaning tuples for word forms
-            where the beyging substring(s) given have been substituted for
-            the original string(s) in the same grammatical feature(s).
-            The list can be optionally constrained to a particular lemma and
-            utg number. """
+        """Returns a list of BÍN Ksnid instances for word forms
+        where the beyging substring(s) given have been substituted for
+        the original string(s) in the same grammatical feature(s).
+        The list can be optionally constrained to a particular lemma and
+        utg number."""
 
-        if isinstance(to_inflection, str):
-            to_inflection = (to_inflection,)
-
-        def xform(t: str) -> str:
-            """ Transform to_inflection strings to allow lower case and
-                Greynir-style person variants """
-            if t in {"gr", "nogr"}:
-                # Don't uppercase the definite article variant
-                return t
-            if t in {"p1", "p2", "p3"}:
-                # Allow Greynir-style person variants
-                return t[1] + "P"
-            if t == "expl":
-                # The _expl variant demands 'það' in the beyging string
-                return "það"
-            return t.upper()
-
-        to_inflection_list = [
-            xform(t) for t in to_inflection if t not in IGNORED_VARIANTS
-        ]
-
-        def make_target(b: str) -> str:
-            """ Create a target beyging string by substituting the
-                desired to_inflection in its proper place in the source """
-            # Remove '2' or '3' at the end of the beyging string,
-            # denoting alternative forms
-            b = re.sub(r"(2|3)$", "", b)
-            for t in to_inflection_list:
-                if t in ALL_BIN_CASES:
-                    b = re.sub(r"ÞGF|NF|ÞF|EF", t, b)
-                elif t in ALL_BIN_NUMBERS:
-                    b = re.sub(r"ET|FT", t, b)
-                elif t == "gr":
-                    # Add definite article indicator if not already present
-                    if not b.endswith("gr"):
-                        b += "gr"
-                elif t == "nogr":
-                    # Remove definite article indicator
-                    b = b.replace("gr", "")
-                elif t in ALL_BIN_GENDERS:
-                    b = re.sub(r"KVK|KK|HK", t, b)
-                elif t in ALL_BIN_PERSONS:
-                    b = re.sub(r"1P|2P|3P", t, b)
-                elif t in ALL_BIN_DEGREES:
-                    b = re.sub(r"ESB|EVB|EST|FSB|FVB|FST|MST|VB|SB", t, b)
-                elif t in ALL_BIN_TENSES:
-                    b = re.sub(r"-ÞT|-NT", "-" + t, b)
-                elif t in ALL_BIN_VOICES:
-                    b = re.sub(r"GM|MM", t, b)
-                elif t in ALL_BIN_MOODS:
-                    if t == "LHNT":
-                        # If the present participle is desired, there can be
-                        # no other features present in the beyging string
-                        return "LHNT"
-                    if t == "BH":
-                        # For the imperative mood, there is no tense
-                        # and no person in the beyging string
-                        b = re.sub(r"-NT|-ÞT|-1P|-2P|-3P", "", b)
-                    # Note that we don't replace the LHÞT feature;
-                    # it is too complex and different to be replaceable
-                    # with anything else
-                    b = re.sub(r"-NH|-FH|-VH|-BH", "-" + t, b)
-                elif t == "SAGNB":
-                    # SAGNB clobbers everything else except GM and MM
-                    if "GM" in b:
-                        b = "GM-SAGNB"
-                    elif "MM" in b:
-                        b = "MM-SAGNB"
-                    elif not b.endswith("-SAGNB"):
-                        # Thin ice here, probably a wrong target string
-                        b += "-SAGNB"
-                elif t == "LHÞT":
-                    # No need to alter the beyging string
-                    pass
-                elif t == "það":
-                    # Expletive; the beyging string should start with 'OP-það-'
-                    if b.startswith("OP-það-"):
-                        pass
-                    elif b.startswith("OP-"):
-                        b = "OP-það-" + b[3:]
-                    else:
-                        b = "OP-það-" + b
-                else:
-                    raise ValueError(f"Unknown BÍN 'beyging' feature: '{t}'")
-            return b
+        cat = cat.casefold()
+        to_inflection = mark_to_set(to_inflection)
+        not_definite = "nogr" in to_inflection
+        if not_definite:
+            to_inflection.remove("nogr")
 
         # Category set
         cats: FrozenSet[str]
@@ -703,7 +624,12 @@ class BinCompressed:
             cats = ALL_GENDERS
         else:
             cats = frozenset([cat])
-        result: Set[Ksnid] = set()
+        # Keep track of Ksnid instances we find,
+        # along with their inflection description
+        # (for sorting at the end)
+        results: List[Tuple[Ksnid, Set[str]]] = []
+        # Inflection specifiers for input
+        b_set: Set[str] = set()
         for bin_id, meaning_index, _ in self._raw_lookup(word):
             if utg is not None and bin_id != utg:
                 # Fails the utg filter
@@ -719,32 +645,45 @@ class BinCompressed:
             if inflection_filter is not None and not inflection_filter(beyging):
                 # The user-defined filter fails
                 continue
-            target_beyging = make_target(beyging)
-            if any(t not in target_beyging for t in to_inflection_list if t != "nogr"):
-                # This target beyging string does not contain
-                # our desired variants and is therefore not relevant
-                continue
+            b_set.update(mark_to_set(beyging))
             for form_latin in self.lemma_forms(bin_id):
                 for form_id, mix, kix in self._raw_lookup(form_latin):
                     if form_id != bin_id:
                         continue
                     # Found a word form of the same lemma
                     _, this_beyging = self.meaning(mix)
-                    if this_beyging == target_beyging:
-                        # Found a word form with the target beyging string
+                    if inflection_filter is not None and not inflection_filter(
+                        this_beyging
+                    ):
+                        # The user-defined filter fails
+                        continue
+                    tb_set = mark_to_set(this_beyging)
+                    if not_definite and "gr" in tb_set:
+                        # Asked for no definite form but this form is definite
+                        continue
+                    if tb_set.issuperset(to_inflection):
+                        # Found a word form with the target inflections
                         ksnid_string = self.ksnid_string(kix)
-                        result.add(
-                            Ksnid.from_parameters(
-                                stofn,
-                                bin_id,
-                                ofl,
-                                fl,
-                                form_latin.decode("latin-1"),
-                                this_beyging,
-                                ksnid_string,
-                            )
+                        ks = Ksnid.from_parameters(
+                            stofn,
+                            bin_id,
+                            ofl,
+                            fl,
+                            form_latin.decode("latin-1"),
+                            this_beyging,
+                            ksnid_string,
                         )
-        return result
+                        if ks not in (t[0] for t in results):
+                            # This is a new inflection,
+                            # add it to our results
+                            results.append((ks, tb_set))
+
+        # Inflections with the least difference
+        # from the input inflection closer to the front
+        results.sort(key=lambda t: len(t[1].symmetric_difference(b_set)))
+
+        # Return Ksnid entries
+        return [t[0] for t in results]
 
     def raw_nominative(self, word: str) -> Set[BinEntryTuple]:
         """ Returns a set of all nominative forms of the lemmas of the given word form.

@@ -145,6 +145,7 @@ from collections import defaultdict
 from islenska.basics import (
     Ksnid,
     BinEntryTuple,
+    MarkOrder,
     BIN_COMPRESSOR_VERSION,
     BIN_COMPRESSED_FILE,
     UINT32,
@@ -615,6 +616,14 @@ class BinCompressor:
                         print(
                             f"Skipping invalid data (lemma '{m.ord}', bin_id {m.bin_id}, "
                             f"bmynd '{m.bmynd}'), line {cnt} in {fn}"
+                        )
+                        continue
+                    # Ensure mark makes sense
+                    if not MarkOrder.valid_mark(m.ofl, m.mark):
+                        fn = fname.split("/")[-1]
+                        print(
+                            f"Skipping due to invalid mark (lemma '{m.ord}', bin_id {m.bin_id}, "
+                            f"bmynd '{m.bmynd}', ofl '{m.ofl}', mark '{m.mark}'), line {cnt} in {fn}"
                         )
                         continue
                     try:

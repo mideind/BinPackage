@@ -34,9 +34,12 @@
 """
 
 from typing import (
+    Iterable,
     Iterator,
+    List,
     NamedTuple,
     Sequence,
+    Set,
     Type,
     TypeVar,
     Generic,
@@ -45,10 +48,12 @@ from typing import (
     Counter,
     Tuple,
     Optional,
+    Union,
 )
 
-import os
+import re
 import struct
+from pathlib import Path
 from heapq import nsmallest
 from operator import itemgetter
 from pkg_resources import resource_stream
@@ -117,6 +122,138 @@ ALL_BIN_MOODS = frozenset(("LHNT", "NH", "FH", "VH", "BH"))
 
 CASES = ("NF", "ÞF", "ÞGF", "EF")
 CASES_LATIN = tuple(case.encode("latin-1") for case in CASES)
+
+# Symbols that make up a mark,
+# mapped to the format str argument for the mark form
+_MARK_ATOMS = ALL_CASES.union(
+    ALL_GENDERS,
+    ALL_NUMBERS,
+    (x.casefold() for x in ALL_BIN_PERSONS),
+    (x.casefold() for x in ALL_BIN_DEGREES),
+    (x.casefold() for x in ALL_BIN_TENSES),
+    (x.casefold() for x in ALL_BIN_VOICES),
+    (x.casefold() for x in ALL_BIN_MOODS),
+    (
+        "obeygjanlegt",
+        "serst",
+        "nogr",
+        "gr",
+        "það",
+        "st",
+        "lhþt",
+        "op",
+        "sp",
+        "sagnb",
+        "2",
+        "3",
+    ),
+)
+
+
+class MarkOrder:
+    """
+    Class used for ordering inflections and ensuring
+    an inflection exists for a specific word category.
+    """
+    # Singleton mark order dict
+    _order: Optional[Dict[str, Tuple[str, ...]]] = None
+
+    @classmethod
+    def _read_order_from_csv(cls):
+        """
+        Read ordering of inflections for
+        each word category from csv file.
+        """
+        p = Path(__file__).parent.resolve() / "resources" / "mark_order.csv"
+        assert p.exists() and p.is_file(), f"mark_order.csv file not found at {str(p)}"
+
+        o: Dict[str, List[str]] = {}
+        for line in p.read_text().splitlines():
+            [ordfl, mark] = line.split(";")
+            if ordfl not in o:
+                o[ordfl] = []
+            o[ordfl].append(mark)
+        # Create MarkOrder._order
+        cls._order = {k: tuple(v) for k, v in o.items()}
+
+    @classmethod
+    def index(cls, cat: str, m: str) -> int:
+        """
+        Find sorting index of a mark/inflection
+        for a given category.
+        """
+        if cls._order is None:
+            cls._read_order_from_csv()
+            assert cls._order is not None
+        # Added in order to sort 2/3 variant
+        # forms after 1 variant (normal form)
+        x = 0
+        if m.endswith("2"):
+            x = len(cls._order[cat])
+        elif m.endswith("3"):
+            x = 2 * len(cls._order[cat])
+        return cls._order[cat].index(m.rstrip("23")) + x
+
+    @classmethod
+    def valid_mark(cls, cat: str, m: str) -> bool:
+        """
+        Returns True if m is a valid mark/inflection specifier
+        for the given word category, False otherwise.
+        """
+        if cls._order is None:
+            cls._read_order_from_csv()
+            assert cls._order is not None
+        return m.rstrip("23") in cls._order[cat]
+
+
+def mark_to_set(mark: Union[str, Iterable[str]]) -> Set[str]:
+    """
+    Transform mark string into set of
+    inflection category specifiers.
+    """
+    if isinstance(mark, str):
+        mark = set(mark.split("-"))
+
+    atom_set: Set[str] = set()
+    for at in mark:
+        if "-" in at:
+            # Recurse if item in iterable contains more than one atom
+            atom_set.update(mark_to_set(at))
+            continue
+        # Make atoms casefolded
+        at = at.casefold()
+        # (the expl variant demands 'það' in the beyging string)
+        at = re.sub(r"expl", r"það", at)
+        # (we also allow Greynir-style person variants
+        # ('p1','p2' & 'p3', but don't change 'op2'))
+        at = re.sub(r"[^o]?p([123])", r"\1p", at)
+        if at in _MARK_ATOMS:
+            # Found an atom
+            atom_set.add(at)
+        else:
+            if "1p" in at:
+                atom_set.add("1p")
+            if "2p" in at:
+                atom_set.add("2p")
+            if "3p" in at:
+                atom_set.add("3p")
+            at = re.sub(r"(1p|2p|3p)", "", at)
+            # Might be more than one atom
+            # combined in a single str,
+            # try to split it up
+            start = 0
+            for i in range(1, len(at) + 1):
+                if at[start:i] in _MARK_ATOMS:
+                    atom_set.add(at[start:i])
+                    start = i
+            if at[start : len(at)]:
+                # If there is something left in the string,
+                # it is an unknown mark
+                raise ValueError(
+                    f"Unknown BÍN 'beyging' feature: '{at[start : len(at)]}'"
+                )
+    return atom_set
+
 
 InflectionFilter = Callable[[str], bool]
 
@@ -446,8 +583,7 @@ class LineReader:
                         # Do some path magic to allow the included path
                         # to be relative to the current file path, or a
                         # fresh (absolute) path by itself
-                        head, _ = os.path.split(self._fname)
-                        iname = os.path.join(head, iname)
+                        iname = str(Path(self._fname).parent / iname)
                         rdr = self._inner_rdr = LineReader(
                             iname,
                             package_name=self._package_name,

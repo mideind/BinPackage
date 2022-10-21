@@ -683,7 +683,7 @@ class Bin:
         self,
         w: str,
         cat: str,
-        to_inflection: Union[str, Tuple[str, ...]],
+        to_inflection: Union[str, Iterable[str]],
         *,
         lemma: Optional[str] = None,
         bin_id: Optional[int] = None,
@@ -700,7 +700,7 @@ class Bin:
             """ Create a closure function to send into _lookup(),
                 obtaining the requested inflection variants correctly,
                 also for composite words """
-            mset = bc.lookup_variants(
+            mlist = bc.lookup_variants(
                 key,
                 cat,
                 to_inflection,
@@ -708,7 +708,7 @@ class Bin:
                 None if compound else bin_id,
                 inflection_filter,
             )
-            klist = self._filter_ksnid(mset)
+            klist = self._filter_ksnid(mlist)
             return [k for k in klist if compound or k.birting != "S"]
 
         _, m = self._lookup(w, False, False, variant_lookup, Ksnid.make)

@@ -36,6 +36,7 @@
 from typing import (
     Iterable,
     Iterator,
+    List,
     NamedTuple,
     Sequence,
     Set,
@@ -50,9 +51,9 @@ from typing import (
     Union,
 )
 
-import os
 import re
 import struct
+from pathlib import Path
 from heapq import nsmallest
 from operator import itemgetter
 from pkg_resources import resource_stream
@@ -149,6 +150,62 @@ _MARK_ATOMS = ALL_CASES.union(
 )
 
 
+class MarkOrder:
+    """
+    Class used for ordering inflections and ensuring
+    an inflection exists for a specific word category.
+    """
+    # Singleton mark order dict
+    _order: Optional[Dict[str, Tuple[str, ...]]] = None
+
+    @classmethod
+    def _read_order_from_csv(cls):
+        """
+        Read ordering of inflections for
+        each word category from csv file.
+        """
+        p = Path(__file__).parent.resolve() / "resources" / "mark_order.csv"
+        assert p.exists() and p.is_file(), f"mark_order.csv file not found at {str(p)}"
+
+        o: Dict[str, List[str]] = {}
+        for line in p.read_text().splitlines():
+            [ordfl, mark] = line.split(";")
+            if ordfl not in o:
+                o[ordfl] = []
+            o[ordfl].append(mark)
+        # Create MarkOrder._order
+        cls._order = {k: tuple(v) for k, v in o.items()}
+
+    @classmethod
+    def index(cls, cat: str, m: str) -> int:
+        """
+        Find sorting index of a mark/inflection
+        for a given category.
+        """
+        if cls._order is None:
+            cls._read_order_from_csv()
+            assert cls._order is not None
+        # Added in order to sort 2/3 variant
+        # forms after 1 variant (normal form)
+        x = 0
+        if m.endswith("2"):
+            x = len(cls._order[cat])
+        elif m.endswith("3"):
+            x = 2 * len(cls._order[cat])
+        return cls._order[cat].index(m.rstrip("23")) + x
+
+    @classmethod
+    def valid_mark(cls, cat: str, m: str) -> bool:
+        """
+        Returns True if m is a valid mark/inflection specifier
+        for the given word category, False otherwise.
+        """
+        if cls._order is None:
+            cls._read_order_from_csv()
+            assert cls._order is not None
+        return m.rstrip("23") in cls._order[cat]
+
+
 def mark_to_set(mark: Union[str, Iterable[str]]) -> Set[str]:
     """
     Transform mark string into set of
@@ -192,7 +249,9 @@ def mark_to_set(mark: Union[str, Iterable[str]]) -> Set[str]:
             if at[start : len(at)]:
                 # If there is something left in the string,
                 # it is an unknown mark
-                raise ValueError(f"Unknown BÍN 'beyging' feature: '{at[start : len(at)]}'")
+                raise ValueError(
+                    f"Unknown BÍN 'beyging' feature: '{at[start : len(at)]}'"
+                )
     return atom_set
 
 
@@ -524,8 +583,7 @@ class LineReader:
                         # Do some path magic to allow the included path
                         # to be relative to the current file path, or a
                         # fresh (absolute) path by itself
-                        head, _ = os.path.split(self._fname)
-                        iname = os.path.join(head, iname)
+                        iname = str(Path(self._fname).parent / iname)
                         rdr = self._inner_rdr = LineReader(
                             iname,
                             package_name=self._package_name,

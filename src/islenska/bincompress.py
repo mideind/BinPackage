@@ -673,7 +673,7 @@ class BinCompressed:
                             this_beyging,
                             ksnid_string,
                         )
-                        if ks not in (t[0] for t in results):
+                        if all(ks != t[0] for t in results):
                             # This is a new inflection,
                             # add it to our results
                             results.append((ks, tb_set))

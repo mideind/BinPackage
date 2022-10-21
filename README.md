@@ -1,5 +1,5 @@
 ![GitHub](https://img.shields.io/github/license/mideind/BinPackage)
-![Python 3.6+](https://img.shields.io/badge/python-3.6-blue.svg)
+![Python 3.7+](https://img.shields.io/badge/python-3.7-blue.svg)
 [![Python package](https://github.com/mideind/BinPackage/actions/workflows/python-package.yml/badge.svg)](https://github.com/mideind/BinPackage/actions/workflows/python-package.yml)
 
 # BinPackage
@@ -718,7 +718,7 @@ infinitive, `MM-NH`, as in the example for *þyrlast*.
 # Implementation
 
 BinPackage is written in [Python 3](https://www.python.org/)
-and requires Python 3.6 or later. It runs on CPython and [PyPy](http://pypy.org/).
+and requires Python 3.7 or later. It runs on CPython and [PyPy](http://pypy.org/).
 
 The Python code calls a small C++ library to speed up lookup of word forms in the
 compressed binary structure into which BÍN has been encoded.
@@ -737,7 +737,7 @@ as `mypy` and `Pylance` / `Pyright`.
 
 # Installation and setup
 
-You must have Python >= 3.6 installed on your machine (CPython or PyPy).
+You must have Python >= 3.7 installed on your machine (CPython or PyPy).
 If you are using a Python virtual environment (`virtualenv`), activate it
 first (substituting your environment name for `venv` below):
 

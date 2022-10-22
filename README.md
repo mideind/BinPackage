@@ -1,5 +1,7 @@
 ![GitHub](https://img.shields.io/github/license/mideind/BinPackage)
 ![Python 3.7+](https://img.shields.io/badge/python-3.7-blue.svg)
+![Release](https://shields.io/github/v/release/mideind/BinPackage?display_name=tag)
+![PyPI](https://img.shields.io/pypi/v/islenska)
 [![Python package](https://github.com/mideind/BinPackage/actions/workflows/python-package.yml/badge.svg)](https://github.com/mideind/BinPackage/actions/workflows/python-package.yml)
 
 # BinPackage

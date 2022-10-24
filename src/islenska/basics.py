@@ -123,6 +123,11 @@ ALL_BIN_MOODS = frozenset(("LHNT", "NH", "FH", "VH", "BH"))
 CASES = ("NF", "ÞF", "ÞGF", "EF")
 CASES_LATIN = tuple(case.encode("latin-1") for case in CASES)
 
+# Grammatical variants that can be safely ignored even if included
+# in the to_inflection parameter in lookup_variants(), i.e. they
+# have no corresponding content in the beyging field in BÍN
+IGNORED_VARIANTS = frozenset(("0", "1", "2", "3", "subj", "none"))
+
 # Symbols that make up a mark,
 # mapped to the format str argument for the mark form
 _MARK_ATOMS = ALL_CASES.union(
@@ -133,6 +138,7 @@ _MARK_ATOMS = ALL_CASES.union(
     (x.casefold() for x in ALL_BIN_TENSES),
     (x.casefold() for x in ALL_BIN_VOICES),
     (x.casefold() for x in ALL_BIN_MOODS),
+    (x.casefold() for x in IGNORED_VARIANTS),
     (
         "obeygjanlegt",
         "serst",
@@ -144,8 +150,6 @@ _MARK_ATOMS = ALL_CASES.union(
         "op",
         "sp",
         "sagnb",
-        "2",
-        "3",
     ),
 )
 
@@ -226,11 +230,13 @@ def mark_to_set(mark: Union[str, Iterable[str]]) -> Set[str]:
         at = re.sub(r"expl", r"það", at)
         # (we also allow Greynir-style person variants
         # ('p1','p2' & 'p3', but don't change 'op2'))
-        at = re.sub(r"[^o]?p([123])", r"\1p", at)
+        at = re.sub(r"(?<=[^o])?p([123])", r"\1p", at)
         if at in _MARK_ATOMS:
             # Found an atom
             atom_set.add(at)
         else:
+            # Deal with 1p/2p/3p, so they don't
+            # get interpreted as 1/2/3 and then p
             if "1p" in at:
                 atom_set.add("1p")
             if "2p" in at:
@@ -252,7 +258,8 @@ def mark_to_set(mark: Union[str, Iterable[str]]) -> Set[str]:
                 raise ValueError(
                     f"Unknown BÍN 'beyging' feature: '{at[start : len(at)]}'"
                 )
-    return atom_set
+    # Remove ignored variants before returning the set
+    return atom_set.difference(IGNORED_VARIANTS)
 
 
 InflectionFilter = Callable[[str], bool]

@@ -923,6 +923,25 @@ def test_variants() -> None:
     m = b.lookup_variants("smíðar", "so", ("expl", "et", "nt"))
     assert len(m) == 0
 
+    # Make sure ignored variants are ignored
+    m = b.lookup_variants("lenda", "so", ("0gmetp3",))
+    assert all("GM" in mm.mark and "3P-ET" in mm.mark for mm in m) and len(m) > 0
+
+    m = b.lookup_variants("lenda", "so", ("012subjnone",))
+    assert len(m) > 0
+
+    # Safety check for [123]p == p[123] conversion
+    assert (
+        b.lookup_variants("lenda", "so", ("gmetp3",))
+        == b.lookup_variants("lenda", "so", ("gmet3p",))
+        == b.lookup_variants("lenda", "so", ("gm3pet",))
+        == b.lookup_variants("lenda", "so", ("gmp3et",))
+        == b.lookup_variants("lenda", "so", ("3pgmet",))
+        == b.lookup_variants("lenda", "so", ("p3gmet",))
+        == b.lookup_variants("lenda", "so", ("3p", "gm", "et"))
+        == b.lookup_variants("lenda", "so", ("p3", "gm", "et"))
+    )
+
 
 def test_sorting() -> None:
     b = Bin()

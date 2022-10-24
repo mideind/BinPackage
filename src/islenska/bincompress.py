@@ -116,11 +116,6 @@ from .basics import (
 )
 
 
-# Grammatical variants that can be safely ignored even if included
-# in the to_inflection parameter in lookup_variants(), i.e. they
-# have no corresponding content in the beyging field in BÍN
-IGNORED_VARIANTS = frozenset(("0", "1", "2", "subj", "none"))
-
 
 class BinCompressed:
 

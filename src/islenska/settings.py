@@ -67,20 +67,20 @@ PreferenceTuple = Tuple[List[str], List[str], int]
 
 class AdjectiveTemplate:
 
-    """ Wrapper around template list of adjective endings """
+    """Wrapper around template list of adjective endings"""
 
     # List of tuples: (ending, form_spec)
     ENDINGS: List[Tuple[str, str]] = []
 
     @classmethod
     def add(cls, ending: str, form: str) -> None:
-        """ Add an adjective ending and its associated form. """
+        """Add an adjective ending and its associated form."""
         cls.ENDINGS.append((ending, form))
 
 
 class StemPreferences:
 
-    """ Wrapper around lemma disambiguation hints, initialized from the config file """
+    """Wrapper around lemma disambiguation hints, initialized from the config file"""
 
     # Dictionary keyed by word form containing a tuple (worse, better)
     # where each is a list word lemmas
@@ -88,7 +88,7 @@ class StemPreferences:
 
     @staticmethod
     def add(word: str, worse: List[str], better: List[str]) -> None:
-        """ Add a preference to the dictionary. Called from the config file handler. """
+        """Add a preference to the dictionary. Called from the config file handler."""
         if word in StemPreferences.DICT:
             raise ConfigError(
                 "Duplicate lemma preference for word form {0}".format(word)
@@ -97,14 +97,14 @@ class StemPreferences:
 
     @staticmethod
     def get(word: str) -> Optional[Tuple[List[str], List[str]]]:
-        """ Return a (worse, better) tuple for the given word form """
+        """Return a (worse, better) tuple for the given word form"""
         return StemPreferences.DICT.get(word, None)
 
 
 class NounPreferences:
 
-    """ Wrapper for noun preferences, i.e. to assign priorities to different
-        noun lemmas that can have identical word forms. """
+    """Wrapper for noun preferences, i.e. to assign priorities to different
+    noun lemmas that can have identical word forms."""
 
     # This is a dict of noun word forms, giving the relative priorities
     # of different genders
@@ -112,7 +112,7 @@ class NounPreferences:
 
     @staticmethod
     def add(word: str, worse: str, better: str) -> None:
-        """ Add a preference to the dictionary. Called from the config file handler. """
+        """Add a preference to the dictionary. Called from the config file handler."""
         if worse not in ALL_GENDERS or better not in ALL_GENDERS:
             raise ConfigError("Noun priorities must specify genders (kk, kvk, hk)")
         d = NounPreferences.DICT[word]
@@ -133,42 +133,42 @@ class NounPreferences:
 
 class BinErrata:
 
-    """ Wrapper around BÍN errata, initialized from the config file """
+    """Wrapper around BÍN errata, initialized from the config file"""
 
     DICT: Dict[Tuple[str, str], str] = dict()
 
     @staticmethod
     def add(lemma: str, ofl: str, fl: str) -> None:
-        """ Add a BÍN fix. Used by bincompress.py when generating a new
-            compressed vocabulary file. """
+        """Add a BÍN fix. Used by bincompress.py when generating a new
+        compressed vocabulary file."""
         BinErrata.DICT[(lemma, ofl)] = fl
 
 
 class BinDeletions:
 
-    """ Wrapper around BÍN deletions, initialized from the config file """
+    """Wrapper around BÍN deletions, initialized from the config file"""
 
     SET: Set[Tuple[str, str, str]] = set()
 
     @staticmethod
     def add(lemma: str, ofl: str, fl: str) -> None:
-        """ Add a BÍN fix. Used by bincompress.py when generating a new
-            compressed vocabulary file. """
+        """Add a BÍN fix. Used by bincompress.py when generating a new
+        compressed vocabulary file."""
         BinDeletions.SET.add((lemma, ofl, fl))
 
 
 class Settings:
 
-    """ Global settings """
+    """Global settings"""
 
     _lock = threading.Lock()
     loaded: bool = False
-    
+
     # Configuration settings from the GreynirPackage.conf file
 
     @staticmethod
     def _handle_stem_preferences(s: str) -> None:
-        """ Handle lemma ambiguity preference hints in the settings section """
+        """Handle lemma ambiguity preference hints in the settings section"""
         # Format: word worse1 worse2... < better
         a = s.lower().split("<", maxsplit=1)
         if len(a) != 2:
@@ -187,7 +187,7 @@ class Settings:
 
     @staticmethod
     def _handle_noun_preferences(s: str) -> None:
-        """ Handle noun preference hints in the settings section """
+        """Handle noun preference hints in the settings section"""
         # Format: noun worse1 worse2... < better
         # The worse and better specifiers are gender names (kk, kvk, hk)
         a = s.lower().split("<", maxsplit=1)
@@ -203,7 +203,7 @@ class Settings:
 
     @staticmethod
     def _handle_bin_errata(s: str) -> None:
-        """ Handle changes to BÍN categories ('fl') """
+        """Handle changes to BÍN categories ('fl')"""
         a = s.split()
         if len(a) != 3:
             raise ConfigError("Expected 'lemma ofl fl' fields in bin_errata section")
@@ -216,12 +216,10 @@ class Settings:
 
     @staticmethod
     def _handle_bin_deletions(s: str) -> None:
-        """ Handle deletions from BÍN, given as lemma/ofl/fl triples """
+        """Handle deletions from BÍN, given as lemma/ofl/fl triples"""
         a = s.split()
         if len(a) != 3:
-            raise ConfigError(
-                "Expected 'lemma ofl fl' fields in bin_deletions section"
-            )
+            raise ConfigError("Expected 'lemma ofl fl' fields in bin_deletions section")
         lemma, ofl, fl = a
         if not ofl.islower() or not fl.islower():
             raise ConfigError(
@@ -231,7 +229,7 @@ class Settings:
 
     @staticmethod
     def _handle_adjective_template(s: str) -> None:
-        """ Handle the template for new adjectives in the settings section """
+        """Handle the template for new adjectives in the settings section"""
         # Format: adjective-ending bin-meaning
         a = s.split()
         if len(a) != 2:
@@ -241,8 +239,8 @@ class Settings:
         AdjectiveTemplate.add(a[0], a[1])
 
     @staticmethod
-    def read(fname: str, force: bool=False) -> None:
-        """ Read configuration file """
+    def read(fname: str, force: bool = False) -> None:
+        """Read configuration file"""
 
         with Settings._lock:
 

@@ -40,6 +40,11 @@ __author__ = "Miðeind ehf."
 __copyright__ = "(C) 2022 Miðeind ehf."
 
 __all__ = (
-    "BinEntry", "Ksnid",
-    "Bin", "Orð", "BinFilterFunc", "BinEntryList", "BinEntryIterable"
+    "BinEntry",
+    "Ksnid",
+    "Bin",
+    "Orð",
+    "BinFilterFunc",
+    "BinEntryList",
+    "BinEntryIterable",
 )

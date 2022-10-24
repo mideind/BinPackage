@@ -72,18 +72,18 @@ BIN_COMPRESSED_FILE = "compressed.bin"
 # The following are encoded with each word form
 # Bits allocated for the bin_id number (currently max 513582)
 BIN_ID_BITS = 23
-BIN_ID_MAX = 2 ** BIN_ID_BITS
+BIN_ID_MAX = 2**BIN_ID_BITS
 BIN_ID_MASK = BIN_ID_MAX - 1
 # Bits allocated for the meaning index (currently max 968)
 MEANING_BITS = 10
-MEANING_MAX = 2 ** MEANING_BITS
+MEANING_MAX = 2**MEANING_BITS
 MEANING_MASK = MEANING_MAX - 1
 # Make sure that we have at least three high bits available for other
 # purposes in a 32-bit word that already contains a lemma index and a meaning index
 # assert BIN_ID_BITS + MEANING_BITS <= 29
 # Bits allocated for the ksnid-string index (currently max 5826)
 KSNID_BITS = 13
-KSNID_MAX = 2 ** KSNID_BITS
+KSNID_MAX = 2**KSNID_BITS
 KSNID_MASK = KSNID_MAX - 1
 
 # Bits allocated for the subcategory index (hluti) (currently max 49)
@@ -159,6 +159,7 @@ class MarkOrder:
     Class used for ordering inflections and ensuring
     an inflection exists for a specific word category.
     """
+
     # Singleton mark order dict
     _order: Optional[Dict[str, Tuple[str, ...]]] = None
 
@@ -229,8 +230,8 @@ def mark_to_set(mark: Union[str, Iterable[str]]) -> Set[str]:
         # (the expl variant demands 'það' in the beyging string)
         at = re.sub(r"expl", r"það", at)
         # (we also allow Greynir-style person variants
-        # ('p1','p2' & 'p3', but don't change 'op2'))
-        at = re.sub(r"(?<=[^o])?p([123])", r"\1p", at)
+        # ('p1','p2' & 'p3', but don't change 'op1', 'op2', 'op3'))
+        at = re.sub(r"(?<!o)p([123])", r"\1p", at)
         if at in _MARK_ATOMS:
             # Found an atom
             atom_set.add(at)
@@ -301,7 +302,7 @@ def make_bin_entry(
     mark: str,
     copy_from: Optional[BinEntry] = None,
 ) -> BinEntry:
-    """ Constructor for BinEntry instances """
+    """Constructor for BinEntry instances"""
     return BinEntry(ord, bin_id, ofl, hluti, bmynd, mark)
 
 
@@ -311,7 +312,7 @@ _Ksnid = TypeVar("_Ksnid", bound="Ksnid")
 
 class Ksnid:
 
-    """ A class corresponding to the BÍN KRISTINsnid format """
+    """A class corresponding to the BÍN KRISTINsnid format"""
 
     def __init__(self) -> None:
         self.ord: str = ""
@@ -344,18 +345,18 @@ class Ksnid:
         if not isinstance(o, Ksnid):
             return False
         return (
-            self.bmynd == o.bmynd and
-            self.mark == o.mark and
-            self.bin_id == o.bin_id and
-            self.ord == o.ord and
-            self.ofl == o.ofl and
-            self.hluti == o.hluti and
-            self.ksnid_string == o.ksnid_string
+            self.bmynd == o.bmynd
+            and self.mark == o.mark
+            and self.bin_id == o.bin_id
+            and self.ord == o.ord
+            and self.ofl == o.ofl
+            and self.hluti == o.hluti
+            and self.ksnid_string == o.ksnid_string
         )
 
     @property
     def ksnid_string(self) -> str:
-        """ Return a concatenation of all Ksnid-specific attributes """
+        """Return a concatenation of all Ksnid-specific attributes"""
         millivisun = "" if self.millivisun == 0 else str(self.millivisun)
         return (
             f"{self.einkunn};{self.malsnid};{self.malfraedi};"
@@ -365,14 +366,14 @@ class Ksnid:
 
     @classmethod
     def from_string(cls: Type[_Ksnid], s: str) -> _Ksnid:
-        """ Create a Ksnid instance from a CSV-format string,
-            separated by semicolons """
+        """Create a Ksnid instance from a CSV-format string,
+        separated by semicolons"""
         t = s.split(";")
         return cls.from_tuple(t)
 
     @classmethod
     def from_tuple(cls: Type[_Ksnid], t: Sequence[str]) -> _Ksnid:
-        """ Create a Ksnid instance from a tuple of strings """
+        """Create a Ksnid instance from a tuple of strings"""
         m = cls()
         (
             m.ord,
@@ -398,7 +399,7 @@ class Ksnid:
         return m
 
     def __hash__(self) -> int:
-        """ Make Ksnid instances hashable, using their 'primary key' attributes """
+        """Make Ksnid instances hashable, using their 'primary key' attributes"""
         return (self.bin_id, self.ofl, self.bmynd, self.mark).__hash__()
 
     @classmethod
@@ -412,7 +413,7 @@ class Ksnid:
         mark: str,
         ksnid: str = KSNID_GREYNIR,
     ) -> _Ksnid:
-        """ Create a Ksnid instance from the given parameters """
+        """Create a Ksnid instance from the given parameters"""
         m = cls()
         m.ord = ord
         m.bin_id = bin_id
@@ -451,7 +452,7 @@ class Ksnid:
         mark: str,
         copy_from: Optional["_Ksnid"] = None,
     ) -> _Ksnid:
-        """ Create a Ksnid instance from the given parameters """
+        """Create a Ksnid instance from the given parameters"""
         m = cls.from_parameters(ord, bin_id, ofl, hluti, form, mark)
         if copy_from is not None:
             m.einkunn = copy_from.einkunn
@@ -466,7 +467,7 @@ class Ksnid:
         return m
 
     def to_bin_entry(self) -> BinEntry:
-        """ Copy this instance to a BinEntry instance """
+        """Copy this instance to a BinEntry instance"""
         return BinEntry(
             self.ord, self.bin_id, self.ofl, self.hluti, self.bmynd, self.mark
         )
@@ -474,8 +475,8 @@ class Ksnid:
 
 class LFU_Cache(Generic[_K, _V]):
 
-    """ Least-frequently-used (LFU) cache for word lookups.
-        Based on a pattern by Raymond Hettinger
+    """Least-frequently-used (LFU) cache for word lookups.
+    Based on a pattern by Raymond Hettinger
     """
 
     def __init__(self, maxsize: int = LFU_DEFAULT) -> None:
@@ -489,8 +490,8 @@ class LFU_Cache(Generic[_K, _V]):
         self.lock = threading.Lock()
 
     def lookup(self, key: _K, func: Callable[[_K], _V]) -> _V:
-        """ Lookup a key in the cache, calling func(key)
-            to obtain the data if not already there """
+        """Lookup a key in the cache, calling func(key)
+        to obtain the data if not already there"""
         with self.lock:
             self.use_count[key] += 1
             # Get cache entry or compute if not found
@@ -512,7 +513,7 @@ class LFU_Cache(Generic[_K, _V]):
 
 class ConfigError(Exception):
 
-    """ Exception class for configuration errors """
+    """Exception class for configuration errors"""
 
     def __init__(self, s: str) -> None:
         super().__init__(s)
@@ -520,13 +521,13 @@ class ConfigError(Exception):
         self.line = 0
 
     def set_pos(self, fname: str, line: int) -> None:
-        """ Set file name and line information, if not already set """
+        """Set file name and line information, if not already set"""
         if not self.fname:
             self.fname = fname
             self.line = line
 
     def __str__(self) -> str:
-        """ Return a string representation of this exception """
+        """Return a string representation of this exception"""
         s = Exception.__str__(self)
         if not self.fname:
             return s
@@ -535,7 +536,7 @@ class ConfigError(Exception):
 
 class LineReader:
 
-    """ Read lines from a text file, recognizing $include directives """
+    """Read lines from a text file, recognizing $include directives"""
 
     def __init__(
         self,
@@ -553,15 +554,15 @@ class LineReader:
         self._outer_line = outer_line
 
     def fname(self) -> str:
-        """ The name of the file being read """
+        """The name of the file being read"""
         return self._fname if self._inner_rdr is None else self._inner_rdr.fname()
 
     def line(self) -> int:
-        """ The number of the current line within the file """
+        """The number of the current line within the file"""
         return self._line if self._inner_rdr is None else self._inner_rdr.line()
 
     def lines(self) -> Iterator[str]:
-        """ Generator yielding lines from a text file """
+        """Generator yielding lines from a text file"""
         self._line = 0
         try:
             if self._package_name:

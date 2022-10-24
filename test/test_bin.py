@@ -941,6 +941,13 @@ def test_variants() -> None:
         == b.lookup_variants("lenda", "so", ("3p", "gm", "et"))
         == b.lookup_variants("lenda", "so", ("p3", "gm", "et"))
     )
+    assert (
+        b.lookup_variants("lenda", "so", "op")
+        == b.lookup_variants("lenda", "so", "op0")
+        == b.lookup_variants("lenda", "so", "op1")
+        == b.lookup_variants("lenda", "so", "op2")
+        == b.lookup_variants("lenda", "so", "op3")
+    )
 
 
 def test_sorting() -> None:

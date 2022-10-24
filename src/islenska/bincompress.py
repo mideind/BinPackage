@@ -116,11 +116,10 @@ from .basics import (
 )
 
 
-
 class BinCompressed:
 
-    """ A wrapper for the compressed binary dictionary,
-        allowing read-only lookups of word forms """
+    """A wrapper for the compressed binary dictionary,
+    allowing read-only lookups of word forms"""
 
     # Note: the resource path below should NOT use os.path.join()
     _FNAME = pkg_resources.resource_filename(
@@ -128,10 +127,10 @@ class BinCompressed:
     )
 
     def __init__(self) -> None:
-        """ We use a memory map, provided by the mmap module, to
-            directly map the compressed file into memory without
-            having to read it into a byte buffer. This also allows
-            the same memory map to be shared between processes. """
+        """We use a memory map, provided by the mmap module, to
+        directly map the compressed file into memory without
+        having to read it into a byte buffer. This also allows
+        the same memory map to be shared between processes."""
         with open(self._FNAME, "rb") as stream:
             self._b = mmap.mmap(stream.fileno(), 0, access=mmap.ACCESS_READ)
         # Check that the file version matches what we expect
@@ -181,12 +180,12 @@ class BinCompressed:
         self._mmap_ptr: int = ffi.cast("uint8_t*", self._mmap_buffer)
 
     def _UINT(self, offset: int) -> int:
-        """ Return the 32-bit UINT at the indicated offset
-            in the memory-mapped buffer """
+        """Return the 32-bit UINT at the indicated offset
+        in the memory-mapped buffer"""
         return self._partial_UINT(offset)[0]
 
     def close(self) -> None:
-        """ Close the memory map """
+        """Close the memory map"""
         if self._b is not None:
             self._mappings = cast(bytes, None)
             self._lemmas = cast(bytes, None)
@@ -202,12 +201,12 @@ class BinCompressed:
 
     @property
     def begin_greynir_utg(self):
-        """ Return the lowest utg number of Greynir additions """
+        """Return the lowest utg number of Greynir additions"""
         return self._begin_greynir_utg
 
     def meaning(self, ix: int) -> Tuple[str, str]:
-        """ Find and decode a meaning (ofl, beyging) tuple,
-            given its index """
+        """Find and decode a meaning (ofl, beyging) tuple,
+        given its index"""
         (off,) = UINT32.unpack_from(self._meanings, ix * 4)
         assert self._b is not None
         b = bytes(self._b[off : off + 24])
@@ -215,19 +214,19 @@ class BinCompressed:
         return s[0], s[1]  # ofl, beyging
 
     def ksnid_string(self, ix: int) -> str:
-        """ Find and decode a KRISTINsnid string """
+        """Find and decode a KRISTINsnid string"""
         (off,) = UINT32.unpack_from(self._ksnid_strings, ix * 4)
         assert self._b is not None
         lw = self._b[off]  # Length byte
         return self._b[off + 1 : off + 1 + lw].decode("latin-1")
 
     def lemma(self, bin_id: int) -> Tuple[str, str]:
-        """ Find and decode a lemma (stofn, subcat) tuple, given its bin_id """
+        """Find and decode a lemma (stofn, subcat) tuple, given its bin_id"""
         (off,) = UINT32.unpack_from(self._lemmas, bin_id * 4)
         assert off != 0  # Unknown BÍN id
         bits = self._UINT(off) & 0x7FFFFFFF
         # Subcategory (fl) index
-        cix = bits & (2 ** SUBCAT_BITS - 1)
+        cix = bits & (2**SUBCAT_BITS - 1)
         p = off + 4
         assert self._b is not None
         lw = self._b[p]  # Length byte
@@ -236,11 +235,11 @@ class BinCompressed:
         return b.decode("latin-1"), self._subcats[cix]  # stofn, fl
 
     def lemma_forms(self, bin_id: int) -> List[bytes]:
-        """ Return all word forms that are associated with the lemma
-            whose bin_id is given """
+        """Return all word forms that are associated with the lemma
+        whose bin_id is given"""
 
         def read_set(p: int, base: bytes) -> List[bytes]:
-            """ Decompress a set of strings compressed by compress_set() """
+            """Decompress a set of strings compressed by compress_set()"""
             b = self._templates
             c: List[bytes] = []
             last_w = base
@@ -303,7 +302,7 @@ class BinCompressed:
         return result
 
     def _mapping_cffi(self, word: Union[str, bytes]) -> Optional[int]:
-        """ Call the C++ mapping() function that has been wrapped using CFFI """
+        """Call the C++ mapping() function that has been wrapped using CFFI"""
         try:
             if isinstance(word, str):
                 word = word.encode("latin-1")
@@ -315,8 +314,8 @@ class BinCompressed:
             return None
 
     def _raw_lookup(self, word: AnyStr) -> List[Tuple[int, int, int]]:
-        """ Return a list of lemma/meaning/ksnid tuples for the word, or
-            an empty list if it is not found in the trie """
+        """Return a list of lemma/meaning/ksnid tuples for the word, or
+        an empty list if it is not found in the trie"""
         mapping = self._mapping_cffi(word)
         if mapping is None:
             # Word not found in trie: return an empty list of entries
@@ -353,7 +352,7 @@ class BinCompressed:
         return result
 
     def contains(self, word: str) -> bool:
-        """ Returns True if the trie contains the given word form"""
+        """Returns True if the trie contains the given word form"""
         return self._mapping_cffi(word) is not None
 
     __contains__ = contains
@@ -367,10 +366,10 @@ class BinCompressed:
         inflection_filter: Optional[InflectionFilter] = None,
     ) -> List[BinEntryTuple]:
 
-        """ Returns a list of BÍN entries for the given word form,
-            eventually constrained to the requested word category,
-            lemma, utg number and/or the given beyging_func filter function,
-            which is called with the beyging field as a parameter. """
+        """Returns a list of BÍN entries for the given word form,
+        eventually constrained to the requested word category,
+        lemma, utg number and/or the given beyging_func filter function,
+        which is called with the beyging field as a parameter."""
 
         # Category set
         if cat is None:
@@ -409,10 +408,10 @@ class BinCompressed:
         inflection_filter: Optional[InflectionFilter] = None,
     ) -> List[Ksnid]:
 
-        """ Returns a list of BÍN entries for the given word form,
-            eventually constrained to the requested word category,
-            lemma, utg number and/or the given beyging_func filter function,
-            which is called with the beyging field as a parameter. """
+        """Returns a list of BÍN entries for the given word form,
+        eventually constrained to the requested word category,
+        lemma, utg number and/or the given beyging_func filter function,
+        which is called with the beyging field as a parameter."""
 
         # Category set
         if cat is None:
@@ -441,7 +440,13 @@ class BinCompressed:
             ksnid_string = self.ksnid_string(ksnid_index)
             result.append(
                 Ksnid.from_parameters(
-                    stofn, bin_id, ofl, fl, word, beyging, ksnid_string,
+                    stofn,
+                    bin_id,
+                    ofl,
+                    fl,
+                    word,
+                    beyging,
+                    ksnid_string,
                 )
             )
         return result
@@ -460,12 +465,12 @@ class BinCompressed:
         inflection_filter: Optional[InflectionFilter] = None,
     ) -> Set[BinEntryTuple]:
 
-        """ Returns a set of entries, in the requested case, derived
-            from the lemmas of the given word form, optionally constrained
-            by word category and by the other arguments given. The
-            inflection_filter argument, if present, should be a function that
-            filters on the beyging field of each candidate BÍN entry.
-            The word form is case-sensitive. """
+        """Returns a set of entries, in the requested case, derived
+        from the lemmas of the given word form, optionally constrained
+        by word category and by the other arguments given. The
+        inflection_filter argument, if present, should be a function that
+        filters on the beyging field of each candidate BÍN entry.
+        The word form is case-sensitive."""
 
         # Note that singular=True means that we force the result to be
         # singular even if the original word given is plural.
@@ -487,7 +492,7 @@ class BinCompressed:
         wanted_beyging = ""
 
         def simplify_beyging(beyging: str) -> str:
-            """ Removes case-related information from a beyging string """
+            """Removes case-related information from a beyging string"""
             # Note that we also remove '2' and '3' in cases like
             # 'ÞGF2' and 'EF2', where alternate declination forms are
             # being specified.
@@ -504,8 +509,8 @@ class BinCompressed:
             return beyging
 
         def beyging_func(beyging: str) -> bool:
-            """ This function is passed to self.lookup() as a filter
-                on the beyging field """
+            """This function is passed to self.lookup() as a filter
+            on the beyging field"""
             if case not in beyging:
                 # We get all BIN entries having the word form we ask
                 # for from self.lookup(), so we need to be careful to
@@ -565,7 +570,7 @@ class BinCompressed:
         return result
 
     def lookup_id(self, bin_id: int) -> List[Ksnid]:
-        """ Given a BÍN id number, return a set of matching Ksnid entries """
+        """Given a BÍN id number, return a set of matching Ksnid entries"""
         result: Set[Ksnid] = set()
         forms = self.lemma_forms(bin_id)
         if forms:
@@ -681,8 +686,8 @@ class BinCompressed:
         return [t[0] for t in results]
 
     def raw_nominative(self, word: str) -> Set[BinEntryTuple]:
-        """ Returns a set of all nominative forms of the lemmas of the given word form.
-            Note that the word form is case-sensitive. """
+        """Returns a set of all nominative forms of the lemmas of the given word form.
+        Note that the word form is case-sensitive."""
         result: Set[BinEntryTuple] = set()
         for lemma_index, _, _ in self._raw_lookup(word):
             for c_latin in self.lemma_forms(lemma_index):
@@ -692,25 +697,25 @@ class BinCompressed:
         return result
 
     def nominative(self, word: str, **options: Any) -> Set[BinEntryTuple]:
-        """ Returns a set of all nominative forms of the lemmas of the given word form,
-            subject to the constraints in **options.
-            Note that the word form is case-sensitive. """
+        """Returns a set of all nominative forms of the lemmas of the given word form,
+        subject to the constraints in **options.
+        Note that the word form is case-sensitive."""
         return self.lookup_case(word, "NF", **options)
 
     def accusative(self, word: str, **options: Any) -> Set[BinEntryTuple]:
-        """ Returns a set of all accusative forms of the lemmas of the given word form,
-            subject to the given constraints on the beyging field.
-            Note that the word form is case-sensitive. """
+        """Returns a set of all accusative forms of the lemmas of the given word form,
+        subject to the given constraints on the beyging field.
+        Note that the word form is case-sensitive."""
         return self.lookup_case(word, "ÞF", **options)
 
     def dative(self, word: str, **options: Any) -> Set[BinEntryTuple]:
-        """ Returns a set of all dative forms of the lemmas of the given word form,
-            subject to the given constraints on the beyging field.
-            Note that the word form is case-sensitive. """
+        """Returns a set of all dative forms of the lemmas of the given word form,
+        subject to the given constraints on the beyging field.
+        Note that the word form is case-sensitive."""
         return self.lookup_case(word, "ÞGF", **options)
 
     def genitive(self, word: str, **options: Any) -> Set[BinEntryTuple]:
-        """ Returns a set of all genitive forms of the lemmas of the given word form,
-            subject to the given constraints on the beyging field.
-            Note that the word form is case-sensitive. """
+        """Returns a set of all genitive forms of the lemmas of the given word form,
+        subject to the given constraints on the beyging field.
+        Note that the word form is case-sensitive."""
         return self.lookup_case(word, "EF", **options)

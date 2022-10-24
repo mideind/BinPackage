@@ -156,7 +156,7 @@ _LOW_PRIORITY_FORMS = frozenset(("URE", "SJALD", "VILLA", "GAM"))
 
 class Bin:
 
-    """ Encapsulates the BÍN database of word forms """
+    """Encapsulates the BÍN database of word forms"""
 
     # Singleton instance of the compressed, memory-mapped BÍN
     _bc: Optional[BinCompressed] = None
@@ -165,7 +165,7 @@ class Bin:
     _ksnid_cache: LFU_Cache[str, KsnidList] = LFU_Cache(maxsize=CACHE_SIZE_MEANINGS)
 
     def __init__(self, **options: bool) -> None:
-        """ Initialize BIN database wrapper instance """
+        """Initialize BIN database wrapper instance"""
         if self._bc is None:
             self.__class__._bc = BinCompressed()
         Settings.read("config/BinPackage.conf")
@@ -187,7 +187,7 @@ class Bin:
 
     @classmethod
     def cleanup(cls) -> None:
-        """ Close singleton instance, if any """
+        """Close singleton instance, if any"""
         if cls._bc is not None:
             cls._bc.close()
             cls._bc = None
@@ -201,12 +201,12 @@ class Bin:
         insert_hyphen: bool = True,
         uppercase_suffix: bool = False
     ) -> List[_T]:
-        """ Return a meaning list with a prefix added to the
-            ord and bmynd attributes of each entry in the list.
-            If insert_hyphen is True, we insert a hyphen between
-            the prefix and the suffix, both in the ord and in
-            the bmynd fields. If uppercase is additionally True,
-            we uppercase the suffix. """
+        """Return a meaning list with a prefix added to the
+        ord and bmynd attributes of each entry in the list.
+        If insert_hyphen is True, we insert a hyphen between
+        the prefix and the suffix, both in the ord and in
+        the bmynd fields. If uppercase is additionally True,
+        we uppercase the suffix."""
         if not prefix:
             # No prefix: nothing to do
             return list(mlist)
@@ -228,8 +228,8 @@ class Bin:
         ]
 
     def _filter_meanings(self, mtlist: Iterable[BinEntryTuple]) -> BinEntryList:
-        """ Default mapping function to make BinEntry instances
-            from EntryTuples coming from BinCompressed """
+        """Default mapping function to make BinEntry instances
+        from EntryTuples coming from BinCompressed"""
         assert self._bc is not None
         max_utg = self._bc.begin_greynir_utg
         return [
@@ -241,8 +241,8 @@ class Bin:
         ]
 
     def _filter_ksnid(self, klist: Iterable[Ksnid]) -> KsnidList:
-        """ Default mapping function to make Ksnid instances
-            from EntryTuples coming from BinCompressed """
+        """Default mapping function to make Ksnid instances
+        from EntryTuples coming from BinCompressed"""
         assert self._bc is not None
         max_utg = self._bc.begin_greynir_utg
         m = [
@@ -260,8 +260,8 @@ class Bin:
         return m
 
     def _ksnid_lookup(self, w: str) -> KsnidList:
-        """ Low-level fetch of the BIN entries that match a given word.
-            The output of this function is cached. """
+        """Low-level fetch of the BIN entries that match a given word.
+        The output of this function is cached."""
         # Route the lookup request to the compressed binary file
         assert self._bc is not None
         mtlist = self._bc.lookup_ksnid(w)
@@ -270,15 +270,15 @@ class Bin:
         return self._filter_ksnid(mtlist) if mtlist else []
 
     def _ksnid_cache_lookup(self, key: str, compound: bool = False) -> KsnidList:
-        """ Attempt to lookup a word in the cache, calling
-            self.ksnid_lookup() on a cache miss """
+        """Attempt to lookup a word in the cache, calling
+        self.ksnid_lookup() on a cache miss"""
         klist = self._ksnid_cache.lookup(key, self._ksnid_lookup)
         # If we're looking for compound suffixes (compound=True), we
         # allow items where birting == 'S' (coming from ord.suffix.csv)
         return [k for k in klist if compound or k.birting != "S"]
 
     def _ksnid_lookup_id(self, bin_id: int) -> KsnidList:
-        """ Low-level fetch of the BIN entries that have the given bin_id """
+        """Low-level fetch of the BIN entries that have the given bin_id"""
         # Route the lookup request to the compressed binary file
         assert self._bc is not None
         mtlist = self._bc.lookup_id(bin_id)
@@ -287,8 +287,8 @@ class Bin:
         return self._filter_ksnid(mtlist) if mtlist else []
 
     def _meanings_cache_lookup(self, key: str, compound: bool = False) -> BinEntryList:
-        """ Attempt to lookup a word in the cache,
-            returning a list of BinEntry instances """
+        """Attempt to lookup a word in the cache,
+        returning a list of BinEntry instances"""
         klist = self._ksnid_cache_lookup(key, compound=compound)
         # Convert the cached ksnid list to a list of BinEntry (SHsnid) tuples
         return [k.to_bin_entry() for k in klist]
@@ -301,8 +301,8 @@ class Bin:
         lookup_func: LookupFunc[_T],
         ctor: EntryCtor[_T],
     ) -> ResultTuple[_T]:
-        """ Return a list of matching entries for this word,
-            when interpreted as a compound word """
+        """Return a list of matching entries for this word,
+        when interpreted as a compound word"""
         m: List[_T]
         if " " in w:
             # The word is a multi-word compound, such as
@@ -379,9 +379,9 @@ class Bin:
         ctor: EntryCtor[_T],
     ) -> ResultTuple[_T]:
 
-        """ Lookup a simple or compound word in the database and
-            return its meaning(s). This function checks for abbreviations,
-            upper/lower case variations, etc. """
+        """Lookup a simple or compound word in the database and
+        return its meaning(s). This function checks for abbreviations,
+        upper/lower case variations, etc."""
 
         # Start with a straightforward, cached lookup of the word as-is
         lower_w = w
@@ -521,12 +521,12 @@ class Bin:
         case_func: CaseFunc,
         filter_func: Optional[BinFilterFunc],
     ) -> str:
-        """ Return a word after casting it from nominative to another case,
-            as returned by the case_func """
+        """Return a word after casting it from nominative to another case,
+        as returned by the case_func"""
 
         def score(m: BinEntry) -> int:
-            """ Return a score for a noun word form, based on the
-                [noun_preferences] section in Prefs.conf """
+            """Return a score for a noun word form, based on the
+            [noun_preferences] section in Prefs.conf"""
             sc = NounPreferences.DICT.get(m.bmynd.split("-")[-1])
             return 0 if sc is None else sc.get(m.ofl, 0)
 
@@ -603,33 +603,33 @@ class Bin:
         return w
 
     def __contains__(self, w: str) -> bool:
-        """ Returns True if the given word form is found in BÍN """
+        """Returns True if the given word form is found in BÍN"""
         # Note that this does not fall back to the word compounder
         assert self._bc is not None
         return self._bc.contains(w)
 
     def contains(self, w: str) -> bool:
-        """ Returns True if the given word form is found in BÍN """
+        """Returns True if the given word form is found in BÍN"""
         # Note that this does not fall back to the word compounder
         assert self._bc is not None
         return self._bc.contains(w)
 
     @staticmethod
     def open_cats(mlist: Iterable[_T]) -> List[_T]:
-        """ Return a list of entries filtered down to
-            open (extensible) word categories """
+        """Return a list of entries filtered down to
+        open (extensible) word categories"""
         return [mm for mm in mlist if mm.ofl in _OPEN_CATS]
 
     @staticmethod
     def nouns(mlist: Iterable[_T]) -> List[_T]:
-        """ Return a list of entries filtered down to noun categories (kk, kvk, hk) """
+        """Return a list of entries filtered down to noun categories (kk, kvk, hk)"""
         return [mm for mm in mlist if mm.ofl in _NOUNS]
 
     def lookup(
         self, w: str, at_sentence_start: bool = False, auto_uppercase: bool = False
     ) -> ResultTuple[BinEntry]:
-        """ Given a word form, look up all matching entries.
-            This is the main query function of the Bin class. """
+        """Given a word form, look up all matching entries.
+        This is the main query function of the Bin class."""
         return self._lookup(
             w,
             at_sentence_start,
@@ -641,41 +641,57 @@ class Bin:
     def lookup_ksnid(
         self, w: str, at_sentence_start: bool = False, auto_uppercase: bool = False
     ) -> ResultTuple[Ksnid]:
-        """ Given a word form, look up all matching entries in Ksnid form. """
+        """Given a word form, look up all matching entries in Ksnid form."""
         return self._lookup(
-            w, at_sentence_start, auto_uppercase, self._ksnid_cache_lookup, Ksnid.make,
+            w,
+            at_sentence_start,
+            auto_uppercase,
+            self._ksnid_cache_lookup,
+            Ksnid.make,
         )
 
     def lookup_id(self, bin_id: int) -> KsnidList:
-        """ Given a BÍN id, return all entries having that id in Ksnid form. """
+        """Given a BÍN id, return all entries having that id in Ksnid form."""
         return self._ksnid_lookup_id(bin_id)
 
     def lookup_cats(self, w: str, at_sentence_start: bool = False) -> Set[str]:
-        """ Given a word form, look up all its possible categories
-            ('kk', 'kvk', 'hk', 'so', 'lo', ...). """
+        """Given a word form, look up all its possible categories
+        ('kk', 'kvk', 'hk', 'so', 'lo', ...)."""
         _, m = self._lookup(
-            w, at_sentence_start, False, self._ksnid_cache_lookup, Ksnid.make,
+            w,
+            at_sentence_start,
+            False,
+            self._ksnid_cache_lookup,
+            Ksnid.make,
         )
         return set(mm.ofl for mm in m)
 
     def lookup_lemmas_and_cats(
         self, w: str, at_sentence_start: bool = False
     ) -> Set[Tuple[str, str]]:
-        """ Given a word form, look up all its possible lemmas and categories """
+        """Given a word form, look up all its possible lemmas and categories"""
         _, m = self._lookup(
-            w, at_sentence_start, False, self._ksnid_cache_lookup, Ksnid.make,
+            w,
+            at_sentence_start,
+            False,
+            self._ksnid_cache_lookup,
+            Ksnid.make,
         )
         return set((mm.ord, mm.ofl) for mm in m)
 
     def lookup_forms(self, lemma: str, cat: str, case: str) -> BinEntryList:
-        """ Lookup all word forms in the indicated case, of the given lemma.
-            This is mainly used to retrieve inflection forms of nouns, where
-            we want to retrieve singular and plural, definite and indefinite
-            forms in particular cases. Note that lookup_variants() below is
-            a more flexible alternative to this function. """
+        """Lookup all word forms in the indicated case, of the given lemma.
+        This is mainly used to retrieve inflection forms of nouns, where
+        we want to retrieve singular and plural, definite and indefinite
+        forms in particular cases. Note that lookup_variants() below is
+        a more flexible alternative to this function."""
         assert self._bc is not None
         mset = self._bc.lookup_case(
-            lemma, case.upper().replace("GR","gr"), lemma=lemma, cat=cat, all_forms=True
+            lemma,
+            case.upper().replace("GR", "gr"),
+            lemma=lemma,
+            cat=cat,
+            all_forms=True,
         )
         return self._filter_meanings(mset)
 
@@ -689,17 +705,17 @@ class Bin:
         bin_id: Optional[int] = None,
         inflection_filter: Optional[InflectionFilter] = None
     ) -> KsnidList:
-        """ Lookup grammatical variants of the given word with the
-            indicated category, converting PoS tags to the one(s) given
-            in the to_inflection parameter. """
+        """Lookup grammatical variants of the given word with the
+        indicated category, converting PoS tags to the one(s) given
+        in the to_inflection parameter."""
 
         assert self._bc is not None
         bc: BinCompressed = self._bc
 
         def variant_lookup(key: str, compound: bool = False) -> KsnidList:
-            """ Create a closure function to send into _lookup(),
-                obtaining the requested inflection variants correctly,
-                also for composite words """
+            """Create a closure function to send into _lookup(),
+            obtaining the requested inflection variants correctly,
+            also for composite words"""
             mlist = bc.lookup_variants(
                 key,
                 cat,
@@ -715,7 +731,7 @@ class Bin:
         return m
 
     def lookup_lemmas(self, lemma: str) -> ResultTuple[BinEntry]:
-        """ Given a string, look up all entries matching it as a lemma """
+        """Given a string, look up all entries matching it as a lemma"""
         # Note: we consider middle voice infinitive verbs to be lemmas,
         # i.e. 'eignast' is recognized as a lemma as well as 'eigna'.
         # This is done for consistency, as some middle voice verbs have
@@ -723,7 +739,7 @@ class Bin:
         final_w, entries = self.lookup(lemma)
 
         def match(m: BinEntry) -> bool:
-            """ Return True for entries that are canonical as lemmas """
+            """Return True for entries that are canonical as lemmas"""
             if m.ofl == "so" and m.mark == "MM-NH":
                 # This is a middle voice verb infinitive form
                 # ('eignast', 'komast'): accept it as a lemma
@@ -741,82 +757,91 @@ class Bin:
 
     @lru_cache(maxsize=CACHE_SIZE)
     def lookup_raw_nominative(self, w: str) -> BinEntryList:
-        """ Return a set of BinEntry tuples for all word forms in nominative case.
-            The set is unfiltered except for the presence of 'NF' in the mark
-            field. For new code, lookup_nominative() is likely to be a
-            more efficient choice. """
+        """Return a set of BinEntry tuples for all word forms in nominative case.
+        The set is unfiltered except for the presence of 'NF' in the mark
+        field. For new code, lookup_nominative() is likely to be a
+        more efficient choice."""
         assert self._bc is not None
         return self._filter_meanings(self._bc.raw_nominative(w))
 
     def lookup_nominative(self, w: str, **options: Any) -> BinEntryList:
-        """ Return BinEntry tuples for all word forms in nominative
-            case for all { kk, kvk, hk, lo } category lemmas of the given word """
+        """Return BinEntry tuples for all word forms in nominative
+        case for all { kk, kvk, hk, lo } category lemmas of the given word"""
         assert self._bc is not None
         return self._filter_meanings(self._bc.nominative(w, **options))
 
     def lookup_accusative(self, w: str, **options: Any) -> BinEntryList:
-        """ Return BinEntry tuples for all word forms in accusative
-            case for all { kk, kvk, hk, lo } category lemmas of the given word """
+        """Return BinEntry tuples for all word forms in accusative
+        case for all { kk, kvk, hk, lo } category lemmas of the given word"""
         assert self._bc is not None
         return self._filter_meanings(self._bc.accusative(w, **options))
 
     def lookup_dative(self, w: str, **options: Any) -> BinEntryList:
-        """ Return BinEntry tuples for all word forms in dative
-            case for all { kk, kvk, hk, lo } category lemmas of the given word """
+        """Return BinEntry tuples for all word forms in dative
+        case for all { kk, kvk, hk, lo } category lemmas of the given word"""
         assert self._bc is not None
         return self._filter_meanings(self._bc.dative(w, **options))
 
     def lookup_genitive(self, w: str, **options: Any) -> BinEntryList:
-        """ Return BinEntry tuples for all word forms in genitive
-            case for all { kk, kvk, hk, lo } category lemmas of the given word """
+        """Return BinEntry tuples for all word forms in genitive
+        case for all { kk, kvk, hk, lo } category lemmas of the given word"""
         assert self._bc is not None
         return self._filter_meanings(self._bc.genitive(w, **options))
 
     def cast_to_accusative(
         self, w: str, *, filter_func: Optional[BinFilterFunc] = None
     ) -> str:
-        """ Cast a word from nominative to accusative case, or return it
-            unchanged if it is not inflectable by case. """
+        """Cast a word from nominative to accusative case, or return it
+        unchanged if it is not inflectable by case."""
         # Note that since this function has no context, the conversion is
         # by necessity simplistic; for instance it does not know whether
         # an adjective is being used with an indefinite or definite noun,
         # or whether a word such as 'við' is actually a preposition.
         return self._cast_to_case(
-            w, self.lookup, self.lookup_accusative, filter_func=filter_func,
+            w,
+            self.lookup,
+            self.lookup_accusative,
+            filter_func=filter_func,
         )
 
     def cast_to_dative(
         self, w: str, *, filter_func: Optional[BinFilterFunc] = None
     ) -> str:
-        """ Cast a word from nominative to dative case, or return it
-            unchanged if it is not inflectable by case. """
+        """Cast a word from nominative to dative case, or return it
+        unchanged if it is not inflectable by case."""
         # Note that since this function has no context, the conversion is
         # by necessity simplistic; for instance it does not know whether
         # an adjective is being used with an indefinite or definite noun,
         # or whether a word such as 'við' is actually a preposition.
         return self._cast_to_case(
-            w, self.lookup, self.lookup_dative, filter_func=filter_func,
+            w,
+            self.lookup,
+            self.lookup_dative,
+            filter_func=filter_func,
         )
 
     def cast_to_genitive(
         self, w: str, *, filter_func: Optional[BinFilterFunc] = None
     ) -> str:
-        """ Cast a word from nominative to genitive case, or return it
-            unchanged if it is not inflectable by case. """
+        """Cast a word from nominative to genitive case, or return it
+        unchanged if it is not inflectable by case."""
         # Note that since this function has no context, the conversion is
         # by necessity simplistic; for instance it does not know whether
         # an adjective is being used with an indefinite or definite noun,
         # or whether a word such as 'við' is actually a preposition.
         return self._cast_to_case(
-            w, self.lookup, self.lookup_genitive, filter_func=filter_func,
+            w,
+            self.lookup,
+            self.lookup_genitive,
+            filter_func=filter_func,
         )
 
 
 class GreynirBin(Bin):
 
-    """ Overridden class for use by GreynirPackage, including
-        a compatibility layer that converts a couple of data
-        features to be compliant with an earlier BÍN scheme """
+    """Overridden class for use by GreynirPackage, including
+    a compatibility layer that converts a couple of data
+    features to be compliant with an earlier BÍN scheme"""
 
     # Maintain a separate cache from the Bin class,
     # in case both classes are used concurrently
@@ -836,9 +861,9 @@ class GreynirBin(Bin):
             GreynirBin.bin_errata = BinErrata.DICT
 
     def _filter_meanings(self, mtlist: Iterable[BinEntryTuple]) -> BinEntryList:
-        """ Override the default straight-through translation of
-            a BinEntryTuple from BinCompressed over to a BinEntry
-            returned from Bin/GreynirBin """
+        """Override the default straight-through translation of
+        a BinEntryTuple from BinCompressed over to a BinEntry
+        returned from Bin/GreynirBin"""
         result: BinEntryList = []
         for mt in mtlist:
             if (mt[0], mt[2], mt[3]) in self.bin_deletions:
@@ -868,8 +893,8 @@ class GreynirBin(Bin):
         return result
 
     def _filter_ksnid(self, klist: Iterable[Ksnid]) -> KsnidList:
-        """ Overridden mapping function to adapt Ksnid instances
-            for compatibility with previous versions of BÍN, as used in Greynir """
+        """Overridden mapping function to adapt Ksnid instances
+        for compatibility with previous versions of BÍN, as used in Greynir"""
         result: KsnidList = []
         for k in klist:
             if (k.ord, k.ofl, k.hluti) in self.bin_deletions:
@@ -898,10 +923,10 @@ class GreynirBin(Bin):
 
     @staticmethod
     def _priority(m: Ksnid) -> int:
-        """ Return a relative priority for the word meaning tuple
-            in m. A lower number means more priority, a higher number
-            means less priority. The final list of meanings is sorted
-            so that higher-priority meanings occur before lower-priority ones. """
+        """Return a relative priority for the word meaning tuple
+        in m. A lower number means more priority, a higher number
+        means less priority. The final list of meanings is sorted
+        so that higher-priority meanings occur before lower-priority ones."""
         prio = (
             # +1 if bin_id is 0 (constructed word form, not originally in BÍN)
             # +1 if einkunn (grammatical correctness grade) is not 1 (normal)
@@ -926,9 +951,9 @@ class GreynirBin(Bin):
         return prio
 
     def _ksnid_lookup(self, w: str) -> KsnidList:
-        """ Override the Bin _ksnid_lookup() function to order the
-            returned entries by priority. The output of this
-            function is cached. """
+        """Override the Bin _ksnid_lookup() function to order the
+        returned entries by priority. The output of this
+        function is cached."""
         m = super()._ksnid_lookup(w)
         if not m:
             return []
@@ -948,8 +973,8 @@ class GreynirBin(Bin):
 
 class Orð:
 
-    """ Encapsulates an Icelandic word along with its matching vocabulary entries,
-        allowing easy generation of inflectional variants via a __format__() method """
+    """Encapsulates an Icelandic word along with its matching vocabulary entries,
+    allowing easy generation of inflectional variants via a __format__() method"""
 
     _b: Optional[GreynirBin] = None
 
@@ -977,7 +1002,7 @@ class Orð:
 
     @classmethod
     def from_ksnid(cls, ksnid: Ksnid) -> "Orð":
-        """ Hacky constructor to create an Orð instance from a Ksnid instance """
+        """Hacky constructor to create an Orð instance from a Ksnid instance"""
         o = cls(ksnid.bmynd, ksnid.ofl)
         o._m = [ksnid]
         o._ksnid = ksnid
@@ -985,52 +1010,52 @@ class Orð:
 
     @property
     def word(self) -> str:
-        """ Returns the original word that was passed to the constructor """
+        """Returns the original word that was passed to the constructor"""
         return self._word
 
     @property
     def key(self) -> str:
-        """ Returns the BÍN lookup key """
+        """Returns the BÍN lookup key"""
         return self._key
 
     @property
     def entries(self) -> KsnidList:
-        """ Return a list of matching entries, according to BÍN """
+        """Return a list of matching entries, according to BÍN"""
         return self._m
 
     @property
     def ord(self) -> str:
-        """ Returns the headword/lemma """
+        """Returns the headword/lemma"""
         return self._ksnid.ord if self._ksnid else self._key
 
     @property
     def hluti(self) -> str:
-        """ Return the genre/register """
+        """Return the genre/register"""
         return self._ksnid.hluti if self._ksnid else "alm"
 
     @property
     def bmynd(self) -> str:
-        """ Return the inflectional form """
+        """Return the inflectional form"""
         return self._ksnid.bmynd if self._ksnid else self._word
 
     @property
     def mark(self) -> str:
-        """ Return the inflectional tag. An empty string means that
-            the word was not found in BÍN. """
+        """Return the inflectional tag. An empty string means that
+        the word was not found in BÍN."""
         return self._ksnid.mark if self._ksnid else ""
 
     @property
     def ofl(self) -> str:
-        """ Return the word class/category """
+        """Return the word class/category"""
         return self._ksnid.ofl if self._ksnid else "hk"
 
     @property
     def bin_id(self) -> int:
-        """ Return the BÍN identifier, or zero if not present in BÍN """
+        """Return the BÍN identifier, or zero if not present in BÍN"""
         return self._ksnid.bin_id if self._ksnid else 0
 
     def __format__(self, format_spec: str) -> str:
-        """ Return a requested inflectional variant of the word """
+        """Return a requested inflectional variant of the word"""
         if self._ksnid is None or not format_spec:
             # Not found in BÍN or no format specification: can't inflect
             return self.word

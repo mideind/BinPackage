@@ -5,9 +5,9 @@ name: tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "*" ]
   pull_request:
-    branches: [ main ]
+    branches: [ "*" ]
 
 jobs:
   build:
@@ -29,10 +29,10 @@ jobs:
         python -m pip install --upgrade pip wheel setuptools pytest
         python -m pip install types-setuptools
         python -m pip install -e .
-    # - name: Type check with mypy
-    #   run: |
-    #     python -m pip install mypy
-    #     mypy --python-version=3.7 src/islenska
+    - name: Type check with mypy
+      run: |
+        if [ "${{ matrix.python-version }}" == "3.7" ]; then python -m pip install mypy; fi
+        if [ "${{ matrix.python-version }}" == "3.7" ]; then mypy --python-version=3.7 src/islenska; fi
     - name: Build *.dawg.bin
       run: |
         python tools/dawgbuilder.py

@@ -180,7 +180,7 @@ quiet = os.environ.get("CI", "").strip() > ""
 
 class _Node:
 
-    """ A Node within a Trie """
+    """A Node within a Trie"""
 
     def __init__(self, fragment: bytes, value: Any) -> None:
         # The key fragment that leads into this node (and value)
@@ -190,7 +190,7 @@ class _Node:
         self.children: Optional[List[_Node]] = None
 
     def add(self, fragment: bytes, value: Any) -> Any:
-        """ Add the given remaining key fragment to this node """
+        """Add the given remaining key fragment to this node"""
         if len(fragment) == 0:
             if self.value is not None:
                 # This key already exists: return its value
@@ -280,8 +280,8 @@ class _Node:
         return None
 
     def lookup(self, fragment: bytes) -> Any:
-        """ Lookup the given key fragment in this node and its children
-            as necessary """
+        """Lookup the given key fragment in this node and its children
+        as necessary"""
         if not fragment:
             # We've arrived at our destination: return the value
             return self.value
@@ -300,17 +300,17 @@ class _Node:
 
     def __str__(self) -> str:
         s = "Fragment: '{0!r}', value '{1}'\n".format(self.fragment, self.value)
-        c: List[str] = [
-            "   {0}".format(child) for child in self.children
-        ] if self.children else []
+        c: List[str] = (
+            ["   {0}".format(child) for child in self.children] if self.children else []
+        )
         return s + "\n".join(c)
 
 
 class Trie:
 
-    """ Wrapper class for a radix (compact) trie data structure.
-        Each node in the trie contains a prefix string, leading
-        to its children. """
+    """Wrapper class for a radix (compact) trie data structure.
+    Each node in the trie contains a prefix string, leading
+    to its children."""
 
     def __init__(self, root_fragment: bytes = b"") -> None:
         self._cnt = 0
@@ -321,11 +321,11 @@ class Trie:
         return self._root
 
     def add(self, key: bytes, value: Any = None) -> Any:
-        """ Add the given (key, value) pair to the trie.
-            Duplicates are not allowed and not added to the trie.
-            If the value is None, it is set to the number of entries
-            already in the trie, thereby making it function as
-            an automatic generator of list indices. """
+        """Add the given (key, value) pair to the trie.
+        Duplicates are not allowed and not added to the trie.
+        If the value is None, it is set to the number of entries
+        already in the trie, thereby making it function as
+        an automatic generator of list indices."""
         assert key
         if value is None:
             value = self._cnt
@@ -339,20 +339,20 @@ class Trie:
         return value
 
     def get(self, key: bytes, default: Any = None) -> Any:
-        """ Lookup the given key and return the associated value,
-            or the default if the key is not found. """
+        """Lookup the given key and return the associated value,
+        or the default if the key is not found."""
         value = self._root.lookup(key)
         return default if value is None else value
 
     def __getitem__(self, key: bytes) -> Any:
-        """ Lookup in square bracket notation """
+        """Lookup in square bracket notation"""
         value = self._root.lookup(key)
         if value is None:
             raise KeyError(key)
         return value
 
     def __len__(self) -> int:
-        """ Return the number of unique keys within the trie """
+        """Return the number of unique keys within the trie"""
         return self._cnt
 
 
@@ -361,16 +361,16 @@ _V = TypeVar("_V", bound=Hashable)
 
 class Indexer(Generic[_V]):
 
-    """ A thin dict wrapper that maps unique values to indices and vice versa.
-        The values must be hashable. """
+    """A thin dict wrapper that maps unique values to indices and vice versa.
+    The values must be hashable."""
 
     def __init__(self) -> None:
         self._d: Dict[_V, int] = dict()
         self._inv_d: Dict[int, _V] = dict()
 
     def add(self, s: _V) -> int:
-        """ Add a value to the indexer, if not already present. In any case,
-            return the integer index of the value. """
+        """Add a value to the indexer, if not already present. In any case,
+        return the integer index of the value."""
         try:
             return self._d[s]
         except KeyError:
@@ -394,8 +394,8 @@ class Indexer(Generic[_V]):
 
 class MeaningsIndexer(Indexer[MeaningTuple]):
 
-    """ Maintain an index of integer keys to meaning tuples,
-        where each meaning tuple is (ordfl, beyging) """
+    """Maintain an index of integer keys to meaning tuples,
+    where each meaning tuple is (ordfl, beyging)"""
 
     def __init__(self) -> None:
         super().__init__()
@@ -406,14 +406,14 @@ class MeaningsIndexer(Indexer[MeaningTuple]):
         self._inv_freq_map: Dict[int, int] = dict()
 
     def add(self, s: MeaningTuple) -> int:
-        """ Add a value and count distinct occurrences """
+        """Add a value and count distinct occurrences"""
         ix = super().add(s)
         self._count[ix] += 1
         return ix
 
     def freq_index(self, key: int) -> int:
-        """ Cast a meaning index to a frequency-ordered index, so that the
-            most common meaning is at index 0, etc. """
+        """Cast a meaning index to a frequency-ordered index, so that the
+        most common meaning is at index 0, etc."""
         if not self._freq_map:
             # The ground truth source: a list of (original index, count) tuples
             sorted_items = sorted(
@@ -433,7 +433,7 @@ class MeaningsIndexer(Indexer[MeaningTuple]):
         return self._freq_map[key]
 
     def by_freq_index(self, freq_index: int) -> MeaningTuple:
-        """ Return a meaning tuple from a frequency index """
+        """Return a meaning tuple from a frequency index"""
         return self._inv_d[self._inv_freq_map[freq_index]]
 
 
@@ -447,36 +447,36 @@ class SubcatIndexer(Indexer[bytes]):
 
 class BinCompressor:
 
-    """ This class generates a compressed binary file from plain-text
-        dictionary data. The input plain-text file is assumed to be coded
-        in UTF-8 and have either six (SHsnid) or fifteen (Ksnid) columns,
-        delimited by semicolons (';'), i.e. (for SHsnid):
+    """This class generates a compressed binary file from plain-text
+    dictionary data. The input plain-text file is assumed to be coded
+    in UTF-8 and have either six (SHsnid) or fifteen (Ksnid) columns,
+    delimited by semicolons (';'), i.e. (for SHsnid):
 
-        (Icelandic) ord;bin_id;ofl;hluti;bmynd;mark
-        (English)   lemma;issue;class;domain;form;inflection
+    (Icelandic) ord;bin_id;ofl;hluti;bmynd;mark
+    (English)   lemma;issue;class;domain;form;inflection
 
-        The compression is not particularly intensive, as there is a
-        tradeoff between the compression level and lookup speed. The
-        resulting binary file is assumed to be read completely into
-        memory as a BLOB and usable directly for lookup without further
-        unpacking into higher-level data structures. See the BinCompressed
-        class for the lookup code.
+    The compression is not particularly intensive, as there is a
+    tradeoff between the compression level and lookup speed. The
+    resulting binary file is assumed to be read completely into
+    memory as a BLOB and usable directly for lookup without further
+    unpacking into higher-level data structures. See the BinCompressed
+    class for the lookup code.
 
-        Note that text strings and characters in the binary BLOB are
-        processed in Latin-1 encoding, and Latin-1 ordinal numbers are
-        used directly as sort keys.
+    Note that text strings and characters in the binary BLOB are
+    processed in Latin-1 encoding, and Latin-1 ordinal numbers are
+    used directly as sort keys.
 
-        To help the packing of common Trie nodes (single-character ones),
-        a mapping of the source alphabet to 7-bit indices is used.
-        This means that the source alphabet can contain no more than
-        127 characters (ordinal 0 is reserved).
+    To help the packing of common Trie nodes (single-character ones),
+    a mapping of the source alphabet to 7-bit indices is used.
+    This means that the source alphabet can contain no more than
+    127 characters (ordinal 0 is reserved).
 
-        The current set of possible subcategories is as follows:
+    The current set of possible subcategories is as follows:
 
-            heö, alm, ism, föð, móð, fyr, bibl, gæl, lönd, gras, efna, tölv, lækn,
-            örn, tón, natt, göt, lög, íþr, málfr, tími, við, fjár, bíl, ffl, mat,
-            bygg, tung, erl, hetja, bær, þor, mvirk, brag, jard, stærð, hug, erm,
-            mæl, titl, gjald, stja, dýr, hann, ætt, ob, entity, spurn
+        heö, alm, ism, föð, móð, fyr, bibl, gæl, lönd, gras, efna, tölv, lækn,
+        örn, tón, natt, göt, lög, íþr, málfr, tími, við, fjár, bíl, ffl, mat,
+        bygg, tung, erl, hetja, bær, þor, mvirk, brag, jard, stærð, hug, erm,
+        mæl, titl, gjald, stja, dýr, hann, ætt, ob, entity, spurn
 
     """
 
@@ -512,8 +512,8 @@ class BinCompressor:
 
     @staticmethod
     def fix_bugs(m: Ksnid) -> bool:
-        """ Fix known bugs in BÍN. Return False if the record should
-            be skipped entirely; otherwise True. """
+        """Fix known bugs in BÍN. Return False if the record should
+        be skipped entirely; otherwise True."""
         if not m.ord or not m.bmynd or m.bmynd in {"num", "ir", "irnir", "i", "ina"}:
             return False
         elif m.ord == "sem að" and m.bin_id == 495372:
@@ -557,8 +557,8 @@ class BinCompressor:
         return True
 
     def read(self, fnames: Iterable[str]) -> None:
-        """ Read the given .csv text files in turn and add them to the
-            compressed data structures """
+        """Read the given .csv text files in turn and add them to the
+        compressed data structures"""
         cnt = 0
         max_wix = 0
         start_time = time.time()
@@ -696,7 +696,7 @@ class BinCompressor:
         self._alphabet_bytes = bytes(sorted(alphabet))
 
     def print_stats(self) -> None:
-        """ Print a few key statistics about the dictionary """
+        """Print a few key statistics about the dictionary"""
         print("Forms are {0}".format(len(self._forms)))
         print("Lemmas are {0}".format(len(self._lemmas)))
         if not quiet:
@@ -711,7 +711,7 @@ class BinCompressor:
             print("It contains {0} characters".format(len(self._alphabet_bytes)))
 
     def lookup(self, form: str) -> List[BinEntryTuple]:
-        """ Test lookup of SHsnid tuples from uncompressed data """
+        """Test lookup of SHsnid tuples from uncompressed data"""
         form_latin = form.encode("latin-1")
         try:
             values = self._lookup_form[self._forms[form_latin]]
@@ -737,7 +737,7 @@ class BinCompressor:
             return []
 
     def lookup_ksnid(self, form: str) -> List[Ksnid]:
-        """ Test lookup of KRISTINsnid tuples from uncompressed data """
+        """Test lookup of KRISTINsnid tuples from uncompressed data"""
         form_latin = form.encode("latin-1")
         try:
             result: List[Ksnid] = []
@@ -763,7 +763,7 @@ class BinCompressor:
             return []
 
     def lookup_forms(self, form: str, case: str = "NF") -> List[Tuple[str, str]]:
-        """ Test lookup of all forms having the same lemma as the given form """
+        """Test lookup of all forms having the same lemma as the given form"""
         form_latin = form.encode("latin-1")
         case_latin = case.encode("latin-1")
         try:
@@ -786,9 +786,9 @@ class BinCompressor:
             return []
 
     def write_forms(self, f: IO[bytes], alphabet: bytes, lookup_map: List[int]) -> None:
-        """ Write the forms trie contents to a packed binary stream """
+        """Write the forms trie contents to a packed binary stream"""
         # We assume that the alphabet can be represented in 7 bits
-        assert len(alphabet) + 1 < 2 ** 7
+        assert len(alphabet) + 1 < 2**7
         todo: List[Tuple[_Node, int]] = []
         node_cnt = 0
         single_char_node_count = 0
@@ -796,12 +796,12 @@ class BinCompressor:
         no_child_node_count = 0
 
         def write_node(node: _Node, parent_loc: int) -> None:
-            """ Write a single node to the packed binary stream,
-                and fix up the parent's pointer to the location
-                of this node """
+            """Write a single node to the packed binary stream,
+            and fix up the parent's pointer to the location
+            of this node"""
             loc = f.tell()
             val = 0x007FFFFF if node.value is None else lookup_map[node.value]
-            assert val < 2 ** 23
+            assert val < 2**23
             nonlocal node_cnt, single_char_node_count, multi_char_node_count
             nonlocal no_child_node_count
             node_cnt += 1
@@ -816,7 +816,7 @@ class BinCompressor:
                     chix = 0
                 else:
                     chix = alphabet.index(node.fragment[0]) + 1
-                assert chix < 2 ** 7
+                assert chix < 2**7
                 f.write(
                     UINT32.pack(
                         0x80000000 | childless_bit | (chix << 23) | (val & 0x007FFFFF)
@@ -861,7 +861,7 @@ class BinCompressor:
         print("Childless nodes are {0}.".format(no_child_node_count))
 
     def write_binary(self, fname: str) -> None:
-        """ Write the compressed structure to a packed binary file """
+        """Write the compressed structure to a packed binary file"""
         print("Writing file '{0}'...".format(fname))
         # Create a byte buffer stream
         f: IO[bytes] = io.BytesIO()
@@ -898,23 +898,23 @@ class BinCompressor:
             f.write(b + b"\x00" * (n - len(b)))
 
         def write_aligned(s: bytes) -> None:
-            """ Write a string in the latin-1 charset, zero-terminated,
-                padded to align on a DWORD (32-bit) boundary """
+            """Write a string in the latin-1 charset, zero-terminated,
+            padded to align on a DWORD (32-bit) boundary"""
             f.write(struct.pack("{0}s0I".format(len(s) + 1), s))
 
         def write_spaced(s: bytes) -> None:
-            """ Write a string in the latin-1 charset, zero-terminated,
-                padded to align on a DWORD (32-bit) boundary """
+            """Write a string in the latin-1 charset, zero-terminated,
+            padded to align on a DWORD (32-bit) boundary"""
             pad = 4 - (len(s) & 0x03)  # Always add at least one space
             f.write(s + b" " * pad)
 
         def write_string(s: bytes) -> None:
-            """ Write a string preceded by a length byte, aligned to a
-                DWORD (32-bit) boundary """
+            """Write a string preceded by a length byte, aligned to a
+            DWORD (32-bit) boundary"""
             f.write(struct.pack("B{0}s0I".format(len(s)), len(s), s))
 
         def compress_set(s: Set[bytes], base: Optional[bytes] = None) -> bytearray:
-            """ Write a set of strings as a single compressed string. """
+            """Write a set of strings as a single compressed string."""
 
             # Each string is written as a variation of the previous
             # string, or the given base string, or the lexicographically
@@ -980,8 +980,8 @@ class BinCompressor:
             return b
 
         def fixup(ptr: int) -> None:
-            """ Go back and fix up a previous pointer to point at the
-                current offset in the stream """
+            """Go back and fix up a previous pointer to point at the
+            current offset in the stream"""
             loc = f.tell()
             f.seek(ptr)
             f.write(UINT32.pack(loc))
@@ -1109,7 +1109,7 @@ class BinCompressor:
             lookup_map.append(f.tell())
             # Squeeze the subcategory index into the lower 31 bits.
             # The uppermost bit flags whether a canonical forms list is present.
-            assert 0 <= cix < 2 ** SUBCAT_BITS
+            assert 0 <= cix < 2**SUBCAT_BITS
             bits = cix
             has_template = False
             if bin_id in self._lemma_forms:

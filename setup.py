@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-
+#!/usr/bin/env python3
 """
     BinPackage
 
@@ -38,9 +36,6 @@
 
 """
 
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import sys
 
 from glob import glob
@@ -63,11 +58,10 @@ setup(
     version=__version__,
     license="MIT",
     description=(
-        "The vocabulary of the modern Icelandic language, "
-        "packed in a Python package"
+        "The vocabulary of the modern Icelandic language, " "packed in a Python package"
     ),
     long_description=(
-    """
+        """
         BinPackage, published by Miðeind ehf, is a Python package that embeds the
         vocabulary of the Database of Icelandic Morphology (Beygingarlýsing íslensks
         nútímamáls, BÍN) and offers various lookups and queries of the data.
@@ -108,6 +102,7 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python :: Implementation :: PyPy",
         "Topic :: Software Development :: Libraries :: Python Modules",
@@ -117,7 +112,5 @@ setup(
     keywords=["nlp", "icelandic", "language", "vocabulary", "dictionary"],
     setup_requires=["cffi>=1.13.0"],
     install_requires=["cffi>=1.13.0", "typing_extensions"],
-    cffi_modules=[
-        "src/islenska/bin_build.py:ffibuilder"
-    ],
+    cffi_modules=["src/islenska/bin_build.py:ffibuilder"],
 )

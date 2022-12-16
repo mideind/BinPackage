@@ -55,6 +55,7 @@ from typing_extensions import Protocol
 
 import re
 from functools import lru_cache
+from pathlib import Path
 
 from .basics import (
     InflectionFilter,
@@ -168,7 +169,7 @@ class Bin:
         """Initialize BIN database wrapper instance"""
         if self._bc is None:
             self.__class__._bc = BinCompressed()
-        Settings.read("config/BinPackage.conf")
+        Settings.read(str(Path("config", "BinPackage.conf")))
         # Set option flags
         self._add_negation = options.pop("add_negation", True)
         self._add_legur = options.pop("add_legur", True)
@@ -855,7 +856,7 @@ class GreynirBin(Bin):
     def __init__(self) -> None:
         super().__init__()
         if GreynirBin.bin_errata is None:
-            config_file = "config/BinErrata.conf"
+            config_file = str(Path("config", "BinErrata.conf"))
             Settings.read(config_file, force=True)
             GreynirBin.bin_deletions = BinDeletions.SET
             GreynirBin.bin_errata = BinErrata.DICT

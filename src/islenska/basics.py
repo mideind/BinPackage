@@ -173,7 +173,7 @@ class MarkOrder:
         assert p.exists() and p.is_file(), f"mark_order.csv file not found at {str(p)}"
 
         o: Dict[str, List[str]] = {}
-        for line in p.read_text().splitlines():
+        for line in p.read_text(encoding="utf-8").splitlines():
             [ordfl, mark] = line.split(";")
             if ordfl not in o:
                 o[ordfl] = []

@@ -651,10 +651,16 @@ class BinCompressor:
                         ksnid = m.ksnid_string.encode("latin-1")
                     except UnicodeEncodeError:
                         fn = fname.split("/")[-1]
-                        print(
-                            f"Skipping invalid data (lemma '{m.ord}', bin_id {m.bin_id}, "
-                            f"bmynd '{m.bmynd}'), line {cnt} in {fn}"
-                        )
+                        try:
+                            print(
+                                f"Skipping invalid data (lemma '{m.ord}', bin_id {m.bin_id}, "
+                                f"bmynd '{m.bmynd}'), line {cnt} in {fn}"
+                            )
+                        except:
+                            # Hack to fix issues with printing utf-8 characters to the Windows shell
+                            print(
+                                f"Skipping invalid data ${m.bin_id}, line {cnt} in {fn}"
+                            )
                         continue
                     self._alphabet |= set(form)
                     # Subcategory (hluti) index

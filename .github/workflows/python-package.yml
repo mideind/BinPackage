@@ -5,9 +5,9 @@ name: tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "*" ]
   pull_request:
-    branches: [ main ]
+    branches: [ "*" ]
 
 jobs:
   build:
@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ['3.7', '3.8', '3.9', '3.10', 'pypy-3.7']
+        python-version: ['3.7', '3.8', '3.9', '3.10', '3.11', 'pypy-3.7']
 
     steps:
     - uses: actions/checkout@v2
@@ -26,13 +26,13 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install BinPackage
       run: |
-        python -m pip install --upgrade pip wheel setuptools
+        python -m pip install --upgrade pip wheel setuptools pytest
         python -m pip install types-setuptools
         python -m pip install -e .
-    # - name: Type check with mypy
-    #   run: |
-    #     python -m pip install mypy
-    #     mypy --python-version=3.7 src/islenska
+    - name: Type check with mypy
+      run: |
+        if [ "${{ matrix.python-version }}" == "3.7" ]; then python -m pip install mypy; fi
+        if [ "${{ matrix.python-version }}" == "3.7" ]; then mypy --python-version=3.7 src/islenska; fi
     - name: Build *.dawg.bin
       run: |
         python tools/dawgbuilder.py
@@ -40,13 +40,11 @@ jobs:
       run: |
         wget -q -O src/islenska/resources/KRISTINsnid.csv.zip https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip
         unzip -q -d src/islenska/resources/ src/islenska/resources/KRISTINsnid.csv.zip
-        rm src/islenska/resources/KRISTINsnid.csv.zip
-        rm src/islenska/resources/KRISTINsnid.csv.sha256sum
+        rm src/islenska/resources/KRISTINsnid.csv.*
         python tools/binpack.py
     - name: Test with pytest
       run: |
-        python -m pip install pytest
-        pytest
+        python -m pytest
     - name: Slack notification
       uses: 8398a7/action-slack@v2
       with:

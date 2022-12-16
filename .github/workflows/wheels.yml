@@ -1,0 +1,60 @@
+name: wheels
+
+on:
+  push:
+    tags:
+      - '**'
+
+jobs:
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-12, ubuntu-latest]
+
+    steps:
+      # Check out repository using git-lfs
+      - uses: actions/checkout@v3
+        with:
+          lfs: true
+
+      # Install Python used to run cibuildwheel
+      - uses: actions/setup-python@v3
+        with:
+          python-version: '3.10'
+
+      # Fetch BÍN source data from Árnastofnun
+      - name: Fetch BÍN source data and build compressed.bin
+        run: |
+          pip3 install -e .
+          echo "Fetching BÍN source data..."
+          cd src/islenska/resources
+          curl -o KRISTINsnid.csv.zip 'https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip'
+          unzip KRISTINsnid.csv.zip
+          rm KRISTINsnid.csv.*
+          cd ../../..
+          echo "Running binpack..."
+          python3 tools/binpack.py
+          echo "Running dawgbuilder..."
+          python3 tools/dawgbuilder.py
+        shell: bash
+
+      - name: Install cibuildwheel
+        run: python -m pip install --upgrade wheel setuptools pip cibuildwheel
+
+      - name: Build wheels
+        run: python -m cibuildwheel --output-dir wheelhouse
+        # Options (https://cibuildwheel.readthedocs.io/en/stable/options/)
+        env:
+          CIBW_SKIP: cp36-* *musllinux*
+          CIBW_BEFORE_BUILD_MACOS: python3 -m pip install --upgrade setuptools wheel cffi
+          CIBW_ARCHS_MACOS: "x86_64 arm64"
+          CIBW_ARCHS_WINDOWS: "AMD64"
+          CIBW_ARCHS_LINUX: "x86_64"
+          CIBW_BUILD_FRONTEND: "build"
+          # CIBW_PROJECT_REQUIRES_PYTHON: ">=3.7"
+
+      - uses: actions/upload-artifact@v3
+        with:
+          path: ./wheelhouse/*.whl

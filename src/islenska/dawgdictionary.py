@@ -196,7 +196,7 @@ class CompoundNavigator:
         self._word = word
         self._len = len(word)
         self._index = 0
-        self._parts = []  # type: List[List[str]]
+        self._parts: List[List[str]] = []
 
     def push_edge(self, firstchar: str) -> bool:
         """Returns True if the edge should be entered or False if not"""
@@ -247,10 +247,10 @@ class PackedDawgDictionary:
 
     def __init__(self) -> None:
         # The packed byte buffer
-        self._b = None  # type: Optional[mmap.mmap]
-        self._vocabulary = None  # type: Optional[str]
+        self._b: Optional[mmap.mmap] = None
+        self._vocabulary: Optional[str] = None
         self._root_offset = 0
-        self._encoding = dict()  # type: Dict[int, str]
+        self._encoding: Dict[int, str] = dict()
 
     def load(self, fname: str) -> None:
         """Load a packed DAWG from a binary file"""

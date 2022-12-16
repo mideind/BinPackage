@@ -514,7 +514,21 @@ class BinCompressor:
     def fix_bugs(m: Ksnid) -> bool:
         """Fix known bugs in BÍN. Return False if the record should
         be skipped entirely; otherwise True."""
-        if not m.ord or not m.bmynd or m.bmynd in {"num", "ir", "irnir", "i", "ina"}:
+        if (
+            not m.ord
+            or not m.bmynd
+            or m.bmynd
+            in {
+                "a",
+                "num",
+                "i",
+                "ir",
+                "in",
+                "ina",
+                "irnar",
+                "irnir",
+            }
+        ):
             return False
         elif m.ord == "sem að" and m.bin_id == 495372:
             # Fix BÍN bug
@@ -524,6 +538,8 @@ class BinCompressor:
             # Fix BÍN bug
             m.ord = "hvort"
             m.bmynd = "hvort"
+        elif m.ord == "árekstrarvörn" and m.bin_id == 540745:
+            return m.bmynd.startswith("árekstrar")
         elif m.ord == "dínamítsprenging" and m.bin_id == 508550:
             m.bmynd = m.bmynd.replace("dýnamít", "dínamít")
         elif m.ord == "fullleiksviðslegur" and m.bin_id == 509413:

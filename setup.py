@@ -58,23 +58,21 @@ setup(
     version=__version__,
     license="MIT",
     description=(
-        "The vocabulary of the modern Icelandic language, " "packed in a Python package"
+        "The vocabulary of the modern Icelandic language, encapsulated in a Python package"
     ),
     long_description=(
-        """
-        BinPackage, published by Miðeind ehf, is a Python package that embeds the
-        vocabulary of the Database of Icelandic Morphology (Beygingarlýsing íslensks
-        nútímamáls, BÍN) and offers various lookups and queries of the data.
+        """BinPackage, published by Miðeind ehf, is a Python package that embeds the
+vocabulary of the Database of Icelandic Morphology (Beygingarlýsing íslensks
+nútímamáls, BÍN) and offers various lookups and queries of the data.
 
-        The database, maintained by Árni Magnússon Institute for Icelandic Studies,
-        contains over 6.5 million entries, over 3.1 million unique word forms,
-        and about 300,000 distinct lemmas.
+The database, maintained by Árni Magnússon Institute for Icelandic Studies,
+contains over 6.5 million entries, over 3.1 million unique word forms,
+and about 300,000 distinct lemmas.
 
-        With BinPackage, `pip install islenska` is all you need to have almost all of
-        of the commonly used vocabulary of the modern Icelandic language at your
-        disposal via Python. Batteries are included; no additional databases,
-        downloads or middleware are required.
-    """
+With BinPackage, `pip install islenska` is all you need to have almost all of
+of the commonly used vocabulary of modern Icelandic at your
+disposal via Python. Batteries are included; no additional databases,
+downloads or middleware are required."""
     ),
     author="Miðeind ehf",
     author_email="mideind@mideind.is",

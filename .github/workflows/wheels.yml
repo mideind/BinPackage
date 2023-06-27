@@ -30,7 +30,8 @@ jobs:
           pip3 install -e .
           echo "Fetching BÍN source data..."
           cd src/islenska/resources
-          curl -o KRISTINsnid.csv.zip 'https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip'
+          # curl -o KRISTINsnid.csv.zip 'https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip'
+          curl -o KRISTINsnid.csv.zip 'https://greynir.is/static/files/KRISTINsnid.csv.zip'
           unzip KRISTINsnid.csv.zip
           rm KRISTINsnid.csv.*
           cd ../../..

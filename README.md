@@ -1,5 +1,5 @@
 ![GitHub](https://img.shields.io/github/license/mideind/BinPackage)
-![Python 3.7+](https://img.shields.io/badge/python-3.7-blue.svg)
+![Python 3.9+](https://img.shields.io/badge/python-3.9-blue.svg)
 ![Release](https://shields.io/github/v/release/mideind/BinPackage?display_name=tag)
 ![PyPI](https://img.shields.io/pypi/v/islenska)
 [![Python package](https://github.com/mideind/BinPackage/actions/workflows/python-package.yml/badge.svg)](https://github.com/mideind/BinPackage/actions/workflows/python-package.yml)
@@ -40,7 +40,6 @@ domains (person names, place names, ...), inflectional tags and
 various annotations, such as degrees of linguistic acceptability and alternate
 spelling forms.
 
-
 ## The basics of BÍN
 
 The DMI/BÍN database is
@@ -61,7 +60,6 @@ from others, as documented below.
 Further information in English about the word classes and the inflectional
 categories in the DMI/BÍN database can be found
 [here](https://bin.arnastofnun.is/DMII/infl-system/).
-
 
 ### The Basic Format
 
@@ -103,7 +101,6 @@ or [in English](https://bin.arnastofnun.is/DMII/LTdata/k-format/).
 | `bmalsnid` | `str` | Genre/register indicator for this inflectional form. |
 | `bgildi` | `str` | Indicator for inflectional forms bound to idioms and other special cases. |
 | `aukafletta` | `str` | Alternative headword, e.g. plural form. |
-
 
 ## Word compounding algorithm
 
@@ -190,7 +187,6 @@ the inflectional form (`bmynd`) and tag (`GM-VH-NT-3P-FT`).
 The tag strings are documented in detail
 [here in Icelandic](https://bin.arnastofnun.is/gogn/greiningarstrengir/) and
 [here in English](https://bin.arnastofnun.is/DMII/LTdata/tagset/).
-
 
 ## Detailed word query
 
@@ -439,7 +435,6 @@ The first element of the tuple is the search key that was matched in BÍN,
 and the second element is the list of matches, each represented
 by a `BinEntry` instance.
 
-
 ## `lookup_ksnid()` function
 
 To look up word forms and return full augmented format (*Kristínarsnið*)
@@ -484,7 +479,6 @@ The first element of the tuple is the search key that was matched in BÍN,
 and the second element is the list of matching entries, each represented
 by an instance of class `Ksnid`.
 
-
 ## `lookup_id()` function
 
 If you have a BÍN identifier (integer id) and need to look up the associated
@@ -504,7 +498,6 @@ augmented format (*Kristínarsnið*) entries, call the `lookup_id()` function:
 
 The function returns a list of type `List[Ksnid]`. If the given id number is not found
 in BÍN, an empty list is returned.
-
 
 ## `lookup_cats()` function
 
@@ -527,7 +520,6 @@ compounding algorithm, the function returns an empty set.
 | w | `str` | | The word to look up |
 | at_sentence_start | `bool` | `False` | `True` if BinPackage should also include lower case forms of the word, if it is given in upper case. |
 
-
 ## `lookup_lemmas_and_cats()` function
 
 To look up the possible lemmas/headwords and classes/categories of a word
@@ -549,7 +541,6 @@ compounding algorithm, the function returns an empty set.
 |------|------|---------|-------------|
 | w | `str` | | The word to look up |
 | at_sentence_start | `bool` | `False` | `True` if BinPackage should also include lower case forms of the word, if it is given in upper case. |
-
 
 ## `lookup_variants()` function
 
@@ -661,6 +652,7 @@ print(f"Þetta er {efsta_stig('sniðugur', 'hk')} verkfærið!")
 ```
 
 This will output:
+
 ```
 Þetta er nýjasta framförin í íslenskri máltækni!
 Þetta er sniðugasta verkfærið!
@@ -680,7 +672,6 @@ This will output:
 The function returns `List[Ksnid]`, i.e. a list of `Ksnid` instances that
 match the grammatical features requested in `to_inflection`. If no such
 instances exist, an empty list is returned.
-
 
 ## `lookup_lemmas()` function
 
@@ -716,11 +707,10 @@ infinitive, `MM-NH`, as in the example for *þyrlast*.
 |------|------|---------|-------------|
 | lemma | `str` | | The word to look up as a lemma/headword. |
 
-
 # Implementation
 
 BinPackage is written in [Python 3](https://www.python.org/)
-and requires Python 3.7 or later. It runs on CPython and [PyPy](http://pypy.org/).
+and requires Python 3.9 or later. It runs on CPython and [PyPy](http://pypy.org/).
 
 The Python code calls a small C++ library to speed up lookup of word forms in the
 compressed binary structure into which BÍN has been encoded.
@@ -729,23 +719,23 @@ available on PyPI for your platform, you may need a set of development tools ins
 on your machine, before you install BinPackage using `pip`:
 
 ```bash
-$ # The following works on Debian/Ubuntu GNU/Linux
-$ sudo apt-get install python3-dev libffi-dev
+# The following works on Debian/Ubuntu GNU/Linux
+sudo apt-get install python3-dev libffi-dev
 ```
 
 BinPackage is fully type-annotated for use with Python static type checkers such
 as `mypy` and `Pylance` / `Pyright`.
 
-
 # Installation and setup
 
-You must have Python >= 3.7 installed on your machine (CPython or PyPy).
+You must have Python >= 3.9 installed on your machine (CPython or PyPy).
 If you are using a Python virtual environment (`virtualenv`), activate it
 first (substituting your environment name for `venv` below):
 
 ```bash
-$ venv/bin/activate
+venv/bin/activate
 ```
+
 ...or, on Windows:
 
 ```cmd
@@ -756,7 +746,7 @@ Then, install BinPackage from the Python Package Index (PyPI),
 where the package is called `islenska`:
 
 ```bash
-$ pip install islenska
+pip install islenska
 ```
 
 Now, you are ready to `import islenska` or `from islenska import Bin`
@@ -768,24 +758,24 @@ If you want to install the package in editable source code mode,
 do as follows:
 
 ```bash
-$ # Clone the GitHub repository
-$ git clone https://github.com/mideind/BinPackage
-$ cd BinPackage
-$ # Install the package in editable mode
-$ pip install -e .  # Note the dot!
-$ cd src/islenska/resources
-$ # Fetch the newest BÍN data (KRISTINsnid.csv.zip)
-$ # (We remind you that the BÍN data is under the CC BY-SA 4.0 license; see below.)
-$ wget -O KRISTINsnid.csv.zip https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip
-$ # Unzip the data
-$ unzip -q KRISTINsnid.csv.zip
-$ rm KRISTINsnid.csv.*
-$ cd ../../..
-$ # Run the compressor to generate src/islenska/resources/compressed.bin
-$ python tools/binpack.py
-$ # Run the DAWG builder for the prefix and suffix files
-$ python tools/dawgbuilder.py
-$ # Now you're ready to go
+# Clone the GitHub repository
+git clone https://github.com/mideind/BinPackage
+cd BinPackage
+# Install the package in editable mode
+pip install -e .  # Note the dot!
+cd src/islenska/resources
+# Fetch the newest BÍN data (KRISTINsnid.csv.zip)
+# (We remind you that the BÍN data is under the CC BY-SA 4.0 license; see below.)
+wget -O KRISTINsnid.csv.zip https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip
+# Unzip the data
+unzip -q KRISTINsnid.csv.zip
+rm KRISTINsnid.csv.*
+cd ../../..
+# Run the compressor to generate src/islenska/resources/compressed.bin
+python tools/binpack.py
+# Run the DAWG builder for the prefix and suffix files
+python tools/dawgbuilder.py
+# Now you're ready to go
 ```
 
 This will clone the GitHub repository into the BinPackage directory
@@ -795,7 +785,6 @@ from *Stofnun Árna Magnússonar* and compressed into a binary file.
 Finally, the Directed Acyclic Word Graph builder is run to
 create DAWGs for word prefixes and suffixes, used by the compound word
 algorithm.
-
 
 ## File details
 
@@ -815,7 +804,6 @@ BinPackage:
   the word compounding logic.
 * `resources/prefixes.txt`, `resources/suffixes.txt`: Text files containing
   valid Icelandic word prefixes and suffixes, respectively.
-
 
 # Copyright and licensing
 
@@ -852,7 +840,7 @@ as described in the documentation above.
 BinPackage is Copyright (C) 2022 [Miðeind ehf.](https://mideind.is)
 The original author of this software is *Vilhjálmur Þorsteinsson*.
 
-<img src="img/MideindLogoVert400.png" alt="Miðeind ehf." 
+<img src="img/MideindLogoVert400.png" alt="Miðeind ehf."
    width="118" height="100" align="left"
    style="margin-right:20px; margin-top: 10px; margin-bottom: 10px;">
 

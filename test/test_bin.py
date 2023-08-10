@@ -4,7 +4,7 @@
 
     Tests for BinPackage module
 
-    Copyright (C) 2022 Miðeind ehf.
+    Copyright © 2023 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     This software is licensed under the MIT License:
@@ -981,6 +981,48 @@ def test_id() -> None:
     assert b.lookup_id(-100) == []  # No such bin_id
     assert b.lookup_id(77) == []  # No such bin_id
     assert b.lookup_id(1000000) == []  # No such bin_id
+
+
+def test_ksnid() -> None:
+    b = Bin()
+
+    k, m = b.lookup_ksnid("Vísindavefsins")
+    assert k == "Vísindavefsins"
+    assert len(m) == 1
+    m0 = m[0]
+    assert m0.ord == "Vísindavefur"
+    assert m0.bmynd == "Vísindavefsins"
+    assert m0.ofl == "kk"
+    assert m0.bin_id == 487719
+    assert m0.einkunn == 1
+    assert m0.malsnid == ""
+    assert m0.malfraedi == ""
+    assert m0.millivisun == 0
+    assert m0.birting == "K"
+    assert m0.mark == "EFETgr2"
+    assert m0.beinkunn == 2
+    assert m0.bmalsnid == ""
+    assert m0.bgildi == ""
+    assert m0.aukafletta == "Vísindavefurinn"
+
+    k, m = b.lookup_ksnid("nokkursstaðar")
+    assert k == "nokkursstaðar"
+    assert len(m) == 1
+    m0 = m[0]
+    assert m0.ord == "nokkursstaðar"
+    assert m0.bmynd == "nokkursstaðar"
+    assert m0.ofl == "ao"
+    assert m0.bin_id == 506765
+    assert m0.einkunn == 4
+    assert m0.malsnid == ""
+    assert m0.malfraedi == "STAFS"
+    assert m0.millivisun == 506766
+    assert m0.birting == "V"
+    assert m0.mark == "OBEYGJANLEGT"
+    assert m0.beinkunn == 1
+    assert m0.bmalsnid == ""
+    assert m0.bgildi == ""
+    assert m0.aukafletta == ""
 
 
 if __name__ == "__main__":

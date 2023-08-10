@@ -4,7 +4,7 @@
 
    C++ BÍN lookup module
 
-   Copyright (C) 2022 Miðeind ehf.
+   Copyright © 2023 Miðeind ehf.
    Original Author: Vilhjálmur Þorsteinsson
 
    This software is licensed under the MIT License:

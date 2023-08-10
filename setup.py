@@ -4,7 +4,7 @@
 
     Setup.py
 
-    Copyright (C) 2022 Miðeind ehf.
+    Copyright © 2023 Miðeind ehf.
     Original Author: Vilhjálmur Þorsteinsson
 
     This software is licensed under the MIT License:
@@ -45,8 +45,8 @@ from setuptools import find_packages  # type: ignore
 from setuptools import setup  # type: ignore
 
 
-if sys.version_info < (3, 7):
-    print("BinPackage requires Python >= 3.7")
+if sys.version_info < (3, 8):
+    print("BinPackage requires Python >= 3.8")
     sys.exit(1)
 
 # Load version string from file
@@ -96,7 +96,6 @@ downloads or middleware are required."""
         "Natural Language :: Icelandic",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
@@ -108,7 +107,7 @@ downloads or middleware are required."""
         "Topic :: Text Processing :: Linguistic",
     ],
     keywords=["nlp", "icelandic", "language", "vocabulary", "dictionary"],
-    setup_requires=["cffi>=1.13.0"],
-    install_requires=["cffi>=1.13.0", "typing_extensions"],
+    setup_requires=["cffi>=1.15.1"],
+    install_requires=["cffi>=1.15.1", "typing_extensions"],
     cffi_modules=["src/islenska/bin_build.py:ffibuilder"],
 )

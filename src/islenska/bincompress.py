@@ -5,7 +5,7 @@
 
     Low-level access module for the compressed BÍN dictionary
 
-    Copyright (C) 2022 Miðeind ehf.
+    Copyright © 2023 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     This software is licensed under the MIT License:
@@ -126,6 +126,7 @@ class BinCompressed:
         with open(self._FNAME, "rb") as stream:
             self._b = mmap.mmap(stream.fileno(), 0, access=mmap.ACCESS_READ)
         # Check that the file version matches what we expect
+        assert not self._b.closed, "Could not open ord.compressed; file missing?"
         assert (
             self._b[0:16] == BIN_COMPRESSOR_VERSION
         ), "Invalid signature in ord.compressed; file missing or version mismatch?"
@@ -160,7 +161,6 @@ class BinCompressed:
         self._alphabet_bytes = bytes(
             self._b[alphabet_offset + 4 : alphabet_offset + 4 + alphabet_length]
         )
-        self._alphabet: Set[str] = set()
         # Decode the subcategories ('fl') into a list of strings
         subcats_length = self._UINT(subcats_offset)
         subcats_bytes = bytes(
@@ -178,18 +178,20 @@ class BinCompressed:
 
     def close(self) -> None:
         """Close the memory map"""
-        if self._b is not None:
-            self._mappings = cast(bytes, None)
-            self._lemmas = cast(bytes, None)
-            self._meanings = cast(bytes, None)
-            self._ksnid_strings = cast(bytes, None)
-            self._templates = cast(bytes, None)
-            self._alphabet = set()
-            self._alphabet_bytes = bytes()
-            self._mmap_buffer = cast(bytes, None)
-            self._mmap_ptr = 0
+        if cast(Union[mmap.mmap, None], self._b) is None:
+            # Already closed
+            return
+        self._mappings = cast(bytes, None)
+        self._lemmas = cast(bytes, None)
+        self._meanings = cast(bytes, None)
+        self._ksnid_strings = cast(bytes, None)
+        self._templates = cast(bytes, None)
+        self._alphabet_bytes = bytes()
+        self._mmap_buffer = cast(bytes, None)
+        self._mmap_ptr = 0
+        if not self._b.closed:
             self._b.close()
-            self._b = cast(mmap.mmap, None)
+        self._b = cast(mmap.mmap, None)
 
     @property
     def begin_greynir_utg(self):
@@ -207,6 +209,7 @@ class BinCompressed:
 
     def ksnid_string(self, ix: int) -> str:
         """Find and decode a KRISTINsnid string"""
+        off: int
         (off,) = UINT32.unpack_from(self._ksnid_strings, ix * 4)
         assert self._b is not None
         lw = self._b[off]  # Length byte
@@ -214,6 +217,7 @@ class BinCompressed:
 
     def lemma(self, bin_id: int) -> Tuple[str, str]:
         """Find and decode a lemma (stofn, subcat) tuple, given its bin_id"""
+        off: int
         (off,) = UINT32.unpack_from(self._lemmas, bin_id * 4)
         assert off != 0  # Unknown BÍN id
         bits = self._UINT(off) & 0x7FFFFFFF
@@ -271,6 +275,7 @@ class BinCompressed:
         # Sanity check on the BÍN id
         if not 0 <= bin_id <= self._max_bin_id:
             return []
+        off: int
         (off,) = UINT32.unpack_from(self._lemmas, bin_id * 4)
         if off == 0:
             # No entry with this BÍN id
@@ -319,19 +324,20 @@ class BinCompressed:
         while True:
             (w0,) = self._partial_mappings(mapping * 4)
             mapping += 1
-            meaning_index = (w0 >> BIN_ID_BITS) & 0x7F
-            if meaning_index > 0:
-                # This is a packed meaning, one 32-bit word
+            if w0 & 0x60000000 == 0x60000000:
+                # This is a single 32-bit packed entry
+                meaning_index = (w0 >> BIN_ID_BITS) & 0xFF  # 8 bits for freq_ix
                 bin_id = w0 & BIN_ID_MASK
                 meaning_index -= 1
-                ksnid_index = COMMON_KIX_1 if w0 & 0x40000000 else COMMON_KIX_0
-            elif w0 & 0x40000000:
-                # This is a packed meaning with the same bin_id as the previous one
+                ksnid_index = COMMON_KIX_1 if w0 & 0x10000000 else COMMON_KIX_0
+            elif w0 & 0x60000000 == 0x40000000:
+                # This is a single 32-bit entry with the same bin_id as the previous one
                 assert bin_id != -1
                 meaning_index = (w0 >> KSNID_BITS) & MEANING_MASK
                 ksnid_index = w0 & KSNID_MASK
             else:
                 # This meaning is stored in two 32-bit words
+                assert w0 & 0x60000000 == 0
                 bin_id = w0 & BIN_ID_MASK
                 (w1,) = self._partial_mappings(mapping * 4)
                 mapping += 1

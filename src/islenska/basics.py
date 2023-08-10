@@ -4,7 +4,7 @@
 
     Basic configuration data
 
-    Copyright (C) 2022 Miðeind ehf.
+    Copyright © 2023 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     This software is licensed under the MIT License:
@@ -65,25 +65,22 @@ INT32 = struct.Struct("<i")
 UINT32 = struct.Struct("<I")
 
 # BÍN compressed file format version (used in tools/binpack.py and bincompress.py)
-BIN_COMPRESSOR_VERSION = b"Greynir 03.00.00"
+BIN_COMPRESSOR_VERSION = b"Greynir 04.00.00"
 assert len(BIN_COMPRESSOR_VERSION) == 16
 BIN_COMPRESSED_FILE = "compressed.bin"
 
 # The following are encoded with each word form
-# Bits allocated for the bin_id number (currently max 513582)
-BIN_ID_BITS = 23
-BIN_ID_MAX = 2**BIN_ID_BITS
+# Bits allocated for the bin_id number (currently max 558,214)
+BIN_ID_BITS = 20
+BIN_ID_MAX = 2**BIN_ID_BITS  # 1,048,576
 BIN_ID_MASK = BIN_ID_MAX - 1
-# Bits allocated for the meaning index (currently max 968)
+# Bits allocated for the meaning index (currently max 847)
 MEANING_BITS = 10
-MEANING_MAX = 2**MEANING_BITS
+MEANING_MAX = 2**MEANING_BITS  # 1,024
 MEANING_MASK = MEANING_MAX - 1
-# Make sure that we have at least three high bits available for other
-# purposes in a 32-bit word that already contains a lemma index and a meaning index
-# assert BIN_ID_BITS + MEANING_BITS <= 29
-# Bits allocated for the ksnid-string index (currently max 5826)
-KSNID_BITS = 13
-KSNID_MAX = 2**KSNID_BITS
+# Bits allocated for the ksnid-string index (currently max 8709)
+KSNID_BITS = 14
+KSNID_MAX = 2**KSNID_BITS  # 16,384
 KSNID_MASK = KSNID_MAX - 1
 
 # Bits allocated for the subcategory index (hluti) (currently max 49)
@@ -394,6 +391,9 @@ class Ksnid:
         ) = t
         m.bin_id = int(bin_id or "0")
         m.einkunn = int(einkunn)
+        # Replace all consecutive commas in the malfraedi field
+        # with a single comma, and eliminate leading and trailing commas
+        m.malfraedi = re.sub(r",,+", ",", m.malfraedi.strip(","))
         m.millivisun = int(millivisun or "0")
         m.beinkunn = int(beinkunn)
         return m

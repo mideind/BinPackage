@@ -5,7 +5,7 @@
 
     BÍN packing/compression program
 
-    Copyright (C) 2022 Miðeind ehf.
+    Copyright © 2023 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     This software is licensed under the MIT License:
@@ -163,6 +163,12 @@ from islenska.basics import (
 
 
 MeaningTuple = Tuple[bytes, bytes]  # ordfl, beyging
+
+
+# We skip word forms that contain one or more of the following letters.
+# These are mostly errors in BÍN, and/or foreign (Danish) words that
+# are not relevant to Icelandic.
+SUSPICIOUS_LETTERS = set("+@\\_åø")
 
 
 _path, _ = os.path.split(os.path.realpath(__file__))
@@ -379,6 +385,9 @@ class Indexer(Generic[_V]):
             self._inv_d[ix] = s
             return ix
 
+    def items(self) -> Iterable[Tuple[int, _V]]:
+        return self._inv_d.items()
+
     def __len__(self) -> int:
         return len(self._d)
 
@@ -579,10 +588,9 @@ class BinCompressor:
         max_wix = 0
         start_time = time.time()
         last_stofn = ""
-        # Map bin_id number to lemma number
-        utg_to_lemma: Dict[int, int] = dict()
         for fname in fnames:
             print("Reading file '{0}'...".format(fname))
+            fn: str = fname.split("/")[-1]
             with open(fname, "r", encoding="utf-8") as f:
                 for line in f:
                     cnt += 1
@@ -628,7 +636,6 @@ class BinCompressor:
                             self._utg = m.bin_id
                     # Avoid bugs in BÍN
                     if not self.fix_bugs(m):
-                        fn = fname.split("/")[-1]
                         print(
                             f"Skipping invalid data (lemma '{m.ord}', bin_id {m.bin_id}, "
                             f"bmynd '{m.bmynd}'), line {cnt} in {fn}"
@@ -636,7 +643,6 @@ class BinCompressor:
                         continue
                     # Ensure mark makes sense
                     if not MarkOrder.valid_mark(m.ofl, m.mark):
-                        fn = fname.split("/")[-1]
                         print(
                             f"Skipping due to invalid mark (lemma '{m.ord}', bin_id {m.bin_id}, "
                             f"bmynd '{m.bmynd}', ofl '{m.ofl}', mark '{m.mark}'), line {cnt} in {fn}"
@@ -650,17 +656,24 @@ class BinCompressor:
                         meaning = m.mark.encode("latin-1")
                         ksnid = m.ksnid_string.encode("latin-1")
                     except UnicodeEncodeError:
-                        fn = fname.split("/")[-1]
                         try:
                             print(
-                                f"Skipping invalid data (lemma '{m.ord}', bin_id {m.bin_id}, "
+                                f"Latin-1 encoding error for (lemma '{m.ord}', bin_id {m.bin_id}, "
                                 f"bmynd '{m.bmynd}'), line {cnt} in {fn}"
                             )
                         except:
                             # Hack to fix issues with printing utf-8 characters to the Windows shell
                             print(
-                                f"Skipping invalid data ${m.bin_id}, line {cnt} in {fn}"
+                                f"Latin-1 encoding error ${m.bin_id}, line {cnt} in {fn}"
                             )
+                        continue
+                    suspicious_letters = set(m.bmynd) & SUSPICIOUS_LETTERS
+                    # If any suspicious letters are found in the form, print a warning
+                    if suspicious_letters:
+                        print(
+                            f"Suspicious letters {suspicious_letters} "
+                            f"in form '{m.bmynd}' of lemma '{m.ord}', bin_id {m.bin_id}, line {cnt} in {fn}"
+                        )
                         continue
                     self._alphabet |= set(form)
                     # Subcategory (hluti) index
@@ -709,10 +722,6 @@ class BinCompressor:
         print("Time: {0:.1f} seconds".format(time.time() - start_time))
         if not quiet:
             print("Highest bin_id (wix) is {0}".format(max_wix))
-            sorted_utg = sorted(utg_to_lemma.keys())
-            if sorted_utg:
-                print(f"Distinct bin_ids are {len(sorted_utg)}")
-                print(f"Lowest bin_id is {sorted_utg[0]}, highest is {sorted_utg[-1]}")
         # Convert alphabet set to contiguous byte array, sorted by ordinal
         alphabet: Set[int] = self._alphabet  # Line added to pacify Pylance
         self._alphabet_bytes = bytes(sorted(alphabet))
@@ -728,8 +737,12 @@ class BinCompressor:
         print("Subcategories are {0}".format(len(self._subcats)))
         print("Meanings are {0}".format(len(self._meanings)))
         print("Ksnid-strings are {0}".format(len(self._ksnid_strings)))
+        # Uncomment the following to view the Ksnid-strings
+        # klist = [f"{v.decode('latin-1')}: {k}" for k, v in self._ksnid_strings.items()]
+        # print("\n".join(sorted(klist)))
         if not quiet:
             print("The alphabet is '{0!r}'".format(self._alphabet_bytes))
+            print(f"In UTF-8: '{self._alphabet_bytes.decode('latin-1')}'")
             print("It contains {0} characters".format(len(self._alphabet_bytes)))
 
     def lookup(self, form: str) -> List[BinEntryTuple]:
@@ -822,7 +835,8 @@ class BinCompressor:
             and fix up the parent's pointer to the location
             of this node"""
             loc = f.tell()
-            val = 0x007FFFFF if node.value is None else lookup_map[node.value]
+            ix: Optional[int] = node.value
+            val = 0x007FFFFF if ix is None else lookup_map[ix]
             assert val < 2**23
             nonlocal node_cnt, single_char_node_count, multi_char_node_count
             nonlocal no_child_node_count
@@ -1049,18 +1063,19 @@ class BinCompressor:
                     assert freq_ix < MEANING_MAX
                     # Mark the last meaning with the high bit
                     w = 0x80000000 if ix == num_meanings - 1 else 0
-                    if (kix == COMMON_KIX_0 or kix == COMMON_KIX_1) and freq_ix < 127:
+                    if (kix == COMMON_KIX_0 or kix == COMMON_KIX_1) and freq_ix < 255:
                         # We can pack this into a single 32-bit entry:
-                        # bin_id is 23 bits
                         # kix is 1 bit
-                        # meaning index is 7 bits
+                        # meaning index (freq_ix) is 8 bits
+                        # bin_id is 20 bits
                         # Layout:
-                        # LKMMMMMM|MBBBBBBB|BBBBBBBB|BBBBBBBB
+                        # L11KMMMM|MMMMBBBB|BBBBBBBB|BBBBBBBB
                         # MMMMMMM > 0
+                        w |= 0x60000000  # Indicates a single 32-bit packed entry
                         if kix == COMMON_KIX_1:
-                            w |= 0x40000000
+                            w |= 0x10000000  # kix bit, 0 or 1 for COMMON_KIX_0 or COMMON_KIX_1
                         w |= (freq_ix + 1) << BIN_ID_BITS
-                        # Low 23 bits contain the BÍN id
+                        # Low 20 contain the BÍN id
                         w |= bin_id
                         f.write(UINT32.pack(w))
                         cnt_32 += 1
@@ -1068,10 +1083,11 @@ class BinCompressor:
                     elif bin_id == last_bin_id:
                         # The BÍN id is the same as the last one: Use that fact to
                         # squeeze the meaning and the ksnid index into a single word
+                        # meaning index (freq_ix) is 10 bits
                         # Layout:
-                        # L1000000|0MMMMMMM|MMMKKKKK|KKKKKKKK
+                        # L1000000|MMMMMMMM|MMKKKKKK|KKKKKKKK
                         cnt_identical_bin += 1
-                        w |= 0x40000000  # Flag that cannot be set in the two-entry case
+                        w |= 0x40000000  # Indicates a single 32-bit entry
                         w |= (freq_ix << KSNID_BITS) | kix
                         f.write(UINT32.pack(w))
                         cnt_32 += 1
@@ -1082,16 +1098,16 @@ class BinCompressor:
                         # Note that in this case, the 7 bits for the meaning
                         # index are 0, which cannot happen in the single-word case
                         # Layout:
-                        # L0000000|0BBBBBBB|BBBBBBBB|BBBBBBBB
+                        # L0000000|0000BBBB|BBBBBBBB|BBBBBBBB
                         w |= bin_id
                         f.write(UINT32.pack(w))
                         cnt_32 += 1
                         # Then, write the meaning index (frequency-ordered) and the
                         # ksnid index. The meaning index can be up to 10 bits
-                        # and the ksnid up to 13 bits.
+                        # and the ksnid up to 14 bits.
                         w = (freq_ix << KSNID_BITS) | kix
                         # Layout:
-                        # 00000000|0MMMMMMM|MMMKKKKK|KKKKKKKK
+                        # 00000000|MMMMMMMM|MMKKKKKK|KKKKKKKK
                         f.write(UINT32.pack(w))
                         cnt_32 += 1
                     ix += 1
@@ -1101,13 +1117,13 @@ class BinCompressor:
         cnt_single = cnt_entries - cnt_double
         assert cnt_32 == cnt_single + cnt_double * 2
         assert cnt_entries == cnt_single + cnt_double
-        print(f"Word meaning entries are {cnt_entries}; 32-bit words are {cnt_32}")
+        print(f"Word meaning entries are {cnt_entries}, stored in {cnt_32} 32-bit words")
         print(
-            f"Single-word entries are {cnt_single}, "
-            f"double-word entries are {cnt_double}"
+            f"32-bit entries are {cnt_single}, "
+            f"64-bit entries are {cnt_double}"
         )
         print(
-            f"Double-word entries having identical BÍN ids "
+            f"32-bit entries having identical BÍN ids "
             f"to previous ones are {cnt_identical_bin}"
         )
         # Write the the compact radix trie structure that

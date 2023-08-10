@@ -6,7 +6,7 @@
 
     DAWG dictionary builder
 
-    Copyright (C) 2022 Miðeind ehf.
+    Copyright © 2023 Miðeind ehf.
 
     DawgBuilder implements a Directed Acyclic Word Graph (DAWG)
     to store a large set of words in an efficient structure

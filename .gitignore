@@ -37,6 +37,7 @@ doc/_build/
 *.dawg
 *.bin
 KRISTINsnid.csv
+KRISTINsnid.old.csv
 compressed.bin
 
 *.sublime-project

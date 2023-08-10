@@ -161,7 +161,7 @@ class MarkOrder:
     _order: Optional[Dict[str, Tuple[str, ...]]] = None
 
     @classmethod
-    def _read_order_from_csv(cls):
+    def _read_order_from_csv(cls) -> None:
         """
         Read ordering of inflections for
         each word category from csv file.

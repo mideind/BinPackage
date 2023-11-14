@@ -175,12 +175,14 @@ class Bin:
         self._add_legur = options.pop("add_legur", True)
         self._add_compounds = options.pop("add_compounds", True)
         self._replace_z = options.pop("replace_z", True)
+        self._get_compounds = options.pop("get_compounds", False)
         if options.pop("only_bin", False):
             # If only_bin is set, disable all additions/modifications
             self._add_negation = False
             self._add_legur = False
             self._add_compounds = False
             self._replace_z = False
+            self._get_compounds = False
         if options:
             raise ValueError(
                 "Option(s) not understood: {0}".format(" ,".join(options.keys()))
@@ -379,7 +381,6 @@ class Bin:
         lookup_func: LookupFunc[_T],
         ctor: EntryCtor[_T],
     ) -> ResultTuple[_T]:
-
         """Lookup a simple or compound word in the database and
         return its meaning(s). This function checks for abbreviations,
         upper/lower case variations, etc."""
@@ -387,6 +388,14 @@ class Bin:
         # Start with a straightforward, cached lookup of the word as-is
         lower_w = w
         m: List[_T] = lookup_func(w)
+
+        if self._get_compounds:
+            # Get the compound structure of the word, if any
+            # When the _get_compounds flag is set, we prioritize finding the word's
+            # possible compound structure
+            w, m = self._compound_meanings(
+                w, lower_w, at_sentence_start, lookup_func, ctor
+            )
 
         if auto_uppercase and w.islower():
             # Lowercase word:

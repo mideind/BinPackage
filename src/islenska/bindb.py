@@ -379,7 +379,6 @@ class Bin:
         lookup_func: LookupFunc[_T],
         ctor: EntryCtor[_T],
     ) -> ResultTuple[_T]:
-
         """Lookup a simple or compound word in the database and
         return its meaning(s). This function checks for abbreviations,
         upper/lower case variations, etc."""
@@ -836,6 +835,18 @@ class Bin:
             self.lookup_genitive,
             filter_func=filter_func,
         )
+
+    def get_compound(
+        self, w: str, at_sentence_start: bool = False
+    ) -> ResultTuple[BinEntry]:
+        """Lookup a word in the database and return its meaning(s),
+        prioritizing returning its compound structure."""
+
+        w, m = self._compound_meanings(
+            w, w.lower(), at_sentence_start, self._meanings_cache_lookup, make_bin_entry
+        )
+
+        return w, m
 
 
 class GreynirBin(Bin):

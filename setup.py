@@ -4,7 +4,7 @@
 
     Setup.py
 
-    Copyright © 2023 Miðeind ehf.
+    Copyright © 2024 Miðeind ehf.
     Original Author: Vilhjálmur Þorsteinsson
 
     This software is licensed under the MIT License:
@@ -100,6 +100,7 @@ downloads or middleware are required."""
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python :: Implementation :: PyPy",
         "Topic :: Software Development :: Libraries :: Python Modules",

@@ -837,7 +837,7 @@ as described in the documentation above.
 
 ----
 
-BinPackage is Copyright © 2023 [Miðeind ehf.](https://mideind.is)
+BinPackage is Copyright © 2024 [Miðeind ehf.](https://mideind.is)
 The original author of this software is *Vilhjálmur Þorsteinsson*.
 
 <img src="img/MideindLogoVert400.png" alt="Miðeind ehf."

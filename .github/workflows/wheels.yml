@@ -55,6 +55,6 @@ jobs:
           CIBW_BUILD_FRONTEND: "build"
           # CIBW_PROJECT_REQUIRES_PYTHON: ">=3.8"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v3
         with:
           path: ./wheelhouse/*.whl

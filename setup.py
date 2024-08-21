@@ -36,78 +36,18 @@
 
 """
 
-import sys
-
 from glob import glob
-from os.path import basename, join, splitext
+from os.path import basename, splitext
 
-from setuptools import find_packages  # type: ignore
-from setuptools import setup  # type: ignore
-
-
-if sys.version_info < (3, 8):
-    print("BinPackage requires Python >= 3.8")
-    sys.exit(1)
-
-# Load version string from file
-__version__ = "[missing]"
-exec(open(join("src", "islenska", "version.py")).read())
+from setuptools import setup, find_packages
 
 setup(
-    name="islenska",
-    version=__version__,
-    license="MIT",
-    description=(
-        "The vocabulary of the modern Icelandic language, encapsulated in a Python package"
-    ),
-    long_description=(
-        """BinPackage, published by Miðeind ehf, is a Python package that embeds the
-vocabulary of the Database of Icelandic Morphology (Beygingarlýsing íslensks
-nútímamáls, BÍN) and offers various lookups and queries of the data.
-
-The database, maintained by Árni Magnússon Institute for Icelandic Studies,
-contains over 6.5 million entries, over 3.1 million unique word forms,
-and about 300,000 distinct lemmas.
-
-With BinPackage, `pip install islenska` is all you need to have almost all of
-of the commonly used vocabulary of modern Icelandic at your
-disposal via Python. Batteries are included; no additional databases,
-downloads or middleware are required."""
-    ),
-    author="Miðeind ehf",
-    author_email="mideind@mideind.is",
-    url="https://github.com/mideind/BinPackage",
     packages=find_packages("src"),
     package_dir={"": "src"},
     py_modules=[splitext(basename(path))[0] for path in glob("src/*.py")],
     package_data={"islenska": ["py.typed"]},
     include_package_data=True,
     zip_safe=True,
-    classifiers=[
-        # complete classifier list: http://pypi.python.org/pypi?%3Aaction=list_classifiers
-        "Development Status :: 5 - Production/Stable",
-        "Intended Audience :: Developers",
-        "Intended Audience :: Science/Research",
-        "License :: OSI Approved :: MIT License",
-        "Operating System :: Unix",
-        "Operating System :: POSIX",
-        "Operating System :: Microsoft :: Windows",
-        "Operating System :: MacOS",
-        "Natural Language :: Icelandic",
-        "Programming Language :: Python",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11",
-        "Programming Language :: Python :: 3.12",
-        "Programming Language :: Python :: Implementation :: CPython",
-        "Programming Language :: Python :: Implementation :: PyPy",
-        "Topic :: Software Development :: Libraries :: Python Modules",
-        "Topic :: Utilities",
-        "Topic :: Text Processing :: Linguistic",
-    ],
-    keywords=["nlp", "icelandic", "language", "vocabulary", "dictionary"],
     setup_requires=["cffi>=1.15.1"],
     install_requires=["cffi>=1.15.1", "typing_extensions"],
     cffi_modules=["src/islenska/bin_build.py:ffibuilder"],

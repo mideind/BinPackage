@@ -1,0 +1,67 @@
+[project]
+name = "islenska"
+version = "1.0.3"
+description = "The vocabulary of modern Icelandic, encapsulated in a Python package"
+authors = [{ name = "Miðeind ehf.", email = "mideind@mideind.is" }]
+maintainers = [{ name = "Miðeind ehf.", email = "mideind@mideind.is" }]
+readme = { file = "README.rst", content-type = "text/x-rst" }
+license = { text = "MIT License" }
+keywords = ["nlp", "icelandic", "language", "vocabulary", "dictionary"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Unix",
+    "Operating System :: POSIX",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Natural Language :: Icelandic",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+    "Topic :: Text Processing :: Linguistic",
+]
+requires-python = ">=3.8"
+dependencies = ["cffi>=1.15.1", "typing_extensions"]
+
+[project.urls]
+Repository = "https://github.com/mideind/BinPackage"
+
+[project.optional-dependencies]
+# dev dependencies
+dev = ["pytest"]
+
+# *** Configuration of tools ***
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+where = ["src"]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    # Ignore deprecation warnings in libraries, their problem not ours
+    # "ignore::DeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 120
+
+[tool.black]
+line-length = 120
+
+[tool.isort]
+# This forces these imports to placed at the top
+known_future_library = ["__future__", "typing", "typing_extensions"]
+profile = "black"
+line_length = 120

@@ -78,7 +78,8 @@ from typing import (
 import struct
 import functools
 import mmap
-import pkg_resources
+
+import importlib_resources  # type: ignore
 
 # Import the CFFI wrapper for the bin.cpp C++ module (see also build_bin.py)
 # pylint: disable=no-name-in-module
@@ -109,14 +110,13 @@ from .basics import (
 
 
 class BinCompressed:
-
     """A wrapper for the compressed binary dictionary,
     allowing read-only lookups of word forms"""
 
     # Note: the resource path below should NOT use os.path.join()
-    _FNAME = pkg_resources.resource_filename(
-        __name__, "resources/" + BIN_COMPRESSED_FILE
-    )
+    ref = importlib_resources.files(__name__) / "resources" / BIN_COMPRESSED_FILE
+    with importlib_resources.as_file(ref) as path:
+        _FNAME = str(path)
 
     def __init__(self) -> None:
         """We use a memory map, provided by the mmap module, to
@@ -158,14 +158,10 @@ class BinCompressed:
         # The alphabet header occupies the next 16 bytes
         # Read the alphabet length
         alphabet_length = self._UINT(alphabet_offset)
-        self._alphabet_bytes = bytes(
-            self._b[alphabet_offset + 4 : alphabet_offset + 4 + alphabet_length]
-        )
+        self._alphabet_bytes = bytes(self._b[alphabet_offset + 4 : alphabet_offset + 4 + alphabet_length])
         # Decode the subcategories ('fl') into a list of strings
         subcats_length = self._UINT(subcats_offset)
-        subcats_bytes = bytes(
-            self._b[subcats_offset + 4 : subcats_offset + 4 + subcats_length]
-        )
+        subcats_bytes = bytes(self._b[subcats_offset + 4 : subcats_offset + 4 + subcats_length])
         self._subcats = [s.decode("latin-1") for s in subcats_bytes.split()]
         # Create a CFFI buffer object pointing to the memory map
         self._mmap_buffer: bytes = ffi.from_buffer(self._b)
@@ -363,7 +359,6 @@ class BinCompressed:
         utg: Optional[int] = None,
         inflection_filter: Optional[InflectionFilter] = None,
     ) -> List[BinEntryTuple]:
-
         """Returns a list of BÍN entries for the given word form,
         eventually constrained to the requested word category,
         lemma, utg number and/or the given beyging_func filter function,
@@ -405,7 +400,6 @@ class BinCompressed:
         utg: Optional[int] = None,
         inflection_filter: Optional[InflectionFilter] = None,
     ) -> List[Ksnid]:
-
         """Returns a list of BÍN entries for the given word form,
         eventually constrained to the requested word category,
         lemma, utg number and/or the given beyging_func filter function,
@@ -462,7 +456,6 @@ class BinCompressed:
         utg: Optional[int] = None,
         inflection_filter: Optional[InflectionFilter] = None,
     ) -> Set[BinEntryTuple]:
-
         """Returns a set of entries, in the requested case, derived
         from the lemmas of the given word form, optionally constrained
         by word category and by the other arguments given. The
@@ -602,7 +595,6 @@ class BinCompressed:
         utg: Optional[int] = None,
         inflection_filter: Optional[InflectionFilter] = None,
     ) -> List[Ksnid]:
-
         """Returns a list of BÍN Ksnid instances for word forms
         where the beyging substring(s) given have been substituted for
         the original string(s) in the same grammatical feature(s).
@@ -650,9 +642,7 @@ class BinCompressed:
                         continue
                     # Found a word form of the same lemma
                     _, this_beyging = self.meaning(mix)
-                    if inflection_filter is not None and not inflection_filter(
-                        this_beyging
-                    ):
+                    if inflection_filter is not None and not inflection_filter(this_beyging):
                         # The user-defined filter fails
                         continue
                     tb_set = mark_to_set(this_beyging)

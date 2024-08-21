@@ -45,14 +45,13 @@ import os
 import threading
 import struct
 import mmap
-import pkg_resources
 
+import importlib_resources  # type: ignore
 
 _PATH = os.path.dirname(__file__) or "."
 
 
 class Wordbase:
-
     """Container for a singleton instance of the word database"""
 
     # All word forms
@@ -70,15 +69,12 @@ class Wordbase:
         # Assumes that the appropriate lock has been acquired
         if __package__:
             # If we're inside a package (which is by far the most common case),
-            # obtain the name of a resource file through pkg_resources.
-            # Note that the path below should NOT use os.path.join().
-            pname = pkg_resources.resource_filename(
-                __name__, "resources/{0}.dawg.bin".format(resource)
-            )
+            # obtain the name of a resource file through importlib.
+            ref = importlib_resources.files(__name__) / "resources" / f"{resource}.dawg.bin"
+            with importlib_resources.as_file(ref) as path:
+                pname = str(path)
         else:
-            pname = os.path.abspath(
-                os.path.join(_PATH, "resources", resource + ".dawg.bin")
-            )
+            pname = os.path.abspath(os.path.join(_PATH, "resources", resource + ".dawg.bin"))
         dawg = PackedDawgDictionary()
         dawg.load(pname)
         return dawg
@@ -128,9 +124,7 @@ class Wordbase:
             # i.e. where the suffix is a legal suffix and all prefixes are
             # legal prefixes
             for combination in w:
-                if combination[-1] in suffixes and all(
-                    c in prefixes for c in combination[0:-1]
-                ):
+                if combination[-1] in suffixes and all(c in prefixes for c in combination[0:-1]):
                     # Valid combination: return it
                     return combination
         # No legal combination found
@@ -138,7 +132,6 @@ class Wordbase:
 
 
 class FindNavigator:
-
     """A navigation class to be used with DawgDictionary.navigate()
     to find a particular word in the dictionary by exact match
     """
@@ -185,7 +178,6 @@ class FindNavigator:
 
 
 class CompoundNavigator:
-
     """A navigation class to be used with DawgDictionary.navigate()
     to find all possible compositions of shorter words that
     together form a long (compound) word.
@@ -241,7 +233,6 @@ class CompoundNavigator:
 
 
 class PackedDawgDictionary:
-
     """Encapsulates a DAWG dictionary that is initialized from a packed
     binary file on disk and navigated as a byte buffer."""
 
@@ -269,9 +260,7 @@ class PackedDawgDictionary:
         # Assemble a decoding dictionary where encoded indices are mapped to
         # characters, eventually with a suffixed vertical bar '|' to denote finality
         self._encoding = {i: c for i, c in enumerate(self._vocabulary)}
-        self._encoding.update(
-            {i | 0x80: c + "|" for i, c in enumerate(self._vocabulary)}
-        )
+        self._encoding.update({i | 0x80: c + "|" for i, c in enumerate(self._vocabulary)})
 
     def find(self, word: str) -> bool:
         """Look for a word in the graph, returning True
@@ -315,7 +304,6 @@ class PackedDawgDictionary:
 
 
 class PackedNavigation:
-
     """Manages the state for a navigation while it is in progress"""
 
     # The structure used to decode an edge offset from bytes
@@ -343,9 +331,7 @@ class PackedNavigation:
             self._iter_cache = self._iter_caches[id(b)]
         else:
             # Create a fresh cache for this byte buffer
-            self._iter_cache = self._iter_caches[id(b)] = cast(
-                Dict[int, Dict[str, int]], dict()
-            )
+            self._iter_cache = self._iter_caches[id(b)] = cast(Dict[int, Dict[str, int]], dict())
 
     def _iter_from_node(self, offset: int) -> Iterator[Tuple[str, int]]:
         """A generator for yielding prefixes and next node offset along an edge
@@ -364,9 +350,7 @@ class PackedNavigation:
                 nextnode = 0
             else:
                 # Read the next node offset
-                (nextnode,) = self._UINT32.unpack_from(
-                    b, offset
-                )  # Tuple of length 1, i.e. (n, )
+                (nextnode,) = self._UINT32.unpack_from(b, offset)  # Tuple of length 1, i.e. (n, )
                 offset += 4
             yield prefix, nextnode
 

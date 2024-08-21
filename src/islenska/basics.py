@@ -56,7 +56,8 @@ import struct
 from pathlib import Path
 from heapq import nsmallest
 from operator import itemgetter
-from pkg_resources import resource_stream
+
+import importlib_resources  # type: ignore
 
 import threading
 
@@ -253,9 +254,7 @@ def mark_to_set(mark: Union[str, Iterable[str]]) -> Set[str]:
             if at[start : len(at)]:
                 # If there is something left in the string,
                 # it is an unknown mark
-                raise ValueError(
-                    f"Unknown BÍN 'beyging' feature: '{at[start : len(at)]}'"
-                )
+                raise ValueError(f"Unknown BÍN 'beyging' feature: '{at[start : len(at)]}'")
     # Remove ignored variants before returning the set
     return atom_set.difference(IGNORED_VARIANTS)
 
@@ -308,7 +307,6 @@ _Ksnid = TypeVar("_Ksnid", bound="Ksnid")
 
 
 class Ksnid:
-
     """A class corresponding to the BÍN KRISTINsnid format"""
 
     def __init__(self) -> None:
@@ -468,13 +466,10 @@ class Ksnid:
 
     def to_bin_entry(self) -> BinEntry:
         """Copy this instance to a BinEntry instance"""
-        return BinEntry(
-            self.ord, self.bin_id, self.ofl, self.hluti, self.bmynd, self.mark
-        )
+        return BinEntry(self.ord, self.bin_id, self.ofl, self.hluti, self.bmynd, self.mark)
 
 
 class LFU_Cache(Generic[_K, _V]):
-
     """Least-frequently-used (LFU) cache for word lookups.
     Based on a pattern by Raymond Hettinger
     """
@@ -504,15 +499,12 @@ class LFU_Cache(Generic[_K, _V]):
                 self.misses += 1
                 # Purge the 10% least frequently used cache entries
                 if len(self.cache) > self.maxsize:
-                    for key, _ in nsmallest(
-                        self.maxsize // 10, self.use_count.items(), key=itemgetter(1)
-                    ):
+                    for key, _ in nsmallest(self.maxsize // 10, self.use_count.items(), key=itemgetter(1)):
                         del self.cache[key], self.use_count[key]
             return result
 
 
 class ConfigError(Exception):
-
     """Exception class for configuration errors"""
 
     def __init__(self, s: str) -> None:
@@ -535,7 +527,6 @@ class ConfigError(Exception):
 
 
 class LineReader:
-
     """Read lines from a text file, recognizing $include directives"""
 
     def __init__(
@@ -566,7 +557,8 @@ class LineReader:
         self._line = 0
         try:
             if self._package_name:
-                stream = resource_stream(self._package_name, self._fname)
+                ref = importlib_resources.files(self._package_name).joinpath(self._fname)
+                stream = ref.open("rb")
             else:
                 stream = open(self._fname, "rb")
             with stream as inp:
@@ -608,17 +600,9 @@ class LineReader:
         except (IOError, OSError):
             if self._outer_fname:
                 # This is an include file within an outer config file
-                c = ConfigError(
-                    "Error while opening or reading include file '{0}'".format(
-                        self._fname
-                    )
-                )
+                c = ConfigError("Error while opening or reading include file '{0}'".format(self._fname))
                 c.set_pos(self._outer_fname, self._outer_line)
             else:
                 # This is an outermost config file
-                c = ConfigError(
-                    "Error while opening or reading config file '{0}'".format(
-                        self._fname
-                    )
-                )
+                c = ConfigError("Error while opening or reading config file '{0}'".format(self._fname))
             raise c

@@ -27,7 +27,7 @@ jobs:
 
     - name: Install BinPackage
       run: |
-        python -m pip install --upgrade pip wheel setuptools pytest types-setuptools
+        python -m pip install --upgrade pip wheel setuptools pytest types-setuptools packages
         python -m pip install -e .
 
     - name: Type check with mypy
@@ -43,7 +43,6 @@ jobs:
       run: |
         wget -q -O src/islenska/resources/KRISTINsnid.csv.zip 'https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip'
         unzip -q -d src/islenska/resources/ src/islenska/resources/KRISTINsnid.csv.zip
-        rm src/islenska/resources/KRISTINsnid.csv.*
         python tools/binpack.py
 
     - name: Test with pytest

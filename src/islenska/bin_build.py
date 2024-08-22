@@ -37,6 +37,7 @@
 
 from typing import cast, Any
 
+import os
 import platform
 import cffi  # type: ignore
 
@@ -71,6 +72,10 @@ else:
 extra_link_args = []
 if MACOS:
     extra_link_args = ["-stdlib=libc++", "-mmacosx-version-min=10.9"]
+
+# On some systems, the linker needs to be told to use the C++ compiler
+# due to changes in the default behaviour of distutils
+os.environ["LDCXXSHARED"] = "c++ -shared"
 
 ffibuilder.cdef(declarations)  # type: ignore
 

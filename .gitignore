@@ -74,6 +74,7 @@ console/
 # Virtual environments
 venv
 p3*/
+pypy*/
 
 # Installer logs
 pip-log.txt

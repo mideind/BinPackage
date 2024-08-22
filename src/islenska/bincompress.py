@@ -79,7 +79,7 @@ import struct
 import functools
 import mmap
 
-import importlib_resources  # type: ignore
+import importlib.resources as importlib_resources
 
 # Import the CFFI wrapper for the bin.cpp C++ module (see also build_bin.py)
 # pylint: disable=no-name-in-module
@@ -114,7 +114,7 @@ class BinCompressed:
     allowing read-only lookups of word forms"""
 
     # Note: the resource path below should NOT use os.path.join()
-    ref = importlib_resources.files(__name__) / "resources" / BIN_COMPRESSED_FILE
+    ref = importlib_resources.files("islenska") / "resources" / BIN_COMPRESSED_FILE
     with importlib_resources.as_file(ref) as path:
         _FNAME = str(path)
 

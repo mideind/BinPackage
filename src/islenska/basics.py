@@ -57,8 +57,7 @@ from pathlib import Path
 from heapq import nsmallest
 from operator import itemgetter
 
-import importlib_resources  # type: ignore
-
+import importlib.resources as importlib_resources
 import threading
 
 
@@ -557,7 +556,7 @@ class LineReader:
         self._line = 0
         try:
             if self._package_name:
-                ref = importlib_resources.files(self._package_name).joinpath(self._fname)
+                ref = importlib_resources.files("islenska").joinpath(self._fname)
                 stream = ref.open("rb")
             else:
                 stream = open(self._fname, "rb")

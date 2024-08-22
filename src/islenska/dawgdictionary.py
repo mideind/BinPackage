@@ -46,7 +46,7 @@ import threading
 import struct
 import mmap
 
-import importlib_resources  # type: ignore
+import importlib.resources as importlib_resources
 
 _PATH = os.path.dirname(__file__) or "."
 
@@ -70,7 +70,7 @@ class Wordbase:
         if __package__:
             # If we're inside a package (which is by far the most common case),
             # obtain the name of a resource file through importlib.
-            ref = importlib_resources.files(__name__) / "resources" / f"{resource}.dawg.bin"
+            ref = importlib_resources.files("islenska") / "resources" / f"{resource}.dawg.bin"
             with importlib_resources.as_file(ref) as path:
                 pname = str(path)
         else:

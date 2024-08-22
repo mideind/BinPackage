@@ -561,6 +561,7 @@ class LineReader:
                 stream = ref.open("rb")
             else:
                 stream = open(self._fname, "rb")
+            assert stream is not None
             with stream as inp:
                 # Read config file line-by-line from the package resources
                 accumulator = ""

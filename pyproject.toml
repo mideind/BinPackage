@@ -54,13 +54,13 @@ filterwarnings = [
 ]
 
 [tool.ruff]
-line-length = 120
+line-length = 88
 
 [tool.black]
-line-length = 120
+line-length = 88
 
 [tool.isort]
 # This forces these imports to placed at the top
 known_future_library = ["__future__", "typing", "typing_extensions"]
 profile = "black"
-line_length = 120
+line_length = 88

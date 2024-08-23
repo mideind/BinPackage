@@ -74,7 +74,8 @@ if MACOS:
     extra_link_args = ["-stdlib=libc++", "-mmacosx-version-min=10.9"]
 
 # On some systems, the linker needs to be told to use the C++ compiler
-# due to changes in the default behaviour of distutils
+# due to changes in the default behaviour of distutils. If absent, the
+# package will not build for PyPy.
 os.environ["LDCXXSHARED"] = "c++ -shared"
 
 ffibuilder.cdef(declarations)  # type: ignore

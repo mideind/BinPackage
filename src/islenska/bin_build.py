@@ -48,6 +48,7 @@ ffibuilder = cast(Any, cffi).FFI()
 
 WINDOWS = platform.system() == "Windows"
 MACOS = platform.system() == "Darwin"
+IMPLEMENTATION = platform.python_implementation()
 
 # What follows is the actual Python-wrapped C interface to bin.*.so
 
@@ -72,11 +73,13 @@ else:
 extra_link_args = []
 if MACOS:
     extra_link_args = ["-stdlib=libc++", "-mmacosx-version-min=10.9"]
+    os.environ["MACOSX_DEPLOYMENT_TARGET"] = "10.9"
 
 # On some systems, the linker needs to be told to use the C++ compiler
 # due to changes in the default behaviour of distutils. If absent, the
 # package will not build for PyPy.
-os.environ["LDCXXSHARED"] = "c++ -shared"
+if IMPLEMENTATION == "PyPy":
+    os.environ["LDCXXSHARED"] = "c++ -shared"
 
 ffibuilder.cdef(declarations)  # type: ignore
 

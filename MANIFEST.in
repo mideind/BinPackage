@@ -10,5 +10,7 @@ include src/islenska/resources/compressed.bin
 exclude src/islenska/resources/*.csv
 exclude src/islenska/resources/*.txt
 exclude src/islenska/resources/KRISTINsnid.*
+exclude src/islenska/resources/.DS_Store
+exclude src/islenska/.DS_Store
 exclude src/islenska/*.o
 exclude src/islenska/*.so

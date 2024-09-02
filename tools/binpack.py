@@ -165,6 +165,18 @@ from islenska.basics import (
 MeaningTuple = Tuple[bytes, bytes]  # ordfl, beyging
 
 
+# Bad word forms that have previously occurred in BÍN
+BAD_BMYND = {
+    "a",
+    "num",
+    "i",
+    "ir",
+    "in",
+    "ina",
+    "irnar",
+    "irnir",
+}
+
 # We skip word forms that contain one or more of the following letters.
 # These are mostly errors in BÍN, and/or foreign (Danish) words that
 # are not relevant to Icelandic.
@@ -526,17 +538,7 @@ class BinCompressor:
         if (
             not m.ord
             or not m.bmynd
-            or m.bmynd
-            in {
-                "a",
-                "num",
-                "i",
-                "ir",
-                "in",
-                "ina",
-                "irnar",
-                "irnir",
-            }
+            or m.bmynd in BAD_BMYND
         ):
             return False
         elif m.ord == "sem að" and m.bin_id == 495372:
@@ -578,6 +580,9 @@ class BinCompressor:
         # Skip this if the word form is a single letter but the stem is not;
         # except for the words "eiga", "ýr" and "ær"
         if len(m.bmynd) == 1 and len(m.ord) > 1 and m.ord not in {"ýr", "ær", "eiga"}:
+            return False
+        # 'snættt' is a bug in BÍN
+        if m.bmynd.endswith("ttt"):
             return False
         return True
 
@@ -809,7 +814,7 @@ class BinCompressor:
             for bin_id in set(vv[0] for vv in values):
                 # Look at all word forms of this lemma
                 lemma = self._lemmas[bin_id][0]
-                for canonical in [lemma] + list(self._lemma_forms.get(bin_id, [])):
+                for canonical in [lemma] + list(self._lemma_forms.get(bin_id, set())):
                     for s, m, _ in self._lookup_form[self._forms[canonical]]:
                         if s == bin_id:
                             b = self._meanings[m][1]

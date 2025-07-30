@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ['3.9', '3.13', '3.14.0-beta.4', 'pypy-3.9', 'pypy-3.10', 'pypy-3.11']
+        python-version: ['3.9', '3.14.0-beta.4', 'pypy-3.9', 'pypy-3.11']
 
     steps:
     - uses: actions/checkout@v4
@@ -31,9 +31,14 @@ jobs:
         uv pip install --system --upgrade wheel setuptools pytest types-setuptools packaging
         uv pip install --system -e .
 
+    - name: Lint with ruff
+      run: |
+        if [ "${{ matrix.python-version }}" == "3.9" ]; then uv pip install --system ruff; fi
+        if [ "${{ matrix.python-version }}" == "3.9" ]; then ruff check src/islenska; fi
+
     - name: Type check with mypy
       run: |
-        if [ "${{ matrix.python-version }}" == "3.9" ]; then python -m pip install mypy; fi
+        if [ "${{ matrix.python-version }}" == "3.9" ]; then uv pip install --system mypy; fi
         if [ "${{ matrix.python-version }}" == "3.9" ]; then mypy --python-version=3.9 src/islenska; fi
 
     - name: Build *.dawg.bin

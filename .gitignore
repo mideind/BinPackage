@@ -60,6 +60,7 @@ develop-eggs/
 dist/
 eggs/
 .eggs/
+.coverage
 lib/
 lib64/
 parts/
@@ -97,3 +98,5 @@ $RECYCLE.BIN/
 *.msi
 *.msm
 *.msp
+
+

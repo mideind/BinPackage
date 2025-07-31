@@ -89,6 +89,7 @@ from ._bin import lib as lib_unknown, ffi as ffi_unknown  # type: ignore
 bin_cffi = cast(Any, lib_unknown)
 ffi = cast(Any, ffi_unknown)
 
+# ruff: noqa: E402
 from .basics import (
     BIN_ID_BITS,
     BIN_ID_MASK,

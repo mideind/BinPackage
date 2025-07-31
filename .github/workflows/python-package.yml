@@ -10,13 +10,29 @@ on:
     branches: [ "*" ]
 
 jobs:
-  build:
+  prepare-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache KRISTINsnid.csv.zip
+        id: cache-kristin
+        uses: actions/cache@v4
+        with:
+          path: src/islenska/resources/KRISTINsnid.csv.zip
+          key: kristin-csv-zip-v1
+      - name: Download KRISTINsnid.csv.zip
+        if: steps.cache-kristin.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p src/islenska/resources
+          wget -q -O src/islenska/resources/KRISTINsnid.csv.zip 'https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip'
 
+  build:
+    needs: prepare-cache
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13.0-rc.1', 'pypy-3.9', 'pypy-3.10']
+        python-version: ['3.9', '3.13', '3.14.0-beta.4', 'pypy-3.9', 'pypy-3.11']
 
     steps:
     - uses: actions/checkout@v4
@@ -25,14 +41,26 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
+    - name: Restore cached KRISTINsnid.csv.zip
+      uses: actions/cache@v4
+      with:
+        path: src/islenska/resources/KRISTINsnid.csv.zip
+        key: kristin-csv-zip-v1
+
     - name: Install BinPackage
       run: |
-        python -m pip install --upgrade pip wheel setuptools pytest types-setuptools
-        python -m pip install -e .
+        python -m pip install uv
+        uv pip install --system --upgrade wheel setuptools pytest types-setuptools packaging
+        uv pip install --system -e .
+
+    - name: Lint with ruff
+      run: |
+        if [ "${{ matrix.python-version }}" == "3.9" ]; then uv pip install --system ruff; fi
+        if [ "${{ matrix.python-version }}" == "3.9" ]; then ruff check src/islenska; fi
 
     - name: Type check with mypy
       run: |
-        if [ "${{ matrix.python-version }}" == "3.9" ]; then python -m pip install mypy; fi
+        if [ "${{ matrix.python-version }}" == "3.9" ]; then uv pip install --system mypy; fi
         if [ "${{ matrix.python-version }}" == "3.9" ]; then mypy --python-version=3.9 src/islenska; fi
 
     - name: Build *.dawg.bin
@@ -41,7 +69,6 @@ jobs:
 
     - name: Build compressed.bin
       run: |
-        wget -q -O src/islenska/resources/KRISTINsnid.csv.zip 'https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip'
         unzip -q -d src/islenska/resources/ src/islenska/resources/KRISTINsnid.csv.zip
         python tools/binpack.py
 

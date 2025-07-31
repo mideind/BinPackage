@@ -31,13 +31,14 @@
 
 """
 
-from .version import __version__
+import importlib.metadata
 
 from .basics import BinEntry, Ksnid
 from .bindb import Bin, Orð, BinFilterFunc, BinEntryList, BinEntryIterable
 
 __author__ = "Miðeind ehf."
-__copyright__ = "© 2023 Miðeind ehf."
+__copyright__ = "© 2025 Miðeind ehf."
+__version__ = importlib.metadata.version(__name__)
 
 __all__ = (
     "BinEntry",

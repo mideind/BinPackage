@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61.0", "cffi>=1.15.1"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "islenska"
 version = "1.0.3"
@@ -23,6 +27,8 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -41,26 +47,26 @@ dev = ["pytest"]
 
 # *** Configuration of tools ***
 
+[tool.setuptools]
+include-package-data = true
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-where = ["src"]
-
-[tool.pytest.ini_options]
-filterwarnings = [
-    # Ignore deprecation warnings in libraries, their problem not ours
-    # "ignore::DeprecationWarning",
-]
+islenska = ["py.typed"]
 
 [tool.ruff]
 line-length = 88
-
-[tool.black]
-line-length = 88
+#lint.select = ["ALL"] # We use default rules for now
+# extend-select = ["E501"] # Complain about line length
+# Ignore specific rules
+# (we should aim to have these as few as possible)
+lint.ignore = [
+    "E731", # 'E731: Do not assign a lambda expression, use a def'
+]
 
 [tool.isort]
 # This forces these imports to placed at the top
 known_future_library = ["__future__", "typing", "typing_extensions"]
-profile = "black"
 line_length = 88

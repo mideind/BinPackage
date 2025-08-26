@@ -53,6 +53,7 @@ jobs:
           CIBW_BEFORE_BUILD_MACOS: python3 -m pip install --upgrade setuptools wheel cffi
           CIBW_ARCHS_MACOS: "x86_64 arm64"
           CIBW_ARCHS_WINDOWS: "AMD64"
+          CIBW_BEFORE_BUILD_WINDOWS: python -m pip install "setuptools<72"
           CIBW_ARCHS_LINUX: "x86_64"
           CIBW_BUILD_FRONTEND: "build"
           # CIBW_PROJECT_REQUIRES_PYTHON: ">=3.9"

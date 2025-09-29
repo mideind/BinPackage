@@ -4,7 +4,7 @@
 
     Tests for BinPackage module
 
-    Copyright © 2023 Miðeind ehf.
+    Copyright © 2025 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     This software is licensed under the MIT License:

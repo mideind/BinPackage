@@ -3,7 +3,7 @@
 
     Compound word analyzer
 
-    Copyright © 2023 Miðeind ehf.
+    Copyright © 2025 Miðeind ehf.
 
     This software is licensed under the MIT License:
 

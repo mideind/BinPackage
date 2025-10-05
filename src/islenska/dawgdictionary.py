@@ -103,8 +103,9 @@ class Dawg:
             return []
 
         try:
-            result_str = ffi.string(result_ptr).decode("latin-1")
-            return json.loads(result_str)
+            # C++ now returns UTF-8 bytes
+            result_bytes = ffi.string(result_ptr)
+            return json.loads(result_bytes)  # json.loads accepts UTF-8 bytes
         finally:
             dawg_cffi.dawg_free_string(result_ptr)
 

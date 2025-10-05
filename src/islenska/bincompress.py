@@ -78,7 +78,7 @@ from typing import (
 import struct
 import functools
 import mmap
-
+import json
 import importlib.resources as importlib_resources
 
 # Import the CFFI wrapper for the bin.cpp C++ module (see also build_bin.py)
@@ -110,9 +110,12 @@ from .basics import (
 )
 
 
-class BinCompressed:
-    """A wrapper for the compressed binary dictionary,
-    allowing read-only lookups of word forms"""
+class BinCompressedPure:
+    """Pure Python implementation of the compressed binary dictionary.
+
+    This class is kept as a reference implementation and fallback.
+    The BinCompressed class below uses C++ for performance where available.
+    """
 
     # Note: the resource path below should NOT use os.path.join()
     ref = importlib_resources.files("islenska") / "resources" / BIN_COMPRESSED_FILE
@@ -708,3 +711,114 @@ class BinCompressed:
         subject to the given constraints on the beyging field.
         Note that the word form is case-sensitive."""
         return self.lookup_case(word, "EF", **options)
+
+
+class BinCompressed(BinCompressedPure):
+    """Hybrid Python/C++ wrapper for the compressed binary dictionary.
+
+    Inherits from BinCompressedPure and overrides methods with C++ implementations
+    for improved performance. Methods not yet migrated to C++ are inherited from
+    the base class.
+
+    The base class creates the memory-mapped file, which is shared with the C++
+    implementation to avoid duplication.
+    """
+
+    def __init__(self) -> None:
+        """Initialize base class and add C++ handle for optimized methods."""
+        # Initialize base class (creates mmap, sets up all Python infrastructure)
+        super().__init__()
+
+        # Initialize C++ handle using the mmap from base class
+        self._cpp_handle = bin_cffi.bin_compressed_init(ffi.from_buffer(self._b))
+        if not self._cpp_handle:
+            raise RuntimeError("Failed to initialize C++ BinCompressed handle")
+
+    def __del__(self) -> None:
+        """Clean up C++ resources."""
+        if hasattr(self, '_cpp_handle') and self._cpp_handle:
+            bin_cffi.bin_compressed_close(self._cpp_handle)
+
+    # Override methods with C++ implementations
+    def contains(self, word: str) -> bool:
+        """Check if word exists in dictionary (C++ implementation).
+
+        Overrides base class method with optimized C++ version.
+        """
+        try:
+            word_bytes = word.encode("latin-1")
+            return bin_cffi.bin_compressed_contains(self._cpp_handle, word_bytes)
+        except UnicodeEncodeError:
+            # Word contains non-Latin-1 characters, can't be in dictionary
+            return False
+
+    __contains__ = contains
+
+    def lookup(
+        self,
+        word: str,
+        cat: Optional[str] = None,
+        lemma: Optional[str] = None,
+        utg: Optional[int] = None,
+        inflection_filter: Optional[InflectionFilter] = None,
+    ) -> List[BinEntryTuple]:
+        """Lookup word in dictionary (C++ implementation with Python fallback for filters).
+
+        Overrides base class method with optimized C++ version.
+        The C++ implementation handles cat, lemma, and utg filters.
+        If inflection_filter is provided, we fall back to Python filtering.
+        """
+        try:
+            word_bytes = word.encode("latin-1")
+
+            # Prepare filter parameters for C++
+            # CFFI requires ffi.NULL instead of None for null pointers
+            cat_bytes = cat.encode("latin-1") if cat else ffi.NULL
+            lemma_bytes = lemma.encode("latin-1") if lemma else ffi.NULL
+            utg_value = utg if utg is not None else -1
+
+            # Call C++ lookup
+            result_ptr = bin_cffi.bin_compressed_lookup(
+                self._cpp_handle,
+                word_bytes,
+                cat_bytes,
+                lemma_bytes,
+                utg_value
+            )
+
+            if not result_ptr:
+                return []
+
+            try:
+                # Parse JSON result (C++ now returns UTF-8 bytes)
+                result_bytes = ffi.string(result_ptr)
+                entries = json.loads(result_bytes)  # json.loads accepts UTF-8 bytes
+
+                # Convert to BinEntryTuple format: (stofn, utg, ofl, fl, ordmynd, beyging)
+                result: List[BinEntryTuple] = []
+                for entry in entries:
+                    tuple_entry: BinEntryTuple = (
+                        entry["stofn"],
+                        entry["utg"],
+                        entry["ofl"],
+                        entry["fl"],
+                        entry["ordmynd"],
+                        entry["beyging"]
+                    )
+
+                    # Apply inflection_filter if provided
+                    if inflection_filter is None or inflection_filter(tuple_entry[5]):
+                        result.append(tuple_entry)
+
+                return result
+            finally:
+                bin_cffi.bin_compressed_free_string(result_ptr)
+
+        except UnicodeEncodeError:
+            # Word contains non-Latin-1 characters, can't be in dictionary
+            return []
+
+    # Other methods (lookup_variants, lookup_ksnid, lookup_case,
+    # lookup_id, raw_nominative, nominative, accusative, dative, genitive, etc.)
+    # are inherited from BinCompressedPure and will be gradually migrated to C++
+    # by adding overrides here as implementations become available.

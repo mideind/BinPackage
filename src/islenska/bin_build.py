@@ -67,6 +67,14 @@ declarations = """
     char* dawg_find_combinations(DawgHandle handle, const char* word);
     void dawg_free_string(char* str);
 
+    // From bincompress.h
+    typedef void* BinCompressedHandle;
+    BinCompressedHandle bin_compressed_init(const BYTE* pbMap);
+    void bin_compressed_close(BinCompressedHandle handle);
+    bool bin_compressed_contains(BinCompressedHandle handle, const char* word);
+    char* bin_compressed_lookup(BinCompressedHandle handle, const char* word, const char* cat, const char* lemma, int utg);
+    void bin_compressed_free_string(char* str);
+
 """
 
 # Do the magic CFFI incantations necessary to get CFFI and setuptools
@@ -97,7 +105,7 @@ ffibuilder.set_source(  # type: ignore
     # This is the reason for the "extern 'C' { ... }" wrapper.
     'extern "C" {\n' + declarations + "\n}\n",
     source_extension=".cpp",
-    sources=["src/islenska/bin.cpp", "src/islenska/dawgdictionary.cpp"],
+    sources=["src/islenska/bin.cpp", "src/islenska/dawgdictionary.cpp", "src/islenska/bincompress.cpp"],
     extra_compile_args=extra_compile_args,
     extra_link_args=extra_link_args,
 )

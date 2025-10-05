@@ -789,12 +789,37 @@ bool dawg_contains(DawgHandle handle, const char* word) {
 }
 
 /**
- * Serialize compound word combinations to JSON format.
+ * Append a Latin-1 string to a stream as UTF-8 with JSON escaping.
+ *
+ * Handles both UTF-8 conversion and JSON special character escaping.
+ *
+ * @param os Output stream to append to
+ * @param latin1 Latin-1 encoded string to convert and append
+ */
+static void append_latin1_as_utf8_json(std::ostream& os, const std::string& latin1) {
+    for (unsigned char c : latin1) {
+        // JSON escaping for special characters
+        if (c == '"' || c == '\\') {
+            os << '\\' << c;
+        } else if (c < 0x80) {
+            // ASCII range: single byte
+            os << c;
+        } else {
+            // Latin-1 extended range: two bytes in UTF-8
+            os << static_cast<char>(0xC0 | (c >> 6));
+            os << static_cast<char>(0x80 | (c & 0x3F));
+        }
+    }
+}
+
+/**
+ * Serialize compound word combinations to JSON format with UTF-8 encoding.
  *
  * Converts a vector of word-part vectors into a JSON string:
  *   [["part1", "part2"], ["part1", "part2", "part3"]]
  *
- * This format is easy to parse in Python using json.loads().
+ * Converts all Latin-1 strings to UTF-8 for JSON output, allowing
+ * Python's json.loads() to consume the bytes directly without decoding.
  *
  * @param combinations Vector of word splits to serialize
  * @return Newly allocated JSON string (caller must free with dawg_free_string)
@@ -808,13 +833,7 @@ char* serialize_combinations(const std::vector<std::vector<std::string>>& combin
         for (size_t j = 0; j < combinations[i].size(); ++j) {
             if (j > 0) ss << ",";
             ss << "\"";
-            // Escape quotes and backslashes in JSON string
-            for (char c : combinations[i][j]) {
-                 if (c == '"' || c == '\\') {
-                    ss << '\\';
-                }
-                ss << c;
-            }
+            append_latin1_as_utf8_json(ss, combinations[i][j]);
             ss << "\"";
         }
         ss << "]";

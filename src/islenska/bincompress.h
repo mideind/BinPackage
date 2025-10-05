@@ -99,6 +99,30 @@ char* bin_compressed_lookup(
 );
 
 /**
+ * Lookup a word and return Ksnid results as a JSON string.
+ *
+ * Returns a JSON array of Ksnid objects:
+ * [
+ *   {"ord": "...", "bin_id": 123, "ofl": "...", "hluti": "...", "form": "...", "mark": "...", "ksnid": "..."},
+ *   ...
+ * ]
+ *
+ * @param handle Handle returned by bin_compressed_init()
+ * @param word Latin-1 encoded word to search for
+ * @param cat Optional word category filter (NULL for no filter)
+ * @param lemma Optional lemma filter (NULL for no filter)
+ * @param utg Optional BÍN ID filter (-1 for no filter)
+ * @return JSON string (must be freed with bin_compressed_free_string), or NULL if not found
+ */
+char* bin_compressed_lookup_ksnid(
+    BinCompressedHandle handle,
+    const char* word,
+    const char* cat,
+    const char* lemma,
+    int utg
+);
+
+/**
  * Free a string returned by bin_compressed functions.
  *
  * @param str String to free (may be NULL)

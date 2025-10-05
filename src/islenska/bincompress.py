@@ -818,7 +818,73 @@ class BinCompressed(BinCompressedPure):
             # Word contains non-Latin-1 characters, can't be in dictionary
             return []
 
-    # Other methods (lookup_variants, lookup_ksnid, lookup_case,
+    def lookup_ksnid(
+        self,
+        word: str,
+        cat: Optional[str] = None,
+        lemma: Optional[str] = None,
+        utg: Optional[int] = None,
+        inflection_filter: Optional[InflectionFilter] = None,
+    ) -> List[Ksnid]:
+        """Lookup word and return Ksnid entries (C++ implementation with Python fallback for filters).
+
+        Overrides base class method with optimized C++ version.
+        The C++ implementation handles cat, lemma, and utg filters.
+        If inflection_filter is provided, we apply it to the C++ results.
+        """
+        try:
+            word_bytes = word.encode("latin-1")
+
+            # Prepare filter parameters for C++
+            # CFFI requires ffi.NULL instead of None for null pointers
+            cat_bytes = cat.encode("latin-1") if cat else ffi.NULL
+            lemma_bytes = lemma.encode("latin-1") if lemma else ffi.NULL
+            utg_value = utg if utg is not None else -1
+
+            # Call C++ lookup_ksnid
+            result_ptr = bin_cffi.bin_compressed_lookup_ksnid(
+                self._cpp_handle,
+                word_bytes,
+                cat_bytes,
+                lemma_bytes,
+                utg_value
+            )
+
+            if not result_ptr:
+                return []
+
+            try:
+                # Parse JSON result (C++ returns UTF-8 bytes)
+                result_bytes = ffi.string(result_ptr)
+                entries = json.loads(result_bytes)
+
+                # Convert to Ksnid objects
+                result: List[Ksnid] = []
+                for entry in entries:
+                    # Apply inflection_filter if provided
+                    if inflection_filter is not None and not inflection_filter(entry["mark"]):
+                        continue
+
+                    ksnid_obj = Ksnid.from_parameters(
+                        entry["ord"],
+                        entry["bin_id"],
+                        entry["ofl"],
+                        entry["hluti"],
+                        entry["form"],
+                        entry["mark"],
+                        entry["ksnid"]
+                    )
+                    result.append(ksnid_obj)
+
+                return result
+            finally:
+                bin_cffi.bin_compressed_free_string(result_ptr)
+
+        except UnicodeEncodeError:
+            # Word contains non-Latin-1 characters, can't be in dictionary
+            return []
+
+    # Other methods (lookup_variants, lookup_case,
     # lookup_id, raw_nominative, nominative, accusative, dative, genitive, etc.)
     # are inherited from BinCompressedPure and will be gradually migrated to C++
     # by adding overrides here as implementations become available.

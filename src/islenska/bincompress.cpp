@@ -123,6 +123,20 @@ struct BinEntry {
 };
 
 /**
+ * Structure to hold a Ksnid entry.
+ * Corresponds to Ksnid.from_parameters(ord, bin_id, ofl, hluti, form, mark, ksnid)
+ */
+struct KsnidEntry {
+    std::string ord;        // Lemma (stofn)
+    int bin_id;             // BÍN id
+    std::string ofl;        // Word category
+    std::string hluti;      // Subcategory (fl)
+    std::string form;       // Word form
+    std::string mark;       // Inflection marks (beyging)
+    std::string ksnid;      // Ksnid string
+};
+
+/**
  * Main BinCompressed class.
  *
  * Wraps a memory-mapped compressed BÍN dictionary file and provides
@@ -227,6 +241,22 @@ public:
      * @return Vector of BinEntry structures
      */
     std::vector<BinEntry> lookup(
+        const char* word,
+        const char* cat = nullptr,
+        const char* lemma = nullptr,
+        int utg = -1
+    ) const;
+
+    /**
+     * Lookup a word and return all matching Ksnid entries.
+     *
+     * @param word Latin-1 encoded word to lookup
+     * @param cat Optional word category filter (NULL for no filter)
+     * @param lemma Optional lemma filter (NULL for no filter)
+     * @param utg Optional BÍN ID filter (-1 for no filter)
+     * @return Vector of KsnidEntry structures
+     */
+    std::vector<KsnidEntry> lookup_ksnid(
         const char* word,
         const char* cat = nullptr,
         const char* lemma = nullptr,
@@ -463,6 +493,68 @@ std::vector<BinEntry> BinCompressed::lookup(
     return result;
 }
 
+std::vector<KsnidEntry> BinCompressed::lookup_ksnid(
+    const char* word,
+    const char* cat,
+    const char* lemma_filter,
+    int utg
+) const {
+    std::vector<KsnidEntry> result;
+
+    // Get raw entries
+    std::vector<RawEntry> raw_entries = raw_lookup(word);
+
+    for (const auto& raw : raw_entries) {
+        // Apply utg filter
+        if (utg != -1 && raw.bin_id != utg) {
+            continue;
+        }
+
+        // Get meaning
+        std::pair<std::string, std::string> meaning_pair = meaning(raw.meaning_index);
+        std::string ofl = meaning_pair.first;
+        std::string beyging = meaning_pair.second;
+
+        // Apply category filter
+        if (cat != nullptr) {
+            // Special case: "no" matches any gender (kk, kvk, hk)
+            if (strcmp(cat, "no") == 0) {
+                if (ofl != "kk" && ofl != "kvk" && ofl != "hk") {
+                    continue;
+                }
+            } else if (ofl != cat) {
+                continue;
+            }
+        }
+
+        // Get lemma
+        std::pair<std::string, std::string> lemma_pair = lemma(raw.bin_id);
+        std::string stofn = lemma_pair.first;
+        std::string fl = lemma_pair.second;
+
+        // Apply lemma filter
+        if (lemma_filter != nullptr && stofn != lemma_filter) {
+            continue;
+        }
+
+        // Get ksnid string
+        std::string ksnid_str = ksnid_string(raw.ksnid_index);
+
+        // Create entry
+        KsnidEntry entry;
+        entry.ord = stofn;
+        entry.bin_id = raw.bin_id;
+        entry.ofl = ofl;
+        entry.hluti = fl;
+        entry.form = word;
+        entry.mark = beyging;
+        entry.ksnid = ksnid_str;
+        result.push_back(entry);
+    }
+
+    return result;
+}
+
 // ============================================================================
 // C API implementation
 // ============================================================================
@@ -542,6 +634,33 @@ static char* serialize_entries(const std::vector<BinEntry>& entries) {
     return result;
 }
 
+static char* serialize_ksnid_entries(const std::vector<KsnidEntry>& entries) {
+    std::stringstream ss;
+    ss << "[";
+    for (size_t i = 0; i < entries.size(); ++i) {
+        if (i > 0) ss << ",";
+        ss << "{\"ord\":\"";
+        append_latin1_as_utf8(ss, entries[i].ord);
+        ss << "\",\"bin_id\":" << entries[i].bin_id << ",\"ofl\":\"";
+        append_latin1_as_utf8(ss, entries[i].ofl);
+        ss << "\",\"hluti\":\"";
+        append_latin1_as_utf8(ss, entries[i].hluti);
+        ss << "\",\"form\":\"";
+        append_latin1_as_utf8(ss, entries[i].form);
+        ss << "\",\"mark\":\"";
+        append_latin1_as_utf8(ss, entries[i].mark);
+        ss << "\",\"ksnid\":\"";
+        append_latin1_as_utf8(ss, entries[i].ksnid);
+        ss << "\"}";
+    }
+    ss << "]";
+
+    std::string s = ss.str();
+    char* result = new char[s.length() + 1];
+    std::strcpy(result, s.c_str());
+    return result;
+}
+
 char* bin_compressed_lookup(
     BinCompressedHandle handle,
     const char* word,
@@ -557,6 +676,23 @@ char* bin_compressed_lookup(
     }
 
     return serialize_entries(entries);
+}
+
+char* bin_compressed_lookup_ksnid(
+    BinCompressedHandle handle,
+    const char* word,
+    const char* cat,
+    const char* lemma,
+    int utg
+) {
+    if (!handle || !word) return nullptr;
+
+    auto entries = static_cast<BinCompressed*>(handle)->lookup_ksnid(word, cat, lemma, utg);
+    if (entries.empty()) {
+        return nullptr;
+    }
+
+    return serialize_ksnid_entries(entries);
 }
 
 void bin_compressed_free_string(char* str) {

@@ -73,6 +73,7 @@ declarations = """
     void bin_compressed_close(BinCompressedHandle handle);
     bool bin_compressed_contains(BinCompressedHandle handle, const char* word);
     char* bin_compressed_lookup(BinCompressedHandle handle, const char* word, const char* cat, const char* lemma, int utg);
+    char* bin_compressed_lookup_ksnid(BinCompressedHandle handle, const char* word, const char* cat, const char* lemma, int utg);
     void bin_compressed_free_string(char* str);
 
 """

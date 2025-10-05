@@ -249,9 +249,9 @@ BinCompressed::BinCompressed(const BYTE* pbMap) : m_pbMap(pbMap) {
     UINT mappings_offset = read_uint32(16);
     m_forms_offset = read_uint32(20);
     UINT lemmas_offset = read_uint32(24);
-    UINT templates_offset = read_uint32(28);
+    // UINT templates_offset = read_uint32(28);  // Not currently used
     UINT meanings_offset = read_uint32(32);
-    UINT alphabet_offset = read_uint32(36);
+    // UINT alphabet_offset = read_uint32(36);  // Not currently used
     UINT subcats_offset = read_uint32(40);
     UINT ksnid_offset = read_uint32(44);
     m_begin_greynir_utg = read_uint32(48);
@@ -332,7 +332,7 @@ std::pair<std::string, std::string> BinCompressed::lemma(int bin_id) const {
     UINT bits = read_uint32(off) & 0x7FFFFFFF;
 
     // Extract subcategory index (lower SUBCAT_BITS)
-    int cix = bits & ((1 << SUBCAT_BITS) - 1);
+    size_t cix = bits & ((1 << SUBCAT_BITS) - 1);
 
     // Read lemma string (length-prefixed)
     UINT p = off + 4;
@@ -423,7 +423,9 @@ std::vector<BinEntry> BinCompressed::lookup(
         }
 
         // Get meaning
-        auto [ofl, beyging] = meaning(raw.meaning_index);
+        std::pair<std::string, std::string> meaning_pair = meaning(raw.meaning_index);
+        std::string ofl = meaning_pair.first;
+        std::string beyging = meaning_pair.second;
 
         // Apply category filter
         if (cat != nullptr) {
@@ -438,7 +440,9 @@ std::vector<BinEntry> BinCompressed::lookup(
         }
 
         // Get lemma
-        auto [stofn, fl] = lemma(raw.bin_id);
+        std::pair<std::string, std::string> lemma_pair = lemma(raw.bin_id);
+        std::string stofn = lemma_pair.first;
+        std::string fl = lemma_pair.second;
 
         // Apply lemma filter
         if (lemma_filter != nullptr && stofn != lemma_filter) {

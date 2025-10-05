@@ -559,7 +559,7 @@ std::vector<KsnidEntry> BinCompressed::lookup_ksnid(
 // C API implementation
 // ============================================================================
 
-BinCompressedHandle bin_compressed_init(const BYTE* pbMap) {
+BcHandle bin_compressed_init(const BYTE* pbMap) {
     try {
         return new BinCompressed(pbMap);
     } catch (...) {
@@ -567,13 +567,13 @@ BinCompressedHandle bin_compressed_init(const BYTE* pbMap) {
     }
 }
 
-void bin_compressed_close(BinCompressedHandle handle) {
+void bin_compressed_close(BcHandle handle) {
     if (handle) {
         delete static_cast<BinCompressed*>(handle);
     }
 }
 
-bool bin_compressed_contains(BinCompressedHandle handle, const char* word) {
+bool bin_compressed_contains(BcHandle handle, const char* word) {
     if (!handle || !word) return false;
     return static_cast<BinCompressed*>(handle)->contains(word);
 }
@@ -662,7 +662,7 @@ static char* serialize_ksnid_entries(const std::vector<KsnidEntry>& entries) {
 }
 
 char* bin_compressed_lookup(
-    BinCompressedHandle handle,
+    BcHandle handle,
     const char* word,
     const char* cat,
     const char* lemma,
@@ -679,7 +679,7 @@ char* bin_compressed_lookup(
 }
 
 char* bin_compressed_lookup_ksnid(
-    BinCompressedHandle handle,
+    BcHandle handle,
     const char* word,
     const char* cat,
     const char* lemma,

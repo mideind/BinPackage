@@ -41,7 +41,7 @@ typedef uint8_t BYTE;
 typedef uint32_t UINT;
 
 // Opaque handle for the BinCompressed dictionary
-typedef void* BinCompressedHandle;
+typedef void* BcHandle;
 
 #ifdef __cplusplus
 extern "C" {
@@ -56,14 +56,14 @@ extern "C" {
  * @note The caller must ensure the memory mapping remains valid for the
  *       lifetime of the returned handle.
  */
-BinCompressedHandle bin_compressed_init(const BYTE* pbMap);
+BcHandle bin_compressed_init(const BYTE* pbMap);
 
 /**
  * Close and free a BinCompressed dictionary.
  *
  * @param handle Handle returned by bin_compressed_init()
  */
-void bin_compressed_close(BinCompressedHandle handle);
+void bin_compressed_close(BcHandle handle);
 
 /**
  * Check if a word exists in the dictionary.
@@ -72,7 +72,7 @@ void bin_compressed_close(BinCompressedHandle handle);
  * @param word Latin-1 encoded word to search for
  * @return true if word exists in dictionary, false otherwise
  */
-bool bin_compressed_contains(BinCompressedHandle handle, const char* word);
+bool bin_compressed_contains(BcHandle handle, const char* word);
 
 /**
  * Lookup a word and return results as a JSON string.
@@ -91,7 +91,7 @@ bool bin_compressed_contains(BinCompressedHandle handle, const char* word);
  * @return JSON string (must be freed with bin_compressed_free_string), or NULL if not found
  */
 char* bin_compressed_lookup(
-    BinCompressedHandle handle,
+    BcHandle handle,
     const char* word,
     const char* cat,
     const char* lemma,
@@ -115,7 +115,7 @@ char* bin_compressed_lookup(
  * @return JSON string (must be freed with bin_compressed_free_string), or NULL if not found
  */
 char* bin_compressed_lookup_ksnid(
-    BinCompressedHandle handle,
+    BcHandle handle,
     const char* word,
     const char* cat,
     const char* lemma,

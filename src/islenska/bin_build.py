@@ -54,10 +54,18 @@ IMPLEMENTATION = platform.python_implementation()
 
 declarations = """
 
+    // From bin.h
     typedef unsigned int UINT;
     typedef uint8_t BYTE;
-
     UINT mapping(const BYTE* pbMap, const BYTE* pszWordLatin);
+
+    // From dawgdictionary.h
+    typedef void* DawgHandle;
+    DawgHandle dawg_load(const BYTE* pbMap);
+    void dawg_unload(DawgHandle handle);
+    bool dawg_contains(DawgHandle handle, const char* word);
+    char* dawg_find_combinations(DawgHandle handle, const char* word);
+    void dawg_free_string(char* str);
 
 """
 
@@ -89,7 +97,7 @@ ffibuilder.set_source(  # type: ignore
     # This is the reason for the "extern 'C' { ... }" wrapper.
     'extern "C" {\n' + declarations + "\n}\n",
     source_extension=".cpp",
-    sources=["src/islenska/bin.cpp"],
+    sources=["src/islenska/bin.cpp", "src/islenska/dawgdictionary.cpp"],
     extra_compile_args=extra_compile_args,
     extra_link_args=extra_link_args,
 )

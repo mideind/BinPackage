@@ -200,8 +200,8 @@ public:
     /**
      * Decode a KRISTINsnid string.
      *
-     * @param ix KSNid index
-     * @return KSNid string
+     * @param ix KSnid index
+     * @return KSnid string
      */
     std::string ksnid_string(int ix) const;
 
@@ -312,6 +312,9 @@ BinCompressed::~BinCompressed() {
 
 std::pair<std::string, std::string> BinCompressed::meaning(int ix) const {
     // Read offset to meaning string
+    if (ix < 0) {
+        throw std::runtime_error("Invalid meaning index");
+    }
     UINT off = read_uint32(m_meanings + ix * 4);
 
     // Read up to 24 bytes of Latin-1 data
@@ -326,7 +329,6 @@ std::pair<std::string, std::string> BinCompressed::meaning(int ix) const {
     if (first_space == std::string::npos) {
         throw std::runtime_error("Invalid meaning format");
     }
-
     size_t second_space = s.find(' ', first_space + 1);
     std::string ofl = s.substr(0, first_space);
     std::string beyging;
@@ -340,6 +342,9 @@ std::pair<std::string, std::string> BinCompressed::meaning(int ix) const {
 }
 
 std::string BinCompressed::ksnid_string(int ix) const {
+    if (ix < 0) {
+        throw std::runtime_error("Invalid Ksnid index");
+    }
     // Read offset to ksnid string
     UINT off = read_uint32(m_ksnid_strings + ix * 4);
 
@@ -351,6 +356,9 @@ std::string BinCompressed::ksnid_string(int ix) const {
 }
 
 std::pair<std::string, std::string> BinCompressed::lemma(int bin_id) const {
+    if (bin_id < 0 || (UINT)bin_id > m_max_bin_id) {
+        throw std::runtime_error("Invalid BÍN ID");
+    }
     // Read offset to lemma entry
     UINT off = read_uint32(m_lemmas + bin_id * 4);
     if (off == 0) {
@@ -442,6 +450,7 @@ std::vector<BinEntry> BinCompressed::lookup(
     int utg
 ) const {
     std::vector<BinEntry> result;
+    bool cat_is_no = (cat != nullptr && strcmp(cat, "no") == 0);
 
     // Get raw entries
     std::vector<RawEntry> raw_entries = raw_lookup(word);
@@ -460,7 +469,7 @@ std::vector<BinEntry> BinCompressed::lookup(
         // Apply category filter
         if (cat != nullptr) {
             // Special case: "no" matches any gender (kk, kvk, hk)
-            if (strcmp(cat, "no") == 0) {
+            if (cat_is_no) {
                 if (ofl != "kk" && ofl != "kvk" && ofl != "hk") {
                     continue;
                 }
@@ -500,6 +509,7 @@ std::vector<KsnidEntry> BinCompressed::lookup_ksnid(
     int utg
 ) const {
     std::vector<KsnidEntry> result;
+    bool cat_is_no = (cat != nullptr && strcmp(cat, "no") == 0);
 
     // Get raw entries
     std::vector<RawEntry> raw_entries = raw_lookup(word);
@@ -518,7 +528,7 @@ std::vector<KsnidEntry> BinCompressed::lookup_ksnid(
         // Apply category filter
         if (cat != nullptr) {
             // Special case: "no" matches any gender (kk, kvk, hk)
-            if (strcmp(cat, "no") == 0) {
+            if (cat_is_no) {
                 if (ofl != "kk" && ofl != "kvk" && ofl != "hk") {
                     continue;
                 }

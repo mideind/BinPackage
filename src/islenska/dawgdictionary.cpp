@@ -144,9 +144,6 @@ class PackedNavigation;
  * it to Latin-1 for processing since all Icelandic characters fit within
  * Latin-1 (ISO-8859-1). This simplifies string handling in C++.
  *
- * IMPORTANT: We must use a byte array with explicit length rather than
- * std::string to correctly handle any embedded null bytes in the vocabulary.
- *
  * @param utf8_bytes  Pointer to UTF-8 encoded byte array
  * @param utf8_len    Length of the UTF-8 byte array
  * @return Latin-1 encoded string with the same character content
@@ -155,17 +152,17 @@ class PackedNavigation;
  *       3-byte and 4-byte sequences are replaced with '?' but should
  *       not occur in Icelandic vocabulary per project guarantees.
  */
-std::string utf8_to_latin1(const char* utf8_bytes, size_t utf8_len) {
+std::string utf8_to_latin1(const BYTE* utf8_bytes, size_t utf8_len) {
     std::string latin1_str;
     latin1_str.reserve(utf8_len);
     for (size_t i = 0; i < utf8_len; ) {
-        unsigned char c = utf8_bytes[i];
+        BYTE c = utf8_bytes[i];
         if (c < 0x80) { // Standard ASCII (including null byte!)
             latin1_str += c;
             i += 1;
         } else if ((c & 0xE0) == 0xC0) { // 2-byte UTF-8 sequence
             if (i + 1 < utf8_len) {
-                int codepoint = ((c & 0x1F) << 6) | (utf8_bytes[i + 1] & 0x3F);
+                size_t codepoint = ((c & 0x1F) << 6) | (utf8_bytes[i + 1] & 0x3F);
                 latin1_str += (char)(codepoint > 255 ? '?' : codepoint);
                 i += 2;
             } else {
@@ -362,7 +359,7 @@ private:
     // Encoding map: byte code -> character string
     // Maps vocabulary indices (0, 1, 2, ...) to their characters.
     // Also maps (index | 0x80) to character with '|' suffix for finality.
-    std::map<int, std::string> m_encoding;
+    std::map<BYTE, std::string> m_encoding;
 
     // Cache of parsed nodes: node_offset -> (prefix -> next_node_offset)
     // Avoids re-parsing the same node multiple times during navigation.
@@ -455,23 +452,24 @@ CompoundNavigator::CompoundNavigator(DAWG_Dictionary* dawg, const std::string& w
  * @param final   True if matched is a complete word in the dictionary
  */
 void CompoundNavigator::accept(const std::string& matched, bool final) {
-    if (final) {
-        if (m_index == m_len) {
-            // We've consumed the entire input word - single part solution
-            m_parts.push_back({matched});
-        } else {
-            // There's more to match - recursively split the remainder
-            std::string remainder = m_word.substr(m_index);
-            CompoundNavigator nav(m_dawg, remainder);
-            m_dawg->navigate(nav);
-            std::vector<std::vector<std::string>> result = nav.result();
-            if (!result.empty()) {
-                // For each way to split the remainder, prepend our matched part
-                for (const auto& tail : result) {
-                    std::vector<std::string> combination = {matched};
-                    combination.insert(combination.end(), tail.begin(), tail.end());
-                    m_parts.push_back(combination);
-                }
+    if (!final) {
+        return; // Only proceed if we have a complete word
+    }
+    if (m_index == m_len) {
+        // We've consumed the entire input word - single part solution
+        m_parts.push_back({matched});
+    } else {
+        // There's more to match - recursively split the remainder
+        std::string remainder = m_word.substr(m_index);
+        CompoundNavigator nav(m_dawg, remainder);
+        m_dawg->navigate(nav);
+        std::vector<std::vector<std::string>> result = nav.result();
+        if (!result.empty()) {
+            // For each way to split the remainder, prepend our matched part
+            for (const auto& tail : result) {
+                std::vector<std::string> combination = {matched};
+                combination.insert(combination.end(), tail.begin(), tail.end());
+                m_parts.push_back(combination);
             }
         }
     }
@@ -515,7 +513,7 @@ DAWG_Dictionary::DAWG_Dictionary(const BYTE* pbMap) : m_pbMap(pbMap) {
     UINT32 len_voc = *(UINT32*)(m_pbMap + 12);
 
     // Vocabulary starts at byte 16
-    const char* voc_bytes = (const char*)(m_pbMap + 16);
+    const BYTE* voc_bytes = m_pbMap + 16;
 
     // Graph data starts immediately after vocabulary
     m_root_offset = 16 + len_voc;

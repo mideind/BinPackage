@@ -64,7 +64,6 @@
 
 from typing import (
     Any,
-    AnyStr,
     FrozenSet,
     Iterable,
     Set,
@@ -230,7 +229,7 @@ class BinCompressedPure:
         b = bytes(self._b[p : p + lw])
         return b.decode("latin-1"), self._subcats[cix]  # stofn, fl
 
-    def lemma_forms(self, bin_id: int) -> List[bytes]:
+    def lemma_forms(self, bin_id: int) -> List[str]:
         """Return all word forms that are associated with the lemma
         whose bin_id is given"""
 
@@ -288,29 +287,28 @@ class BinCompressedPure:
         lemma = bytes(self._b[p + 1 : p + 1 + lw])
         if bits & 0x80000000 == 0:
             # No templates associated with this lemma
-            return [lemma]
+            return [lemma.decode("latin-1")]
         lw += 1
         if lw & 3:
             lw += 4 - (lw & 3)
         p += lw
-        # Return all inflection forms as well as the lemma itself
-        result = read_set(self._UINT(p), base=lemma)
-        result.append(lemma)
-        return result
+        # Return all inflection forms as well as the lemma itself, decoded to strings
+        result_bytes = read_set(self._UINT(p), base=lemma)
+        result_bytes.append(lemma)
+        return [form.decode("latin-1") for form in result_bytes]
 
-    def _mapping_cffi(self, word: Union[str, bytes]) -> Optional[int]:
+    def _mapping_cffi(self, word: str) -> Optional[int]:
         """Call the C++ mapping() function that has been wrapped using CFFI"""
         try:
-            if isinstance(word, str):
-                word = word.encode("latin-1")
-            m: int = bin_cffi.mapping(self._mmap_ptr, word)
+            word_bytes = word.encode("latin-1")
+            m: int = bin_cffi.mapping(self._mmap_ptr, word_bytes)
             return None if m == 0xFFFFFFFF else m
         except UnicodeEncodeError:
             # The word contains a non-latin-1 character:
             # it can't be in the trie
             return None
 
-    def _raw_lookup(self, word: AnyStr) -> List[Tuple[int, int, int]]:
+    def _raw_lookup(self, word: str) -> List[Tuple[int, int, int]]:
         """Return a list of lemma/meaning/ksnid tuples for the word, or
         an empty list if it is not found in the trie"""
         mapping = self._mapping_cffi(word)
@@ -544,9 +542,7 @@ class BinCompressedPure:
             # Go through the variants of this
             # lemma, for the requested case
             wanted_beyging = simplify_beyging(beyging)
-            for c_latin in self.lemma_forms(bin_id):
-                # TODO: Encoding and decoding back and forth is not terribly efficient
-                c = c_latin.decode("latin-1")
+            for c in self.lemma_forms(bin_id):
                 # Make sure we only include each result once.
                 # Also note that we need to check again for the word
                 # category constraint because different inflection
@@ -570,8 +566,8 @@ class BinCompressedPure:
         forms = self.lemma_forms(bin_id)
         if forms:
             stofn, fl = self.lemma(bin_id)
-            for form_latin in forms:
-                for form_id, mix, kix in self._raw_lookup(form_latin):
+            for form in forms:
+                for form_id, mix, kix in self._raw_lookup(form):
                     if form_id != bin_id:
                         continue
                     # Found a word form of the same lemma
@@ -583,7 +579,7 @@ class BinCompressedPure:
                             bin_id,
                             ofl,
                             fl,
-                            form_latin.decode("latin-1"),
+                            form,
                             beyging,
                             ksnid_string,
                         )
@@ -640,8 +636,8 @@ class BinCompressedPure:
                 # The user-defined filter fails
                 continue
             b_set.update(mark_to_set(beyging))
-            for form_latin in self.lemma_forms(bin_id):
-                for form_id, mix, kix in self._raw_lookup(form_latin):
+            for form in self.lemma_forms(bin_id):
+                for form_id, mix, kix in self._raw_lookup(form):
                     if form_id != bin_id:
                         continue
                     # Found a word form of the same lemma
@@ -661,7 +657,7 @@ class BinCompressedPure:
                             bin_id,
                             ofl,
                             fl,
-                            form_latin.decode("latin-1"),
+                            form,
                             this_beyging,
                             ksnid_string,
                         )
@@ -682,8 +678,7 @@ class BinCompressedPure:
         Note that the word form is case-sensitive."""
         result: Set[BinEntryTuple] = set()
         for lemma_index, _, _ in self._raw_lookup(word):
-            for c_latin in self.lemma_forms(lemma_index):
-                c = c_latin.decode("latin-1")
+            for c in self.lemma_forms(lemma_index):
                 # Make sure we only include each result once
                 result.update(m for m in self.lookup(c) if "NF" in m[5])
         return result
@@ -883,6 +878,25 @@ class BinCompressed(BinCompressedPure):
         except UnicodeEncodeError:
             # Word contains non-Latin-1 characters, can't be in dictionary
             return []
+
+    def lemma_forms(self, bin_id: int) -> List[str]:
+        """Get all word forms for a lemma (C++ implementation).
+
+        Returns all inflected forms of the lemma identified by bin_id,
+        decompressed from the templates section.
+        """
+        result_ptr = bin_cffi.bin_compressed_lemma_forms(self._cpp_handle, bin_id)
+
+        if not result_ptr:
+            return []
+
+        try:
+            result_bytes = ffi.string(result_ptr)
+            forms_utf8 = json.loads(result_bytes)
+            # Return the UTF-8 decoded strings directly
+            return forms_utf8
+        finally:
+            bin_cffi.bin_compressed_free_string(result_ptr)
 
     # Other methods (lookup_variants, lookup_case,
     # lookup_id, raw_nominative, nominative, accusative, dative, genitive, etc.)

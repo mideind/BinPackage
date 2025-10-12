@@ -123,6 +123,21 @@ char* bin_compressed_lookup_ksnid(
 );
 
 /**
+ * Get all word forms associated with a lemma.
+ *
+ * Returns a JSON array of word forms (as UTF-8 encoded strings):
+ * ["form1", "form2", ..., "lemma"]
+ *
+ * The forms are decompressed from the templates section and include
+ * all inflected variants plus the base lemma itself.
+ *
+ * @param handle Handle returned by bin_compressed_init()
+ * @param bin_id BÍN ID number
+ * @return JSON string (must be freed with bin_compressed_free_string), or NULL if not found
+ */
+char* bin_compressed_lemma_forms(BcHandle handle, int bin_id);
+
+/**
  * Free a string returned by bin_compressed functions.
  *
  * @param str String to free (may be NULL)

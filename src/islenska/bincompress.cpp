@@ -148,6 +148,7 @@ private:
     UINT m_forms_offset;              // Offset to forms trie
     const BYTE* m_mappings;           // Pointer to mappings section
     const BYTE* m_lemmas;             // Pointer to lemmas section
+    const BYTE* m_templates;          // Pointer to templates section
     const BYTE* m_meanings;           // Pointer to meanings section
     const BYTE* m_ksnid_strings;      // Pointer to ksnid section
     std::vector<std::string> m_subcats;  // Subcategory strings
@@ -212,6 +213,18 @@ public:
      * @return Pair of (stofn, fl) strings
      */
     std::pair<std::string, std::string> lemma(int bin_id) const;
+
+    /**
+     * Get all word forms associated with a lemma.
+     *
+     * Returns all inflected forms of the lemma identified by bin_id,
+     * decompressed from the templates section. The result includes
+     * the base lemma form as well as all inflected variants.
+     *
+     * @param bin_id BÍN ID number
+     * @return Vector of Latin-1 encoded word forms (as strings)
+     */
+    std::vector<std::string> lemma_forms(int bin_id) const;
 
     /**
      * Perform raw lookup of a word form.
@@ -279,7 +292,7 @@ BinCompressed::BinCompressed(const BYTE* pbMap) : m_pbMap(pbMap) {
     UINT mappings_offset = read_uint32(16);
     m_forms_offset = read_uint32(20);
     UINT lemmas_offset = read_uint32(24);
-    // UINT templates_offset = read_uint32(28);  // Not currently used
+    UINT templates_offset = read_uint32(28);
     UINT meanings_offset = read_uint32(32);
     // UINT alphabet_offset = read_uint32(36);  // Not currently used
     UINT subcats_offset = read_uint32(40);
@@ -290,6 +303,7 @@ BinCompressed::BinCompressed(const BYTE* pbMap) : m_pbMap(pbMap) {
     // Set section pointers
     m_mappings = m_pbMap + mappings_offset;
     m_lemmas = m_pbMap + lemmas_offset;
+    m_templates = m_pbMap + templates_offset;
     m_meanings = m_pbMap + meanings_offset;
     m_ksnid_strings = m_pbMap + ksnid_offset;
 
@@ -381,6 +395,109 @@ std::pair<std::string, std::string> BinCompressed::lemma(int bin_id) const {
     std::string fl = (cix < m_subcats.size()) ? m_subcats[cix] : "";
 
     return std::make_pair(stofn, fl);
+}
+
+std::vector<std::string> BinCompressed::lemma_forms(int bin_id) const {
+    // Sanity check on the BÍN id
+    if (bin_id < 0 || (UINT)bin_id > m_max_bin_id) {
+        return std::vector<std::string>();
+    }
+
+    // Read offset to lemma entry
+    UINT off = read_uint32(m_lemmas + bin_id * 4);
+    if (off == 0) {
+        // No entry with this BÍN id
+        return std::vector<std::string>();
+    }
+
+    // Read flags/bits
+    UINT bits = read_uint32(off);
+
+    // Skip past the flags to read the lemma string (length-prefixed)
+    UINT p = off + 4;
+    UINT lw = m_pbMap[p];  // Length byte
+
+    // Extract the base lemma (at p+1)
+    std::string lemma(reinterpret_cast<const char*>(m_pbMap + p + 1), lw);
+
+    // Check if templates are attached (bit 0x80000000)
+    if ((bits & 0x80000000) == 0) {
+        // No templates associated with this lemma
+        return std::vector<std::string>{lemma};
+    }
+
+    // Skip past the lemma to get to the template pointer
+    // The lemma is 4-byte aligned: length byte (1) + string (lw) + padding
+    lw += 1;  // Include the length byte
+    if (lw & 3) {
+        lw += 4 - (lw & 3);  // Round up to next multiple of 4
+    }
+    p += lw;  // Now p points to template offset
+
+    // Read the template set offset
+    UINT template_offset = read_uint32(p);
+
+    // Decompress the template set using differential encoding
+    std::vector<std::string> result;
+    std::string last_w = lemma;
+    size_t last_len = lemma.length();
+    p = template_offset;
+
+    while (true) {
+        // Read the cut byte
+        BYTE cut_byte = m_templates[p];
+        p += 1;
+
+        if (cut_byte == 0x00) {
+            // End of template set
+            break;
+        }
+
+        size_t cut;
+        size_t new_len;
+
+        if (cut_byte & 0x80) {
+            // Long form: cut is in lower 7 bits, length in next byte
+            cut = cut_byte & 0x7F;
+            new_len = m_templates[p];
+            p += 1;
+        } else {
+            // Short form: cut in upper bits, length difference in lower bits
+            int diff = static_cast<int>(cut_byte & 0x03) - static_cast<int>(cut_byte & 0x04);
+            cut = cut_byte >> 3;
+            // diff can be negative, so we need to handle the sign carefully
+            int new_len_signed = static_cast<int>(cut) + diff;
+            if (new_len_signed < 0 || new_len_signed > 255) {
+                // Invalid new_len - would wrap around or be too large
+                return std::vector<std::string>();
+            }
+            new_len = static_cast<size_t>(new_len_signed);
+        }
+
+        // Calculate the common prefix length
+        if (cut > last_len) {
+            // Invalid data - cut is larger than previous word length
+            return std::vector<std::string>();
+        }
+        size_t common = last_len - cut;
+
+        // Assemble the new word: common prefix + divergent part
+        std::string w = last_w.substr(0, common) +
+            std::string(reinterpret_cast<const char*>(m_templates + p), new_len);
+        p += new_len;
+
+        // Add to results
+        result.push_back(w);
+
+        // Update for next iteration
+        last_w = w;
+        last_len = common + new_len;
+    }
+
+    // Append the base lemma itself
+    result.push_back(lemma);
+
+    return result;
 }
 
 std::vector<RawEntry> BinCompressed::raw_lookup(const char* word) const {
@@ -671,6 +788,23 @@ static char* serialize_ksnid_entries(const std::vector<KsnidEntry>& entries) {
     return result;
 }
 
+static char* serialize_lemma_forms(const std::vector<std::string>& forms) {
+    std::stringstream ss;
+    ss << "[";
+    for (size_t i = 0; i < forms.size(); ++i) {
+        if (i > 0) ss << ",";
+        ss << "\"";
+        append_latin1_as_utf8(ss, forms[i]);
+        ss << "\"";
+    }
+    ss << "]";
+
+    std::string s = ss.str();
+    char* result = new char[s.length() + 1];
+    std::strcpy(result, s.c_str());
+    return result;
+}
+
 char* bin_compressed_lookup(
     BcHandle handle,
     const char* word,
@@ -703,6 +837,20 @@ char* bin_compressed_lookup_ksnid(
     }
 
     return serialize_ksnid_entries(entries);
+}
+
+char* bin_compressed_lemma_forms(BcHandle handle, int bin_id) {
+    if (!handle) {
+        return nullptr;
+    }
+
+    auto forms = static_cast<BinCompressed*>(handle)->lemma_forms(bin_id);
+
+    if (forms.empty()) {
+        return nullptr;
+    }
+
+    return serialize_lemma_forms(forms);
 }
 
 void bin_compressed_free_string(char* str) {

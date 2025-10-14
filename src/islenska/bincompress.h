@@ -138,6 +138,21 @@ char* bin_compressed_lookup_ksnid(
 char* bin_compressed_lemma_forms(BcHandle handle, int bin_id);
 
 /**
+ * Get all Ksnid entries for a given BÍN ID.
+ *
+ * Returns a JSON array of Ksnid objects for all word forms of the lemma:
+ * [
+ *   {"ord": "...", "bin_id": 123, "ofl": "...", "hluti": "...", "form": "...", "mark": "...", "ksnid": "..."},
+ *   ...
+ * ]
+ *
+ * @param handle Handle returned by bin_compressed_init()
+ * @param bin_id BÍN ID number
+ * @return JSON string (must be freed with bin_compressed_free_string), or NULL if not found
+ */
+char* bin_compressed_lookup_id(BcHandle handle, int bin_id);
+
+/**
  * Free a string returned by bin_compressed functions.
  *
  * @param str String to free (may be NULL)

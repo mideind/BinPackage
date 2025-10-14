@@ -898,7 +898,41 @@ class BinCompressed(BinCompressedPure):
         finally:
             bin_cffi.bin_compressed_free_string(result_ptr)
 
+    def lookup_id(self, bin_id: int) -> List[Ksnid]:
+        """Get all Ksnid entries for a given BÍN ID (C++ implementation).
+
+        Overrides base class method with optimized C++ version.
+        Returns all word forms of the lemma with their full Ksnid information.
+        """
+        result_ptr = bin_cffi.bin_compressed_lookup_id(self._cpp_handle, bin_id)
+
+        if not result_ptr:
+            return []
+
+        try:
+            # Parse JSON result (C++ returns UTF-8 bytes)
+            result_bytes = ffi.string(result_ptr)
+            entries = json.loads(result_bytes)
+
+            # Convert to Ksnid objects
+            result: List[Ksnid] = []
+            for entry in entries:
+                ksnid_obj = Ksnid.from_parameters(
+                    entry["ord"],
+                    entry["bin_id"],
+                    entry["ofl"],
+                    entry["hluti"],
+                    entry["form"],
+                    entry["mark"],
+                    entry["ksnid"]
+                )
+                result.append(ksnid_obj)
+
+            return result
+        finally:
+            bin_cffi.bin_compressed_free_string(result_ptr)
+
     # Other methods (lookup_variants, lookup_case,
-    # lookup_id, raw_nominative, nominative, accusative, dative, genitive, etc.)
+    # raw_nominative, nominative, accusative, dative, genitive, etc.)
     # are inherited from BinCompressedPure and will be gradually migrated to C++
     # by adding overrides here as implementations become available.

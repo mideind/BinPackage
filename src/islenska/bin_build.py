@@ -75,6 +75,7 @@ declarations = """
     char* bin_compressed_lookup(BcHandle handle, const char* word, const char* cat, const char* lemma, int utg);
     char* bin_compressed_lookup_ksnid(BcHandle handle, const char* word, const char* cat, const char* lemma, int utg);
     char* bin_compressed_lemma_forms(BcHandle handle, int bin_id);
+    char* bin_compressed_lookup_id(BcHandle handle, int bin_id);
     void bin_compressed_free_string(char* str);
 
 """

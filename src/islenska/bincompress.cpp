@@ -79,6 +79,7 @@
 
 #include <string>
 #include <vector>
+#include <unordered_set>
 #include <cstring>
 #include <sstream>
 #include <stdexcept>
@@ -134,6 +135,42 @@ struct KsnidEntry {
     std::string form;       // Word form
     std::string mark;       // Inflection marks (beyging)
     std::string ksnid;      // Ksnid string
+
+    /**
+     * Equality operator matching Python's Ksnid.__eq__()
+     * Compares all fields: bmynd, mark, bin_id, ord, ofl, hluti, ksnid_string
+     */
+    bool operator==(const KsnidEntry& other) const {
+        return form == other.form       // bmynd
+            && mark == other.mark
+            && bin_id == other.bin_id
+            && ord == other.ord
+            && ofl == other.ofl
+            && hluti == other.hluti
+            && ksnid == other.ksnid;    // ksnid_string
+    }
+};
+
+/**
+ * Hash function for KsnidEntry, matching Python's Ksnid.__hash__()
+ * Hashes only the "primary key" fields: (bin_id, ofl, bmynd, mark)
+ */
+struct KsnidEntryHash {
+    std::size_t operator()(const KsnidEntry& entry) const {
+        // Combine hashes using the same approach as Python's tuple hash
+        std::size_t h1 = std::hash<int>()(entry.bin_id);
+        std::size_t h2 = std::hash<std::string>()(entry.ofl);
+        std::size_t h3 = std::hash<std::string>()(entry.form);  // bmynd
+        std::size_t h4 = std::hash<std::string>()(entry.mark);
+
+        // Simple hash combination (similar to boost::hash_combine)
+        std::size_t seed = 0;
+        seed ^= h1 + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        seed ^= h2 + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        seed ^= h3 + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        seed ^= h4 + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        return seed;
+    }
 };
 
 /**
@@ -275,6 +312,17 @@ public:
         const char* lemma = nullptr,
         int utg = -1
     ) const;
+
+    /**
+     * Get all Ksnid entries for a given BÍN ID.
+     *
+     * Returns all word forms of the lemma identified by bin_id,
+     * with their full Ksnid information.
+     *
+     * @param bin_id BÍN ID number
+     * @return Vector of KsnidEntry structures
+     */
+    std::vector<KsnidEntry> lookup_id(int bin_id) const;
 };
 
 // ============================================================================
@@ -682,6 +730,58 @@ std::vector<KsnidEntry> BinCompressed::lookup_ksnid(
     return result;
 }
 
+std::vector<KsnidEntry> BinCompressed::lookup_id(int bin_id) const {
+    // Get all word forms for this lemma
+    std::vector<std::string> forms = lemma_forms(bin_id);
+    if (forms.empty()) {
+        return std::vector<KsnidEntry>();
+    }
+
+    // Get the lemma (stofn, fl) once
+    std::pair<std::string, std::string> lemma_pair = lemma(bin_id);
+    std::string stofn = lemma_pair.first;
+    std::string fl = lemma_pair.second;
+
+    // Use an unordered_set for O(1) duplicate detection (same as Python's set)
+    std::unordered_set<KsnidEntry, KsnidEntryHash> unique_entries;
+
+    // For each word form, do a raw lookup
+    for (const auto& form : forms) {
+        std::vector<RawEntry> raw_entries = raw_lookup(form.c_str());
+
+        for (const auto& raw : raw_entries) {
+            // Filter to only this bin_id
+            if (raw.bin_id != bin_id) {
+                continue;
+            }
+
+            // Get meaning
+            std::pair<std::string, std::string> meaning_pair = meaning(raw.meaning_index);
+            std::string ofl = meaning_pair.first;
+            std::string beyging = meaning_pair.second;
+
+            // Get ksnid string
+            std::string ksnid_str = ksnid_string(raw.ksnid_index);
+
+            // Create entry
+            KsnidEntry entry;
+            entry.ord = stofn;
+            entry.bin_id = bin_id;
+            entry.ofl = ofl;
+            entry.hluti = fl;
+            entry.form = form;
+            entry.mark = beyging;
+            entry.ksnid = ksnid_str;
+
+            // Insert into set (automatically handles duplicates)
+            unique_entries.insert(entry);
+        }
+    }
+
+    // Convert set to vector for return
+    return std::vector<KsnidEntry>(unique_entries.begin(), unique_entries.end());
+}
+
 // ============================================================================
 // C API implementation
 // ============================================================================
@@ -851,6 +951,20 @@ char* bin_compressed_lemma_forms(BcHandle handle, int bin_id) {
     }
 
     return serialize_lemma_forms(forms);
+}
+
+char* bin_compressed_lookup_id(BcHandle handle, int bin_id) {
+    if (!handle) {
+        return nullptr;
+    }
+
+    auto entries = static_cast<BinCompressed*>(handle)->lookup_id(bin_id);
+
+    if (entries.empty()) {
+        return nullptr;
+    }
+
+    return serialize_ksnid_entries(entries);
 }
 
 void bin_compressed_free_string(char* str) {

@@ -102,6 +102,10 @@ if IMPLEMENTATION == "PyPy":
 
 ffibuilder.cdef(declarations)  # type: ignore
 
+# Use stable ABI for CPython to create portable wheels across Python versions.
+# PyPy doesn't support the stable ABI, so we create version-specific wheels for it.
+py_limited_api = "cp39" if IMPLEMENTATION == "CPython" else False
+
 ffibuilder.set_source(  # type: ignore
     "islenska._bin",
     # bin.cpp is written in C++ but must export a pure C interface.
@@ -111,6 +115,7 @@ ffibuilder.set_source(  # type: ignore
     sources=["src/islenska/bin.cpp", "src/islenska/dawgdictionary.cpp", "src/islenska/bincompress.cpp"],
     extra_compile_args=extra_compile_args,
     extra_link_args=extra_link_args,
+    py_limited_api=py_limited_api,
 )
 
 if __name__ == "__main__":

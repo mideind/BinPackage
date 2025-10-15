@@ -49,14 +49,17 @@ jobs:
         run: python -m cibuildwheel --output-dir wheelhouse
         # Options (https://cibuildwheel.readthedocs.io/en/stable/options/)
         env:
-          CIBW_SKIP: cp36-* cp37-* cp38-* pp37-* pp38-* *musllinux* *win_pp* 
+          # Build abi3 wheel for CPython 3.9+ (one wheel for all versions)
+          # Build version-specific wheels for PyPy (which doesn't support abi3)
+          CIBW_BUILD: cp39-* pp39-* pp310-*
+          CIBW_SKIP: "*musllinux* *win_pp*"
+          CIBW_PROJECT_REQUIRES_PYTHON: ">=3.9"
           CIBW_BEFORE_BUILD_MACOS: python3 -m pip install --upgrade setuptools wheel cffi
           CIBW_ARCHS_MACOS: "x86_64 arm64"
           CIBW_ARCHS_WINDOWS: "AMD64"
           CIBW_BEFORE_BUILD_WINDOWS: python -m pip install "setuptools<72"
           CIBW_ARCHS_LINUX: "x86_64"
           CIBW_BUILD_FRONTEND: "build"
-          # CIBW_PROJECT_REQUIRES_PYTHON: ">=3.9"
 
       - uses: actions/upload-artifact@v4
         with:

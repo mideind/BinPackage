@@ -591,7 +591,7 @@ class BinCompressed(BinCompressedPure):
 
     def __del__(self) -> None:
         """Clean up C++ resources."""
-        if hasattr(self, '_cpp_handle') and self._cpp_handle:
+        if self._cpp_handle:
             bin_cffi.bin_compressed_close(self._cpp_handle)
 
     # Override methods with C++ implementations

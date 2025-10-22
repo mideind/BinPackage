@@ -511,6 +511,11 @@ std::vector<std::string> BinCompressed::lemma_forms(int bin_id) const {
             p += 1;
         } else {
             // Short form: cut in upper bits, length difference in lower bits
+            // Note: The expression below is a bit opaque. It extracts a signed
+            // integer from a 3-bit signed representation. The 0x04 bit is
+            // the sign bit, and the lower (0x01 and 0x02) bits are the magnitude.
+            // 100 (0 minus 4) thus becomes -4, 101 (1 minus 4) becomes -3,
+            // 011 (3 minus 0) becomes +3, etc.
             int diff = static_cast<int>(cut_byte & 0x03) - static_cast<int>(cut_byte & 0x04);
             cut = cut_byte >> 3;
             // diff can be negative, so we need to handle the sign carefully

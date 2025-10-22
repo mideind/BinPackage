@@ -157,7 +157,7 @@ std::string utf8_to_latin1(const BYTE* utf8_bytes, size_t utf8_len) {
     latin1_str.reserve(utf8_len);
     for (size_t i = 0; i < utf8_len; ) {
         BYTE c = utf8_bytes[i];
-        if (c < 0x80) { // Standard ASCII (including null byte!)
+        if (c < 0x80) { // Standard ASCII
             latin1_str += c;
             i += 1;
         } else if ((c & 0xE0) == 0xC0) { // 2-byte UTF-8 sequence

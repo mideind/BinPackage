@@ -110,10 +110,13 @@ from .basics import (
 
 
 class BinCompressedPure:
-    """Pure Python implementation of the compressed binary dictionary.
+    """Base class for the compressed binary dictionary.
 
-    This class is kept as a reference implementation and fallback.
-    The BinCompressed class below uses C++ for performance where available.
+    This class provides the Python infrastructure and methods that haven't
+    been migrated to C++. The BinCompressed class inherits from this and
+    overrides key methods with optimized C++ implementations.
+
+    Note: Do not instantiate this class directly. Use BinCompressed instead.
     """
 
     # Note: the resource path below should NOT use os.path.join()
@@ -229,74 +232,6 @@ class BinCompressedPure:
         b = bytes(self._b[p : p + lw])
         return b.decode("latin-1"), self._subcats[cix]  # stofn, fl
 
-    def lemma_forms(self, bin_id: int) -> List[str]:
-        """Return all word forms that are associated with the lemma
-        whose bin_id is given"""
-
-        def read_set(p: int, base: bytes) -> List[bytes]:
-            """Decompress a set of strings compressed by compress_set()"""
-            b = self._templates
-            c: List[bytes] = []
-            last_w = base
-            lw = len(last_w)
-            while True:
-                # How many letters should we cut off the end of the
-                # last word before appending the divergent part?
-                cut = b[p]
-                p += 1
-                if cut == 0x00:
-                    # Done
-                    break
-                if cut & 0x80:
-                    # Long form: the cut is in the lower 7 bits and the
-                    # length is in the following byte
-                    cut &= 0x7F
-                    lw_new = b[p]
-                    p += 1
-                else:
-                    # The cut is in the upper 4 bits, and (len - cut) in the lower 3
-                    diff = (cut & 0x03) - (cut & 0x04)
-                    cut >>= 3
-                    lw_new = cut + diff
-                # Calculate the number of common characters between
-                # this word and the last one
-                common = lw - cut
-                lw = lw_new
-                # Assemble this word and append it to our result
-                w = last_w[0:common] + b[p : p + lw]
-                p += lw
-                c.append(w)
-                last_w = w
-                lw += common
-            # Return the set as a list of byte strings
-            return c
-
-        # Sanity check on the BÍN id
-        if not 0 <= bin_id <= self._max_bin_id:
-            return []
-        off: int
-        (off,) = UINT32.unpack_from(self._lemmas, bin_id * 4)
-        if off == 0:
-            # No entry with this BÍN id
-            return []
-        bits = self._UINT(off)
-        # Skip past the lemma itself
-        assert self._b is not None
-        p = off + 4
-        lw = self._b[p]  # Length byte
-        lemma = bytes(self._b[p + 1 : p + 1 + lw])
-        if bits & 0x80000000 == 0:
-            # No templates associated with this lemma
-            return [lemma.decode("latin-1")]
-        lw += 1
-        if lw & 3:
-            lw += 4 - (lw & 3)
-        p += lw
-        # Return all inflection forms as well as the lemma itself, decoded to strings
-        result_bytes = read_set(self._UINT(p), base=lemma)
-        result_bytes.append(lemma)
-        return [form.decode("latin-1") for form in result_bytes]
-
     def _mapping_cffi(self, word: str) -> Optional[int]:
         """Call the C++ mapping() function that has been wrapped using CFFI"""
         try:
@@ -345,104 +280,6 @@ class BinCompressedPure:
             if w0 & 0x80000000:
                 # Last mapping indicator: we're done
                 break
-        return result
-
-    def contains(self, word: str) -> bool:
-        """Returns True if the trie contains the given word form"""
-        return self._mapping_cffi(word) is not None
-
-    __contains__ = contains
-
-    def lookup(
-        self,
-        word: str,
-        cat: Optional[str] = None,
-        lemma: Optional[str] = None,
-        utg: Optional[int] = None,
-        inflection_filter: Optional[InflectionFilter] = None,
-    ) -> List[BinEntryTuple]:
-        """Returns a list of BÍN entries for the given word form,
-        eventually constrained to the requested word category,
-        lemma, utg number and/or the given beyging_func filter function,
-        which is called with the beyging field as a parameter."""
-
-        # Category set
-        if cat is None:
-            cats = None
-        elif cat == "no":
-            # Allow a cat of "no" to mean a noun of any gender
-            cats = ALL_GENDERS
-        else:
-            cats = frozenset([cat])
-        result: List[BinEntryTuple] = []
-        for bin_id, meaning_index, _ in self._raw_lookup(word):
-            if utg is not None and bin_id != utg:
-                # Fails the utg filter
-                continue
-            ofl, beyging = self.meaning(meaning_index)
-            if cats is not None and ofl not in cats:
-                # Fails the word category constraint
-                continue
-            stofn, fl = self.lemma(bin_id)
-            if lemma is not None and stofn != lemma:
-                # Fails the lemma filter
-                continue
-            if inflection_filter is not None and not inflection_filter(beyging):
-                # Fails the beyging_func filter
-                continue
-            # stofn, utg, ofl, fl, ordmynd, beyging
-            result.append((stofn, bin_id, ofl, fl, word, beyging))
-        return result
-
-    def lookup_ksnid(
-        self,
-        word: str,
-        cat: Optional[str] = None,
-        lemma: Optional[str] = None,
-        utg: Optional[int] = None,
-        inflection_filter: Optional[InflectionFilter] = None,
-    ) -> List[Ksnid]:
-        """Returns a list of BÍN entries for the given word form,
-        eventually constrained to the requested word category,
-        lemma, utg number and/or the given beyging_func filter function,
-        which is called with the beyging field as a parameter."""
-
-        # Category set
-        if cat is None:
-            cats = None
-        elif cat == "no":
-            # Allow a cat of "no" to mean a noun of any gender
-            cats = ALL_GENDERS
-        else:
-            cats = frozenset([cat])
-        result: List[Ksnid] = []
-        for bin_id, meaning_index, ksnid_index in self._raw_lookup(word):
-            if utg is not None and bin_id != utg:
-                # Fails the utg filter
-                continue
-            ofl, beyging = self.meaning(meaning_index)
-            if cats is not None and ofl not in cats:
-                # Fails the word category constraint
-                continue
-            stofn, fl = self.lemma(bin_id)
-            if lemma is not None and stofn != lemma:
-                # Fails the lemma filter
-                continue
-            if inflection_filter is not None and not inflection_filter(beyging):
-                # Fails the beyging_func filter
-                continue
-            ksnid_string = self.ksnid_string(ksnid_index)
-            result.append(
-                Ksnid.from_parameters(
-                    stofn,
-                    bin_id,
-                    ofl,
-                    fl,
-                    word,
-                    beyging,
-                    ksnid_string,
-                )
-            )
         return result
 
     def lookup_case(
@@ -559,32 +396,6 @@ class BinCompressedPure:
                     )
                 )
         return result
-
-    def lookup_id(self, bin_id: int) -> List[Ksnid]:
-        """Given a BÍN id number, return a set of matching Ksnid entries"""
-        result: Set[Ksnid] = set()
-        forms = self.lemma_forms(bin_id)
-        if forms:
-            stofn, fl = self.lemma(bin_id)
-            for form in forms:
-                for form_id, mix, kix in self._raw_lookup(form):
-                    if form_id != bin_id:
-                        continue
-                    # Found a word form of the same lemma
-                    ofl, beyging = self.meaning(mix)
-                    ksnid_string = self.ksnid_string(kix)
-                    result.add(
-                        Ksnid.from_parameters(
-                            stofn,
-                            bin_id,
-                            ofl,
-                            fl,
-                            form,
-                            beyging,
-                            ksnid_string,
-                        )
-                    )
-        return list(result)
 
     def lookup_variants(
         self,

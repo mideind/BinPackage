@@ -22,6 +22,16 @@ python tools/binpack.py
 python tools/dawgbuilder.py
 ```
 
+### Rebuilding C++ Extensions
+
+**Always use `pip install -e .` to rebuild C++ extensions** (not `bin_build.py` directly):
+
+```bash
+{path-to-venv}/bin/python -m pip install -e . --no-build-isolation
+```
+
+Running `bin_build.py` directly creates `.so` files in the wrong location (`islenska/` instead of `src/islenska/`) because it doesn't respect the `src/` layout from `pyproject.toml`.
+
 ### Testing
 ```bash
 # Run all tests

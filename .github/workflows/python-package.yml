@@ -5,9 +5,9 @@ name: tests
 
 on:
   push:
-    branches: [ "*" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "*" ]
+    branches: [ "main" ]
 
 jobs:
   prepare-cache:
@@ -32,7 +32,10 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ['3.9', '3.13', '3.14.0-beta.4', 'pypy-3.9', 'pypy-3.11']
+        # Test across Python versions to verify abi3 wheel compatibility
+        # CPython: minimum (3.9), intermediate versions, latest stable
+        # PyPy: versions we build wheels for
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14', 'pypy-3.9', 'pypy-3.10']
 
     steps:
     - uses: actions/checkout@v4

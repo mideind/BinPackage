@@ -64,7 +64,6 @@
 
 from typing import (
     Any,
-    AnyStr,
     FrozenSet,
     Iterable,
     Set,
@@ -78,7 +77,7 @@ from typing import (
 import struct
 import functools
 import mmap
-
+import json
 import importlib.resources as importlib_resources
 
 # Import the CFFI wrapper for the bin.cpp C++ module (see also build_bin.py)
@@ -110,9 +109,15 @@ from .basics import (
 )
 
 
-class BinCompressed:
-    """A wrapper for the compressed binary dictionary,
-    allowing read-only lookups of word forms"""
+class BinCompressedPure:
+    """Base class for the compressed binary dictionary.
+
+    This class provides the Python infrastructure and methods that haven't
+    been migrated to C++. The BinCompressed class inherits from this and
+    overrides key methods with optimized C++ implementations.
+
+    Note: Do not instantiate this class directly. Use BinCompressed instead.
+    """
 
     # Note: the resource path below should NOT use os.path.join()
     ref = importlib_resources.files("islenska") / "resources" / BIN_COMPRESSED_FILE
@@ -227,87 +232,67 @@ class BinCompressed:
         b = bytes(self._b[p : p + lw])
         return b.decode("latin-1"), self._subcats[cix]  # stofn, fl
 
-    def lemma_forms(self, bin_id: int) -> List[bytes]:
-        """Return all word forms that are associated with the lemma
-        whose bin_id is given"""
+    # Abstract methods that must be overridden in BinCompressed
+    # These are called by methods in this base class but implemented in C++
 
-        def read_set(p: int, base: bytes) -> List[bytes]:
-            """Decompress a set of strings compressed by compress_set()"""
-            b = self._templates
-            c: List[bytes] = []
-            last_w = base
-            lw = len(last_w)
-            while True:
-                # How many letters should we cut off the end of the
-                # last word before appending the divergent part?
-                cut = b[p]
-                p += 1
-                if cut == 0x00:
-                    # Done
-                    break
-                if cut & 0x80:
-                    # Long form: the cut is in the lower 7 bits and the
-                    # length is in the following byte
-                    cut &= 0x7F
-                    lw_new = b[p]
-                    p += 1
-                else:
-                    # The cut is in the upper 4 bits, and (len - cut) in the lower 3
-                    diff = (cut & 0x03) - (cut & 0x04)
-                    cut >>= 3
-                    lw_new = cut + diff
-                # Calculate the number of common characters between
-                # this word and the last one
-                common = lw - cut
-                lw = lw_new
-                # Assemble this word and append it to our result
-                w = last_w[0:common] + b[p : p + lw]
-                p += lw
-                c.append(w)
-                last_w = w
-                lw += common
-            # Return the set as a list of byte strings
-            return c
+    def contains(self, word: str) -> bool:
+        """Check if word exists in dictionary - must be implemented in subclass"""
+        raise NotImplementedError(
+            "BinCompressedPure.contains() must be overridden in BinCompressed"
+        )
 
-        # Sanity check on the BÍN id
-        if not 0 <= bin_id <= self._max_bin_id:
-            return []
-        off: int
-        (off,) = UINT32.unpack_from(self._lemmas, bin_id * 4)
-        if off == 0:
-            # No entry with this BÍN id
-            return []
-        bits = self._UINT(off)
-        # Skip past the lemma itself
-        assert self._b is not None
-        p = off + 4
-        lw = self._b[p]  # Length byte
-        lemma = bytes(self._b[p + 1 : p + 1 + lw])
-        if bits & 0x80000000 == 0:
-            # No templates associated with this lemma
-            return [lemma]
-        lw += 1
-        if lw & 3:
-            lw += 4 - (lw & 3)
-        p += lw
-        # Return all inflection forms as well as the lemma itself
-        result = read_set(self._UINT(p), base=lemma)
-        result.append(lemma)
-        return result
+    __contains__ = contains
 
-    def _mapping_cffi(self, word: Union[str, bytes]) -> Optional[int]:
+    def lookup(
+        self,
+        word: str,
+        cat: Optional[str] = None,
+        lemma: Optional[str] = None,
+        utg: Optional[int] = None,
+        inflection_filter: Optional[InflectionFilter] = None,
+    ) -> List[BinEntryTuple]:
+        """Lookup word in dictionary - must be implemented in subclass"""
+        raise NotImplementedError(
+            "BinCompressedPure.lookup() must be overridden in BinCompressed"
+        )
+
+    def lookup_ksnid(
+        self,
+        word: str,
+        cat: Optional[str] = None,
+        lemma: Optional[str] = None,
+        utg: Optional[int] = None,
+        inflection_filter: Optional[InflectionFilter] = None,
+    ) -> List[Ksnid]:
+        """Lookup word and return Ksnid entries - must be implemented in subclass"""
+        raise NotImplementedError(
+            "BinCompressedPure.lookup_ksnid() must be overridden in BinCompressed"
+        )
+
+    def lemma_forms(self, bin_id: int) -> List[str]:
+        """Get all word forms for a lemma - must be implemented in subclass"""
+        raise NotImplementedError(
+            "BinCompressedPure.lemma_forms() must be overridden in BinCompressed"
+        )
+
+    def lookup_id(self, bin_id: int) -> List[Ksnid]:
+        """Get all Ksnid entries for a BÍN ID - must be implemented in subclass"""
+        raise NotImplementedError(
+            "BinCompressedPure.lookup_id() must be overridden in BinCompressed"
+        )
+
+    def _mapping_cffi(self, word: str) -> Optional[int]:
         """Call the C++ mapping() function that has been wrapped using CFFI"""
         try:
-            if isinstance(word, str):
-                word = word.encode("latin-1")
-            m: int = bin_cffi.mapping(self._mmap_ptr, word)
+            word_bytes = word.encode("latin-1")
+            m: int = bin_cffi.mapping(self._mmap_ptr, word_bytes)
             return None if m == 0xFFFFFFFF else m
         except UnicodeEncodeError:
             # The word contains a non-latin-1 character:
             # it can't be in the trie
             return None
 
-    def _raw_lookup(self, word: AnyStr) -> List[Tuple[int, int, int]]:
+    def _raw_lookup(self, word: str) -> List[Tuple[int, int, int]]:
         """Return a list of lemma/meaning/ksnid tuples for the word, or
         an empty list if it is not found in the trie"""
         mapping = self._mapping_cffi(word)
@@ -344,104 +329,6 @@ class BinCompressed:
             if w0 & 0x80000000:
                 # Last mapping indicator: we're done
                 break
-        return result
-
-    def contains(self, word: str) -> bool:
-        """Returns True if the trie contains the given word form"""
-        return self._mapping_cffi(word) is not None
-
-    __contains__ = contains
-
-    def lookup(
-        self,
-        word: str,
-        cat: Optional[str] = None,
-        lemma: Optional[str] = None,
-        utg: Optional[int] = None,
-        inflection_filter: Optional[InflectionFilter] = None,
-    ) -> List[BinEntryTuple]:
-        """Returns a list of BÍN entries for the given word form,
-        eventually constrained to the requested word category,
-        lemma, utg number and/or the given beyging_func filter function,
-        which is called with the beyging field as a parameter."""
-
-        # Category set
-        if cat is None:
-            cats = None
-        elif cat == "no":
-            # Allow a cat of "no" to mean a noun of any gender
-            cats = ALL_GENDERS
-        else:
-            cats = frozenset([cat])
-        result: List[BinEntryTuple] = []
-        for bin_id, meaning_index, _ in self._raw_lookup(word):
-            if utg is not None and bin_id != utg:
-                # Fails the utg filter
-                continue
-            ofl, beyging = self.meaning(meaning_index)
-            if cats is not None and ofl not in cats:
-                # Fails the word category constraint
-                continue
-            stofn, fl = self.lemma(bin_id)
-            if lemma is not None and stofn != lemma:
-                # Fails the lemma filter
-                continue
-            if inflection_filter is not None and not inflection_filter(beyging):
-                # Fails the beyging_func filter
-                continue
-            # stofn, utg, ofl, fl, ordmynd, beyging
-            result.append((stofn, bin_id, ofl, fl, word, beyging))
-        return result
-
-    def lookup_ksnid(
-        self,
-        word: str,
-        cat: Optional[str] = None,
-        lemma: Optional[str] = None,
-        utg: Optional[int] = None,
-        inflection_filter: Optional[InflectionFilter] = None,
-    ) -> List[Ksnid]:
-        """Returns a list of BÍN entries for the given word form,
-        eventually constrained to the requested word category,
-        lemma, utg number and/or the given beyging_func filter function,
-        which is called with the beyging field as a parameter."""
-
-        # Category set
-        if cat is None:
-            cats = None
-        elif cat == "no":
-            # Allow a cat of "no" to mean a noun of any gender
-            cats = ALL_GENDERS
-        else:
-            cats = frozenset([cat])
-        result: List[Ksnid] = []
-        for bin_id, meaning_index, ksnid_index in self._raw_lookup(word):
-            if utg is not None and bin_id != utg:
-                # Fails the utg filter
-                continue
-            ofl, beyging = self.meaning(meaning_index)
-            if cats is not None and ofl not in cats:
-                # Fails the word category constraint
-                continue
-            stofn, fl = self.lemma(bin_id)
-            if lemma is not None and stofn != lemma:
-                # Fails the lemma filter
-                continue
-            if inflection_filter is not None and not inflection_filter(beyging):
-                # Fails the beyging_func filter
-                continue
-            ksnid_string = self.ksnid_string(ksnid_index)
-            result.append(
-                Ksnid.from_parameters(
-                    stofn,
-                    bin_id,
-                    ofl,
-                    fl,
-                    word,
-                    beyging,
-                    ksnid_string,
-                )
-            )
         return result
 
     def lookup_case(
@@ -541,9 +428,7 @@ class BinCompressed:
             # Go through the variants of this
             # lemma, for the requested case
             wanted_beyging = simplify_beyging(beyging)
-            for c_latin in self.lemma_forms(bin_id):
-                # TODO: Encoding and decoding back and forth is not terribly efficient
-                c = c_latin.decode("latin-1")
+            for c in self.lemma_forms(bin_id):
                 # Make sure we only include each result once.
                 # Also note that we need to check again for the word
                 # category constraint because different inflection
@@ -560,32 +445,6 @@ class BinCompressed:
                     )
                 )
         return result
-
-    def lookup_id(self, bin_id: int) -> List[Ksnid]:
-        """Given a BÍN id number, return a set of matching Ksnid entries"""
-        result: Set[Ksnid] = set()
-        forms = self.lemma_forms(bin_id)
-        if forms:
-            stofn, fl = self.lemma(bin_id)
-            for form_latin in forms:
-                for form_id, mix, kix in self._raw_lookup(form_latin):
-                    if form_id != bin_id:
-                        continue
-                    # Found a word form of the same lemma
-                    ofl, beyging = self.meaning(mix)
-                    ksnid_string = self.ksnid_string(kix)
-                    result.add(
-                        Ksnid.from_parameters(
-                            stofn,
-                            bin_id,
-                            ofl,
-                            fl,
-                            form_latin.decode("latin-1"),
-                            beyging,
-                            ksnid_string,
-                        )
-                    )
-        return list(result)
 
     def lookup_variants(
         self,
@@ -637,8 +496,8 @@ class BinCompressed:
                 # The user-defined filter fails
                 continue
             b_set.update(mark_to_set(beyging))
-            for form_latin in self.lemma_forms(bin_id):
-                for form_id, mix, kix in self._raw_lookup(form_latin):
+            for form in self.lemma_forms(bin_id):
+                for form_id, mix, kix in self._raw_lookup(form):
                     if form_id != bin_id:
                         continue
                     # Found a word form of the same lemma
@@ -658,7 +517,7 @@ class BinCompressed:
                             bin_id,
                             ofl,
                             fl,
-                            form_latin.decode("latin-1"),
+                            form,
                             this_beyging,
                             ksnid_string,
                         )
@@ -679,8 +538,7 @@ class BinCompressed:
         Note that the word form is case-sensitive."""
         result: Set[BinEntryTuple] = set()
         for lemma_index, _, _ in self._raw_lookup(word):
-            for c_latin in self.lemma_forms(lemma_index):
-                c = c_latin.decode("latin-1")
+            for c in self.lemma_forms(lemma_index):
                 # Make sure we only include each result once
                 result.update(m for m in self.lookup(c) if "NF" in m[5])
         return result
@@ -708,3 +566,233 @@ class BinCompressed:
         subject to the given constraints on the beyging field.
         Note that the word form is case-sensitive."""
         return self.lookup_case(word, "EF", **options)
+
+
+class BinCompressed(BinCompressedPure):
+    """Hybrid Python/C++ wrapper for the compressed binary dictionary.
+
+    Inherits from BinCompressedPure and overrides methods with C++ implementations
+    for improved performance. Methods not yet migrated to C++ are inherited from
+    the base class.
+
+    The base class creates the memory-mapped file, which is shared with the C++
+    implementation to avoid duplication.
+    """
+
+    def __init__(self) -> None:
+        """Initialize base class and add C++ handle for optimized methods."""
+        # Initialize base class (creates mmap, sets up all Python infrastructure)
+        super().__init__()
+
+        # Initialize C++ handle using the mmap from base class
+        self._cpp_handle = bin_cffi.bin_compressed_init(ffi.from_buffer(self._b))
+        if not self._cpp_handle:
+            raise RuntimeError("Failed to initialize C++ BinCompressed handle")
+
+    def __del__(self) -> None:
+        """Clean up C++ resources."""
+        if self._cpp_handle:
+            bin_cffi.bin_compressed_close(self._cpp_handle)
+
+    # Override methods with C++ implementations
+    def contains(self, word: str) -> bool:
+        """Check if word exists in dictionary (C++ implementation).
+
+        Overrides base class method with optimized C++ version.
+        """
+        try:
+            word_bytes = word.encode("latin-1")
+            return bin_cffi.bin_compressed_contains(self._cpp_handle, word_bytes)
+        except UnicodeEncodeError:
+            # Word contains non-Latin-1 characters, can't be in dictionary
+            return False
+
+    __contains__ = contains
+
+    def lookup(
+        self,
+        word: str,
+        cat: Optional[str] = None,
+        lemma: Optional[str] = None,
+        utg: Optional[int] = None,
+        inflection_filter: Optional[InflectionFilter] = None,
+    ) -> List[BinEntryTuple]:
+        """Lookup word in dictionary (C++ implementation with Python fallback for filters).
+
+        Overrides base class method with optimized C++ version.
+        The C++ implementation handles cat, lemma, and utg filters.
+        If inflection_filter is provided, we fall back to Python filtering.
+        """
+        try:
+            word_bytes = word.encode("latin-1")
+
+            # Prepare filter parameters for C++
+            # CFFI requires ffi.NULL instead of None for null pointers
+            cat_bytes = cat.encode("latin-1") if cat else ffi.NULL
+            lemma_bytes = lemma.encode("latin-1") if lemma else ffi.NULL
+            utg_value = utg if utg is not None else -1
+
+            # Call C++ lookup
+            result_ptr = bin_cffi.bin_compressed_lookup(
+                self._cpp_handle,
+                word_bytes,
+                cat_bytes,
+                lemma_bytes,
+                utg_value
+            )
+
+            if not result_ptr:
+                return []
+
+            try:
+                # Parse JSON result (C++ now returns UTF-8 bytes)
+                result_bytes = ffi.string(result_ptr)
+                entries = json.loads(result_bytes)  # json.loads accepts UTF-8 bytes
+
+                # Convert to BinEntryTuple format: (stofn, utg, ofl, fl, ordmynd, beyging)
+                result: List[BinEntryTuple] = []
+                for entry in entries:
+                    tuple_entry: BinEntryTuple = (
+                        entry["stofn"],
+                        entry["utg"],
+                        entry["ofl"],
+                        entry["fl"],
+                        entry["ordmynd"],
+                        entry["beyging"]
+                    )
+
+                    # Apply inflection_filter if provided
+                    if inflection_filter is None or inflection_filter(tuple_entry[5]):
+                        result.append(tuple_entry)
+
+                return result
+            finally:
+                bin_cffi.bin_compressed_free_string(result_ptr)
+
+        except UnicodeEncodeError:
+            # Word contains non-Latin-1 characters, can't be in dictionary
+            return []
+
+    def lookup_ksnid(
+        self,
+        word: str,
+        cat: Optional[str] = None,
+        lemma: Optional[str] = None,
+        utg: Optional[int] = None,
+        inflection_filter: Optional[InflectionFilter] = None,
+    ) -> List[Ksnid]:
+        """Lookup word and return Ksnid entries (C++ implementation with Python fallback for filters).
+
+        Overrides base class method with optimized C++ version.
+        The C++ implementation handles cat, lemma, and utg filters.
+        If inflection_filter is provided, we apply it to the C++ results.
+        """
+        try:
+            word_bytes = word.encode("latin-1")
+
+            # Prepare filter parameters for C++
+            # CFFI requires ffi.NULL instead of None for null pointers
+            cat_bytes = cat.encode("latin-1") if cat else ffi.NULL
+            lemma_bytes = lemma.encode("latin-1") if lemma else ffi.NULL
+            utg_value = utg if utg is not None else -1
+
+            # Call C++ lookup_ksnid
+            result_ptr = bin_cffi.bin_compressed_lookup_ksnid(
+                self._cpp_handle,
+                word_bytes,
+                cat_bytes,
+                lemma_bytes,
+                utg_value
+            )
+
+            if not result_ptr:
+                return []
+
+            try:
+                # Parse JSON result (C++ returns UTF-8 bytes)
+                result_bytes = ffi.string(result_ptr)
+                entries = json.loads(result_bytes)
+
+                # Convert to Ksnid objects
+                result: List[Ksnid] = []
+                for entry in entries:
+                    # Apply inflection_filter if provided
+                    if inflection_filter is not None and not inflection_filter(entry["mark"]):
+                        continue
+
+                    ksnid_obj = Ksnid.from_parameters(
+                        entry["ord"],
+                        entry["bin_id"],
+                        entry["ofl"],
+                        entry["hluti"],
+                        entry["form"],
+                        entry["mark"],
+                        entry["ksnid"]
+                    )
+                    result.append(ksnid_obj)
+
+                return result
+            finally:
+                bin_cffi.bin_compressed_free_string(result_ptr)
+
+        except UnicodeEncodeError:
+            # Word contains non-Latin-1 characters, can't be in dictionary
+            return []
+
+    def lemma_forms(self, bin_id: int) -> List[str]:
+        """Get all word forms for a lemma (C++ implementation).
+
+        Returns all inflected forms of the lemma identified by bin_id,
+        decompressed from the templates section.
+        """
+        result_ptr = bin_cffi.bin_compressed_lemma_forms(self._cpp_handle, bin_id)
+
+        if not result_ptr:
+            return []
+
+        try:
+            result_bytes = ffi.string(result_ptr)
+            forms_utf8 = json.loads(result_bytes)
+            # Return the UTF-8 decoded strings directly
+            return forms_utf8
+        finally:
+            bin_cffi.bin_compressed_free_string(result_ptr)
+
+    def lookup_id(self, bin_id: int) -> List[Ksnid]:
+        """Get all Ksnid entries for a given BÍN ID (C++ implementation).
+
+        Overrides base class method with optimized C++ version.
+        Returns all word forms of the lemma with their full Ksnid information.
+        """
+        result_ptr = bin_cffi.bin_compressed_lookup_id(self._cpp_handle, bin_id)
+
+        if not result_ptr:
+            return []
+
+        try:
+            # Parse JSON result (C++ returns UTF-8 bytes)
+            result_bytes = ffi.string(result_ptr)
+            entries = json.loads(result_bytes)
+
+            # Convert to Ksnid objects
+            result: List[Ksnid] = []
+            for entry in entries:
+                ksnid_obj = Ksnid.from_parameters(
+                    entry["ord"],
+                    entry["bin_id"],
+                    entry["ofl"],
+                    entry["hluti"],
+                    entry["form"],
+                    entry["mark"],
+                    entry["ksnid"]
+                )
+                result.append(ksnid_obj)
+
+            return result
+        finally:
+            bin_cffi.bin_compressed_free_string(result_ptr)
+
+    # Other methods (lookup_variants, lookup_case,
+    # raw_nominative, nominative, accusative, dative, genitive, etc.)
+    # are inherited from BinCompressedPure and will be gradually migrated to C++
+    # by adding overrides here as implementations become available.

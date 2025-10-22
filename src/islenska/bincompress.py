@@ -232,6 +232,55 @@ class BinCompressedPure:
         b = bytes(self._b[p : p + lw])
         return b.decode("latin-1"), self._subcats[cix]  # stofn, fl
 
+    # Abstract methods that must be overridden in BinCompressed
+    # These are called by methods in this base class but implemented in C++
+
+    def contains(self, word: str) -> bool:
+        """Check if word exists in dictionary - must be implemented in subclass"""
+        raise NotImplementedError(
+            "BinCompressedPure.contains() must be overridden in BinCompressed"
+        )
+
+    __contains__ = contains
+
+    def lookup(
+        self,
+        word: str,
+        cat: Optional[str] = None,
+        lemma: Optional[str] = None,
+        utg: Optional[int] = None,
+        inflection_filter: Optional[InflectionFilter] = None,
+    ) -> List[BinEntryTuple]:
+        """Lookup word in dictionary - must be implemented in subclass"""
+        raise NotImplementedError(
+            "BinCompressedPure.lookup() must be overridden in BinCompressed"
+        )
+
+    def lookup_ksnid(
+        self,
+        word: str,
+        cat: Optional[str] = None,
+        lemma: Optional[str] = None,
+        utg: Optional[int] = None,
+        inflection_filter: Optional[InflectionFilter] = None,
+    ) -> List[Ksnid]:
+        """Lookup word and return Ksnid entries - must be implemented in subclass"""
+        raise NotImplementedError(
+            "BinCompressedPure.lookup_ksnid() must be overridden in BinCompressed"
+        )
+
+    def lemma_forms(self, bin_id: int) -> List[str]:
+        """Get all word forms for a lemma - must be implemented in subclass"""
+        raise NotImplementedError(
+            "BinCompressedPure.lemma_forms() must be overridden in BinCompressed"
+        )
+
+    def lookup_id(self, bin_id: int) -> List[Ksnid]:
+        """Get all Ksnid entries for a BÍN ID - must be implemented in subclass"""
+        raise NotImplementedError(
+            "BinCompressedPure.lookup_id() must be overridden in BinCompressed"
+        )
+
     def _mapping_cffi(self, word: str) -> Optional[int]:
         """Call the C++ mapping() function that has been wrapped using CFFI"""
         try:

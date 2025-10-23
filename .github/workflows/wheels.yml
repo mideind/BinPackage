@@ -6,25 +6,20 @@ on:
       - '**'
 
 jobs:
-  build_wheels:
-    name: Build wheels on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [windows-latest, macos-14, ubuntu-latest]
+  # First job: Build compressed BÍN data once (platform-independent)
+  prepare_data:
+    name: Prepare BÍN compressed data
+    runs-on: ubuntu-latest
 
     steps:
-      # Check out repository using git-lfs
       - uses: actions/checkout@v4
         with:
           lfs: true
 
-      # Install Python used to run cibuildwheel
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      # Fetch BÍN source data from Árnastofnun
       - name: Fetch BÍN source data and build compressed.bin
         run: |
           pip3 install -e .
@@ -38,6 +33,46 @@ jobs:
           python3 tools/binpack.py
           echo "Running dawgbuilder..."
           python3 tools/dawgbuilder.py
+          echo "Compressed data files generated:"
+          ls -lh src/islenska/resources/*.bin src/islenska/resources/*.dawg.* 2>/dev/null || true
+
+      - name: Upload compressed data artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: compressed-bin-data
+          path: |
+            src/islenska/resources/compressed.bin
+            src/islenska/resources/*.dawg.*
+          retention-days: 1
+
+  # Second job: Build wheels on each platform (depends on prepare_data)
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
+    needs: prepare_data
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-14, ubuntu-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Download compressed data artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: compressed-bin-data
+          path: src/islenska/resources/
+
+      - name: Verify downloaded artifacts
+        run: |
+          echo "Downloaded compressed data files:"
+          ls -lh src/islenska/resources/*.bin src/islenska/resources/*.dawg.* 2>/dev/null || true
         shell: bash
 
       - name: Install cibuildwheel

@@ -88,6 +88,7 @@ jobs:
           # Build version-specific wheels for PyPy (which doesn't support abi3)
           CIBW_BUILD: cp39-* pp39-* pp310-*
           CIBW_SKIP: "*musllinux* pp39-win*"
+          CIBW_ENABLE: pypy
           CIBW_PROJECT_REQUIRES_PYTHON: ">=3.9"
           CIBW_BEFORE_BUILD_MACOS: python3 -m pip install --upgrade setuptools wheel cffi
           CIBW_ARCHS_MACOS: "x86_64 arm64"

@@ -22,7 +22,7 @@ jobs:
       # Install Python used to run cibuildwheel
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       # Fetch BÍN source data from Árnastofnun
       - name: Fetch BÍN source data and build compressed.bin

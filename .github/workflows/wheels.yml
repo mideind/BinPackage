@@ -86,8 +86,8 @@ jobs:
         env:
           # Build abi3 wheel for CPython 3.9+ (one wheel for all versions)
           # Build version-specific wheels for PyPy (which doesn't support abi3)
-          # Note: PyPy 3.9 was dropped in August 2024, so we only build PyPy 3.10+
-          CIBW_BUILD: cp39-* pp310-*
+          # Using PyPy 3.11 (current maintained version)
+          CIBW_BUILD: cp39-* pp311-*
           CIBW_SKIP: "*musllinux*"
           CIBW_ENABLE: pypy
           CIBW_PROJECT_REQUIRES_PYTHON: ">=3.9"

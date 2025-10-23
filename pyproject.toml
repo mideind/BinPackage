@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "cffi>=1.15.1", "wheel>=0.38.0"]
+requires = ["setuptools>=61.0", "cffi>=1.17.1", "wheel>=0.38.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -36,7 +36,7 @@ classifiers = [
     "Topic :: Text Processing :: Linguistic",
 ]
 requires-python = ">=3.9"
-dependencies = ["cffi>=1.15.1", "typing_extensions"]
+dependencies = ["cffi>=1.17.1", "typing_extensions"]
 
 [project.urls]
 Repository = "https://github.com/mideind/BinPackage"

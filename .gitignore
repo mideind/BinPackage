@@ -58,6 +58,8 @@ bin/
 build/
 develop-eggs/
 dist/
+dist-release/
+dist-wheels/
 eggs/
 .eggs/
 .coverage

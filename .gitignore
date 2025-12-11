@@ -77,6 +77,7 @@ console/
 
 # Virtual environments
 venv*/
+.venv/
 p3*/
 pypy*/
 

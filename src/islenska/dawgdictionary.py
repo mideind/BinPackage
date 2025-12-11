@@ -89,7 +89,11 @@ class Dawg:
     def __contains__(self, word: str) -> bool:
         if not self._handle:
             return False
-        word_bytes = word.encode("latin-1")
+        try:
+            word_bytes = word.encode("latin-1")
+        except UnicodeEncodeError:
+            # Word contains characters outside Latin-1, so it can't be in the DAWG
+            return False
         return dawg_cffi.dawg_contains(self._handle, word_bytes)
 
     def find_combinations(self, word: str) -> List[List[str]]:
@@ -97,7 +101,11 @@ class Dawg:
         if not self._handle:
             return []
 
-        word_bytes = word.encode("latin-1")
+        try:
+            word_bytes = word.encode("latin-1")
+        except UnicodeEncodeError:
+            # Word contains characters outside Latin-1, so it can't be split
+            return []
         result_ptr = dawg_cffi.dawg_find_combinations(self._handle, word_bytes)
         if not result_ptr:
             return []

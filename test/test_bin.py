@@ -983,6 +983,29 @@ def test_id() -> None:
     assert b.lookup_id(1000000) == []  # No such bin_id
 
 
+def test_non_latin1_words() -> None:
+    """Test that words with non-Latin-1 characters don't crash the DAWG lookup."""
+    from islenska.dawgdictionary import Wordbase
+
+    # Polish words with characters outside Latin-1
+    polish_words = [
+        "ogłosiły",      # ł (U+0142) not in Latin-1
+        "będzie",        # ę (U+0119) not in Latin-1
+        "zajmowała",     # ł (U+0142) not in Latin-1
+    ]
+
+    # These should not raise UnicodeEncodeError - they should
+    # gracefully return empty results since they're not Icelandic words
+    for word in polish_words:
+        result = Wordbase.slice_compound_word(word)
+        assert result == [], f"Expected empty list for non-Icelandic word '{word}'"
+
+    # Test __contains__ as well
+    dawg = Wordbase.dawg()
+    for word in polish_words:
+        assert word not in dawg, f"Non-Icelandic word '{word}' should not be in DAWG"
+
+
 def test_ksnid() -> None:
     b = Bin()
 
@@ -1036,3 +1059,5 @@ if __name__ == "__main__":
     test_forms()
     test_sorting()
     test_id()
+    test_non_latin1_words()
+    test_ksnid()

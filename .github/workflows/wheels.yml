@@ -102,3 +102,61 @@ jobs:
         with:
           name: dist-${{ matrix.os }}
           path: ./wheelhouse/*.whl
+
+  # Third job: Build source distribution
+  build_sdist:
+    name: Build source distribution
+    needs: prepare_data
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Download compressed data artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: compressed-bin-data
+          path: src/islenska/resources/
+
+      - name: Build sdist
+        run: |
+          python -m pip install build
+          python -m build --sdist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-sdist
+          path: dist/*.tar.gz
+
+  # Fourth job: Publish to PyPI (only for version tags)
+  publish:
+    name: Publish to PyPI
+    needs: [build_wheels, build_sdist]
+    runs-on: ubuntu-latest
+    # Only publish on version tags (e.g., 1.2.3)
+    if: startsWith(github.ref, 'refs/tags/') && !contains(github.ref, 'test')
+    environment:
+      name: pypi
+      url: https://pypi.org/project/islenska/
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          pattern: dist-*
+          merge-multiple: true
+
+      - name: List distributions
+        run: ls -lh dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

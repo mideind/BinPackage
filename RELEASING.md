@@ -15,20 +15,20 @@ This guide explains how to release a new version of BinPackage to PyPI.
 
 Edit `pyproject.toml` and update the version:
 ```toml
-version = "1.1.0"  # Update this
+version = "1.2.0"  # Update this
 ```
 
 ### 2. Commit and Tag
 
 ```bash
 git add pyproject.toml
-git commit -m "Bump version to 1.1.0 for release"
-git tag -a 1.1.0 -m "Release version 1.1.0
+git commit -m "Bump version to 1.2.0 for release"
+git tag -a 1.2.0 -m "Release version 1.2.0
 
 [Brief description of changes]
 "
 git push origin main
-git push origin 1.1.0
+git push origin 1.2.0
 ```
 
 Pushing the tag triggers the wheel building workflow on GitHub Actions.
@@ -83,31 +83,31 @@ You'll be prompted for your PyPI credentials (or use API token).
 ### 6. Verify Release
 
 - Check PyPI page: https://pypi.org/project/islenska/
-- Test installation: `pip install islenska==1.1.0`
+- Test installation: `pip install islenska==1.2.0`
 - Verify abi3 wheels are available for multiple Python versions
 
 ## Expected Wheel Artifacts
 
-For version 1.1.0, expect 8 wheels plus the source distribution.
+For version 1.2.0, expect 8 wheels plus the source distribution.
 One `cp39-abi3` wheel covers all CPython 3.9+ versions; PyPy support
 is limited to PyPy 3.11 (`pp311`).
 
 **Linux (x86_64):**
-- `islenska-1.1.0-cp39-abi3-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl`
-- `islenska-1.1.0-pp311-pypy311_pp73-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl`
+- `islenska-1.2.0-cp39-abi3-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl`
+- `islenska-1.2.0-pp311-pypy311_pp73-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl`
 
 **macOS (x86_64 + arm64):**
-- `islenska-1.1.0-cp39-abi3-macosx_10_9_x86_64.whl`
-- `islenska-1.1.0-cp39-abi3-macosx_11_0_arm64.whl`
-- `islenska-1.1.0-pp311-pypy311_pp73-macosx_10_15_x86_64.whl`
-- `islenska-1.1.0-pp311-pypy311_pp73-macosx_11_0_arm64.whl`
+- `islenska-1.2.0-cp39-abi3-macosx_10_9_x86_64.whl`
+- `islenska-1.2.0-cp39-abi3-macosx_11_0_arm64.whl`
+- `islenska-1.2.0-pp311-pypy311_pp73-macosx_10_15_x86_64.whl`
+- `islenska-1.2.0-pp311-pypy311_pp73-macosx_11_0_arm64.whl`
 
 **Windows (AMD64):**
-- `islenska-1.1.0-cp39-abi3-win_amd64.whl`
-- `islenska-1.1.0-pp311-pypy311_pp73-win_amd64.whl`
+- `islenska-1.2.0-cp39-abi3-win_amd64.whl`
+- `islenska-1.2.0-pp311-pypy311_pp73-win_amd64.whl`
 
 **Source:**
-- `islenska-1.1.0.tar.gz`
+- `islenska-1.2.0.tar.gz`
 
 ## Troubleshooting
 
@@ -127,7 +127,7 @@ Check the GitHub Actions logs for errors. Common issues:
 ### Wrong Wheels Downloaded
 
 - Verify the run ID corresponds to the correct tag
-- Re-run the workflow if needed: `gh workflow run wheels.yml --ref 1.1.0`
+- Re-run the workflow if needed: `gh workflow run wheels.yml --ref 1.2.0`
 
 ## Post-Release
 
@@ -140,5 +140,5 @@ Check the GitHub Actions logs for errors. Common issues:
 
 Follow semantic versioning (semver):
 - **Major (2.0.0)**: Breaking API changes
-- **Minor (1.1.0)**: New features, backward compatible
+- **Minor (1.2.0)**: New features, backward compatible
 - **Patch (1.0.5)**: Bug fixes only

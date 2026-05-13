@@ -39,7 +39,6 @@
 """
 
 from typing import (
-    Any,
     Optional,
     Callable,
     List,
@@ -106,7 +105,18 @@ class LookupFunc(Protocol[_T]):
 # Annotate the case-casting function signature via a callback protocol
 # See https://www.python.org/dev/peps/pep-0544/#callback-protocols
 class CaseFunc(Protocol):
-    def __call__(self, w: str, **options: Any) -> BinEntryList:
+    def __call__(
+        self,
+        w: str,
+        *,
+        cat: Optional[str] = None,
+        lemma: Optional[str] = None,
+        bin_id: Optional[int] = None,
+        singular: bool = False,
+        indefinite: bool = False,
+        all_forms: bool = False,
+        inflection_filter: Optional[InflectionFilter] = None,
+    ) -> BinEntryList:
         ...
 
 
@@ -820,36 +830,141 @@ class Bin:
 
     @lru_cache(maxsize=CACHE_SIZE)
     def lookup_raw_nominative(self, w: str) -> BinEntryList:
-        """Return a set of BinEntry tuples for all word forms in nominative case.
-        The set is unfiltered except for the presence of 'NF' in the mark
-        field. For new code, lookup_nominative() is likely to be a
-        more efficient choice."""
+        """Deprecated: prefer lookup_nominative(). Returns a set of BinEntry
+        tuples for all word forms in nominative case, unfiltered except for
+        the presence of 'NF' in the mark field."""
         assert self._bc is not None
         return self._filter_meanings(self._bc.raw_nominative(w))
 
-    def lookup_nominative(self, w: str, **options: Any) -> BinEntryList:
-        """Return BinEntry tuples for all word forms in nominative
-        case for all { kk, kvk, hk, lo } category lemmas of the given word"""
+    def _lookup_case(
+        self,
+        case_func: Callable[..., Set[BinEntryTuple]],
+        w: str,
+        *,
+        cat: Optional[str] = None,
+        lemma: Optional[str] = None,
+        bin_id: Optional[int] = None,
+        singular: bool = False,
+        indefinite: bool = False,
+        all_forms: bool = False,
+        inflection_filter: Optional[InflectionFilter] = None,
+    ) -> BinEntryList:
+        """Shared implementation of lookup_nominative/accusative/dative/genitive."""
         assert self._bc is not None
-        return self._filter_meanings(self._bc.nominative(w, **options))
+        return self._filter_meanings(case_func(
+            w,
+            cat=cat,
+            lemma=lemma,
+            utg=bin_id,
+            singular=singular,
+            indefinite=indefinite,
+            all_forms=all_forms,
+            inflection_filter=inflection_filter,
+        ))
 
-    def lookup_accusative(self, w: str, **options: Any) -> BinEntryList:
-        """Return BinEntry tuples for all word forms in accusative
-        case for all { kk, kvk, hk, lo } category lemmas of the given word"""
+    def lookup_nominative(
+        self,
+        w: str,
+        *,
+        cat: Optional[str] = None,
+        lemma: Optional[str] = None,
+        bin_id: Optional[int] = None,
+        singular: bool = False,
+        indefinite: bool = False,
+        all_forms: bool = False,
+        inflection_filter: Optional[InflectionFilter] = None,
+    ) -> BinEntryList:
+        """Return BinEntry tuples for all word forms in nominative case
+        for the lemmas of the given word. See lookup_accusative() for a
+        description of the keyword arguments."""
         assert self._bc is not None
-        return self._filter_meanings(self._bc.accusative(w, **options))
+        return self._lookup_case(
+            self._bc.nominative, w,
+            cat=cat, lemma=lemma, bin_id=bin_id,
+            singular=singular, indefinite=indefinite, all_forms=all_forms,
+            inflection_filter=inflection_filter,
+        )
 
-    def lookup_dative(self, w: str, **options: Any) -> BinEntryList:
-        """Return BinEntry tuples for all word forms in dative
-        case for all { kk, kvk, hk, lo } category lemmas of the given word"""
-        assert self._bc is not None
-        return self._filter_meanings(self._bc.dative(w, **options))
+    def lookup_accusative(
+        self,
+        w: str,
+        *,
+        cat: Optional[str] = None,
+        lemma: Optional[str] = None,
+        bin_id: Optional[int] = None,
+        singular: bool = False,
+        indefinite: bool = False,
+        all_forms: bool = False,
+        inflection_filter: Optional[InflectionFilter] = None,
+    ) -> BinEntryList:
+        """Return BinEntry tuples for all word forms in accusative case
+        for the lemmas of the given word.
 
-    def lookup_genitive(self, w: str, **options: Any) -> BinEntryList:
-        """Return BinEntry tuples for all word forms in genitive
-        case for all { kk, kvk, hk, lo } category lemmas of the given word"""
+        Keyword arguments:
+          cat: restrict to a single word category (e.g. 'kk', 'kvk', 'hk', 'lo');
+            pass 'no' to match any of {'kk', 'kvk', 'hk'}.
+          lemma: restrict to entries whose lemma equals this string.
+          bin_id: restrict to entries with this BÍN id.
+          singular: force singular forms only.
+          indefinite: force indefinite forms only (drop the definite article 'gr'
+            and weak adjective declensions).
+          all_forms: return every form regardless of number/definiteness — overrides
+            singular/indefinite and the number/definiteness of the input word.
+          inflection_filter: callable taking the 'mark' (beyging) string and
+            returning True for entries that should be included."""
         assert self._bc is not None
-        return self._filter_meanings(self._bc.genitive(w, **options))
+        return self._lookup_case(
+            self._bc.accusative, w,
+            cat=cat, lemma=lemma, bin_id=bin_id,
+            singular=singular, indefinite=indefinite, all_forms=all_forms,
+            inflection_filter=inflection_filter,
+        )
+
+    def lookup_dative(
+        self,
+        w: str,
+        *,
+        cat: Optional[str] = None,
+        lemma: Optional[str] = None,
+        bin_id: Optional[int] = None,
+        singular: bool = False,
+        indefinite: bool = False,
+        all_forms: bool = False,
+        inflection_filter: Optional[InflectionFilter] = None,
+    ) -> BinEntryList:
+        """Return BinEntry tuples for all word forms in dative case
+        for the lemmas of the given word. See lookup_accusative() for a
+        description of the keyword arguments."""
+        assert self._bc is not None
+        return self._lookup_case(
+            self._bc.dative, w,
+            cat=cat, lemma=lemma, bin_id=bin_id,
+            singular=singular, indefinite=indefinite, all_forms=all_forms,
+            inflection_filter=inflection_filter,
+        )
+
+    def lookup_genitive(
+        self,
+        w: str,
+        *,
+        cat: Optional[str] = None,
+        lemma: Optional[str] = None,
+        bin_id: Optional[int] = None,
+        singular: bool = False,
+        indefinite: bool = False,
+        all_forms: bool = False,
+        inflection_filter: Optional[InflectionFilter] = None,
+    ) -> BinEntryList:
+        """Return BinEntry tuples for all word forms in genitive case
+        for the lemmas of the given word. See lookup_accusative() for a
+        description of the keyword arguments."""
+        assert self._bc is not None
+        return self._lookup_case(
+            self._bc.genitive, w,
+            cat=cat, lemma=lemma, bin_id=bin_id,
+            singular=singular, indefinite=indefinite, all_forms=all_forms,
+            inflection_filter=inflection_filter,
+        )
 
     def cast_to_accusative(
         self, w: str, *, filter_func: Optional[BinFilterFunc] = None

@@ -32,7 +32,7 @@
 
 from typing import Optional, Callable, List
 
-from islenska import Bin, BinEntry, BinFilterFunc
+from islenska import Bin, BinEntry, BinFilterFunc, Orð
 from islenska.bincompress import BinCompressed
 from islenska.bindb import GreynirBin
 
@@ -1064,16 +1064,209 @@ def test_ksnid() -> None:
     assert m0.aukafletta == ""
 
 
+def test_readme_examples() -> None:
+    """Pin each runnable example from README.md to the actual behaviour, so
+    documentation drift is caught here rather than by a confused reader.
+    Sections below mirror the order of the README headings."""
+    b = Bin()
+
+    # ## `lookup()` function — b.lookup("mæla") returns 9 entries
+    w, m = b.lookup("mæla")
+    assert w == "mæla"
+    assert len(m) == 9
+    # README highlights five distinct lemmas / two senses of the verb 'mæla'
+    lemmas = {(e.ord, e.ofl) for e in m}
+    assert ("mæla", "kvk") in lemmas
+    assert ("mæla", "so") in lemmas
+    assert ("mæli", "hk") in lemmas
+    assert ("mælir", "kk") in lemmas
+    so_ids = {e.bin_id for e in m if e.ofl == "so"}
+    assert so_ids == {469210, 469211}
+
+    # b.lookup("síamskattarkjólanna") — compound, bin_id=0, mark=EFFTgr
+    w, m = b.lookup("síamskattarkjólanna")
+    assert w == "síamskattarkjólanna"
+    assert len(m) == 1
+    assert m[0].ord == "síamskattar-kjóll"
+    assert m[0].ofl == "kk"
+    assert m[0].bin_id == 0
+    assert m[0].bmynd == "síamskattar-kjólanna"
+    assert m[0].mark == "EFFTgr"
+
+    # b.lookup("Geysir", at_sentence_start=True) — surfaces lowercase 'geysir'
+    _, m = b.lookup("Geysir", at_sentence_start=True)
+    bmynds = {(e.ord, e.mark) for e in m}
+    assert ("geysa", "GM-FH-NT-2P-ET") in bmynds
+    assert ("Geysir", "NFET") in bmynds
+    # default is at_sentence_start=False — only the uppercase entry
+    _, m = b.lookup("Geysir", at_sentence_start=False)
+    assert len(m) == 1
+    assert m[0].ord == "Geysir"
+
+    # b.lookup("Heftaranum", at_sentence_start=True) — fallback to lower case
+    w, m = b.lookup("Heftaranum", at_sentence_start=True)
+    assert w == "heftaranum"
+    assert any(e.ord == "heftari" and e.mark == "ÞGFETgr" for e in m)
+
+    # b.lookup("þýzk") — z->s substitution
+    w, m = b.lookup("þýzk")
+    assert w == "þýsk"
+    assert all(e.ord == "þýskur" for e in m)
+
+    # ## `lookup_ksnid()` function — Ksnid for "allskonar" carries
+    # malfraedi='STAFS', einkunn=4, millivisun=496369
+    w, m = b.lookup_ksnid("allskonar")
+    assert w == "allskonar"
+    target = next(
+        (
+            k for k in m
+            if k.malfraedi == "STAFS" and k.einkunn == 4 and k.millivisun == 496369
+        ),
+        None,
+    )
+    assert target is not None
+    assert target.ord == "allskonar"
+    assert target.ofl == "lo"
+
+    # ## `lookup_id()` function — bin_id 495410 -> 'sko' (uh)
+    ks = b.lookup_id(495410)
+    assert len(ks) == 1
+    assert ks[0].ord == "sko"
+    assert ks[0].ofl == "uh"
+    assert ks[0].mark == "OBEYGJANLEGT"
+
+    # ## `lookup_cats()` function — "laga" -> {'so', 'hk', 'kk'}
+    assert b.lookup_cats("laga") == {"so", "hk", "kk"}
+
+    # ## `lookup_lemmas_and_cats()` function — "laga" -> 5 (lemma, ofl) tuples
+    assert b.lookup_lemmas_and_cats("laga") == {
+        ("lagi", "kk"), ("lögur", "kk"),
+        ("laga", "so"),
+        ("lag", "hk"), ("lög", "hk"),
+    }
+
+    # ## `lookup_variants()` function — every README example
+    m = b.lookup_variants("Laugavegur", "kk", "ÞGF")
+    assert any(k.bmynd == "Laugavegi" for k in m)
+
+    m = b.lookup_variants("heftaranum", "kk", "NF")
+    assert m and m[0].bmynd == "heftarinn"
+    m = b.lookup_variants("heftaranum", "kk", ("NF", "FT"))
+    assert m and m[0].bmynd == "heftararnir"
+    m = b.lookup_variants("heftaranum", "kk", ("NF", "FT", "nogr"))
+    assert m and m[0].bmynd == "heftarar"
+
+    m = b.lookup_variants("mæli", "no", "NF")
+    bmynds = {(k.bmynd, k.mark, k.ord) for k in m}
+    assert ("mæli", "NFET", "mæli") in bmynds
+    assert ("mæli", "NFFT", "mæli") in bmynds
+    assert ("mælir", "NFET", "mælir") in bmynds
+
+    m = b.lookup_variants("hraðlæsi", "so", ("FH", "NT"))
+    marks = {k.mark for k in m}
+    assert "GM-FH-NT-1P-ET" in marks
+    assert "GM-FH-NT-3P-ET" in marks
+
+    assert b.lookup_variants("frábær", "lo", ("EVB", "KVK"))[0].bmynd == "frábærasta"
+    assert (
+        b.lookup_variants("frábær", "lo", ("ESB", "KVK", "NF", "ET"))[0].bmynd
+        == "frábærust"
+    )
+    assert b.lookup_variants("frábær", "lo", ("MST", "KVK"))[0].bmynd == "frábærari"
+
+    # The README also shows the efsta_stig() helper function
+    def efsta_stig(lo: str, kyn: str, veik_beyging: bool = True) -> str:
+        vlist = b.lookup_variants(
+            lo, "lo", (kyn, "EVB" if veik_beyging else "ESB")
+        )
+        return vlist[0].bmynd if vlist else ""
+    assert efsta_stig("nýr", "kvk") == "nýjasta"
+    assert efsta_stig("sniðugur", "hk") == "sniðugasta"
+
+    # ## `lookup_lemmas()` function — three cases from the README
+    final_w, m = b.lookup_lemmas("þyrla")
+    assert final_w == "þyrla"
+    assert {(e.ord, e.ofl) for e in m} == {("þyrla", "kvk"), ("þyrla", "so")}
+    final_w, m = b.lookup_lemmas("þyrlast")
+    assert final_w == "þyrlast"
+    assert {(e.ord, e.ofl, e.mark) for e in m} == {("þyrla", "so", "MM-NH")}
+    final_w, m = b.lookup_lemmas("þyrlan")
+    assert final_w == "þyrlan"
+    assert m == []
+
+    # ## `lookup_forms()` function — all dative forms of 'hestur' (kk)
+    forms = b.lookup_forms("hestur", "kk", "ÞGF")
+    assert {(f.bmynd, f.mark) for f in forms} == {
+        ("hesti", "ÞGFET"),
+        ("hestinum", "ÞGFETgr"),
+        ("hestum", "ÞGFFT"),
+        ("hestunum", "ÞGFFTgr"),
+    }
+
+    # ## `lookup_nominative()` etc. — default keeps input number+definiteness;
+    # all_forms=True returns the full quartet
+    forms = b.lookup_nominative("hestinum", cat="kk")
+    assert {(f.bmynd, f.mark) for f in forms} == {("hesturinn", "NFETgr")}
+    forms = b.lookup_nominative("hestinum", cat="kk", all_forms=True)
+    assert {(f.bmynd, f.mark) for f in forms} == {
+        ("hestur", "NFET"),
+        ("hesturinn", "NFETgr"),
+        ("hestar", "NFFT"),
+        ("hestarnir", "NFFTgr"),
+    }
+
+    # ## `cast_to_*()` functions
+    assert b.cast_to_accusative("maðurinn") == "manninn"
+    assert b.cast_to_dative("maðurinn") == "manninum"
+    assert b.cast_to_genitive("maðurinn") == "mannsins"
+    assert b.cast_to_accusative("mennirnir") == "mennina"
+
+    # ## `get_compound()` function
+    w, m = b.get_compound("borgarstjórnarminnihlutinn")
+    assert w == "borgarstjórnarminnihlutinn"
+    assert len(m) == 1
+    assert m[0].ord == "borgarstjórnar-minnihluti"
+    assert m[0].ofl == "kk"
+    assert m[0].bin_id == 0
+    assert m[0].bmynd == "borgarstjórnar-minnihlutinn"
+    assert m[0].mark == "NFETgr"
+
+    # ## `contains()` function and the `in` operator
+    assert b.contains("hestur") is True
+    assert "hestur" in b
+    assert "xyzzy" not in b
+
+    # ## The `Orð` class
+    o = Orð("hestinum")
+    assert o.word == "hestinum"
+    assert o.key == "hestinum"
+    assert o.ord == "hestur"
+    assert o.ofl == "kk"
+    assert o.bmynd == "hestinum"
+    assert o.mark == "ÞGFETgr"
+    assert o.bin_id == 6179
+    # __format__: arbitrary variant via Python format spec
+    o = Orð("maður")
+    assert f"{o:ÞGF-FT-gr}" == "mönnunum"
+    o = Orð("frábær", category="lo")
+    assert f"{o:EVB-KVK}" == "frábærasta"
+
+
 if __name__ == "__main__":
 
     test_lookup()
     test_bin()
     test_bindb()
     test_compounds()
+    test_gauksstadamal_uses_deepest_split()
+    test_key()
+    test_compatibility()
     test_legur()
     test_casting()
     test_forms()
+    test_variants()
     test_sorting()
     test_id()
     test_non_latin1_words()
     test_ksnid()
+    test_readme_examples()

@@ -629,13 +629,18 @@ getting back the adjective *frábærasta*. We could also ask for the
 strong form (`ESB`), and then for the comparative (*miðstig*, `MST`):
 
 ```python
->>> adj = b.lookup_variants("frábær", "lo", ("ESB", "KVK"))[0].bmynd
+>>> adj = b.lookup_variants("frábær", "lo", ("ESB", "KVK", "NF", "ET"))[0].bmynd
 >>> f"Þessi virkni er {adj} af öllum"
 'Þessi virkni er frábærust af öllum'
 >>> adj = b.lookup_variants("frábær", "lo", ("MST", "KVK"))[0].bmynd
 >>> f"Þessi virkni er {adj} en allt annað"
 'Þessi virkni er frábærari en allt annað'
 ```
+
+Note the explicit `"NF"` and `"ET"` tags in the `ESB` example: without
+them, `lookup_variants()` may return e.g. an accusative or plural form
+first, since the input *frábær* is itself ambiguous between several
+cases and numbers. Adding the case/number tags pins the result.
 
 Finally, for some cool Python code for converting any adjective to
 the superlative degree (*efsta stig*):
@@ -706,6 +711,216 @@ infinitive, `MM-NH`, as in the example for *þyrlast*.
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | lemma | `str` | | The word to look up as a lemma/headword. |
+
+## `lookup_forms()` function
+
+Return every inflectional form, in a particular case, of a given lemma.
+This is the convenient way to enumerate all singular/plural and
+definite/indefinite forms of a noun (or all forms of any lemma) in one go.
+[`lookup_variants()`](#lookup_variants-function) is a more flexible
+alternative that supports more selective queries.
+
+```python
+>>> b.lookup_forms("hestur", "kk", "ÞGF")
+[
+    (ord='hestur', kk/alm/6179, bmynd='hestum', ÞGFFT),
+    (ord='hestur', kk/alm/6179, bmynd='hesti', ÞGFET),
+    (ord='hestur', kk/alm/6179, bmynd='hestinum', ÞGFETgr),
+    (ord='hestur', kk/alm/6179, bmynd='hestunum', ÞGFFTgr)
+]
+```
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| lemma | `str` | | The lemma/headword to enumerate forms for. |
+| cat | `str` | | The word category, e.g. `kk`, `kvk`, `hk`, `lo`, `so`. |
+| case | `str` | | The case to enumerate, one of `NF`, `ÞF`, `ÞGF`, `EF`. |
+
+The function returns a `List[BinEntry]`. As with the other case-lookup
+functions below, the order of entries in the list is not guaranteed.
+
+## `lookup_nominative()`, `lookup_accusative()`, `lookup_dative()`, `lookup_genitive()`
+
+These four functions return the inflectional forms of a word's lemma(s)
+in a particular case. They are useful when you already have an inflected
+word form and want to obtain other forms in a specific case. Unlike
+`lookup_forms()` they accept any surface form (not just the lemma) as
+input and allow further filtering of the result.
+
+```python
+>>> b.lookup_nominative("hestinum", cat="kk")
+[(ord='hestur', kk/alm/6179, bmynd='hesturinn', NFETgr)]
+>>> b.lookup_nominative("hestinum", cat="kk", all_forms=True)
+[
+    (ord='hestur', kk/alm/6179, bmynd='hestur', NFET),
+    (ord='hestur', kk/alm/6179, bmynd='hesturinn', NFETgr),
+    (ord='hestur', kk/alm/6179, bmynd='hestar', NFFT),
+    (ord='hestur', kk/alm/6179, bmynd='hestarnir', NFFTgr)
+]
+```
+
+By default, the returned forms inherit number (singular/plural) and
+definiteness from the input word — *hestinum* is dative singular
+definite, so only the matching nominative form (*hesturinn*) is returned.
+Use the keyword arguments below to override that behaviour.
+
+All four functions share the same signature:
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| w | `str` | | The inflected word form to look up. |
+| cat | `Optional[str]` | `None` | Restrict to a single category (`kk`, `kvk`, `hk`, `lo`, …); pass `no` to match any noun gender. |
+| lemma | `Optional[str]` | `None` | Restrict to entries whose lemma matches this string. |
+| bin_id | `Optional[int]` | `None` | Restrict to entries with this BÍN id. |
+| singular | `bool` | `False` | Force singular forms only. |
+| indefinite | `bool` | `False` | Force indefinite forms only (drop the `gr` definite article and weak adjective declensions). |
+| all_forms | `bool` | `False` | Return every form regardless of number/definiteness. Overrides `singular`, `indefinite`, and the number/definiteness of the input word. |
+| inflection_filter | `Optional[Callable[[str], bool]]` | `None` | Callable applied to each candidate's `mark` (beyging) string; entries are kept only when it returns `True`. |
+
+Each function returns `List[BinEntry]`. The order of entries within the
+returned list is not guaranteed (results are derived from a `set`); the
+example outputs above show one possible ordering.
+
+## `cast_to_accusative()`, `cast_to_dative()`, `cast_to_genitive()`
+
+Cast a single word from nominative case into another case, returning the
+target inflectional form as a string. If the input word is not
+case-inflectable (or BinPackage cannot resolve it) the input is returned
+unchanged.
+
+```python
+>>> b.cast_to_accusative("maðurinn")
+'manninn'
+>>> b.cast_to_dative("maðurinn")
+'manninum'
+>>> b.cast_to_genitive("maðurinn")
+'mannsins'
+>>> b.cast_to_accusative("mennirnir")
+'mennina'
+```
+
+The casting is context-free: the functions only see one word at a time.
+That means an ambiguous form may not be cast as intended in your
+sentence. To narrow the choice you can supply a `filter_func`.
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| w | `str` | | The word to cast (assumed to be in nominative case). |
+| filter_func | `Optional[Callable[[Iterable[BinEntry]], List[BinEntry]]]` | `None` | Optional callable receiving the list of candidate matches and returning a filtered subset. |
+
+Each function returns `str` — either the cast form, or the original word
+when no cast is possible.
+
+## `get_compound()` function
+
+Look up a word and, if it is recognised, return its decomposition into a
+compound word built from BinPackage's prefix and suffix dictionaries.
+Unlike `lookup()`, this function never returns a non-compound interpretation
+even when one exists in BÍN, which is useful when you specifically want
+to inspect compound structure.
+
+```python
+>>> w, m = b.get_compound("borgarstjórnarminnihlutinn")
+>>> w
+'borgarstjórnarminnihlutinn'
+>>> m
+[(ord='borgarstjórnar-minnihluti', kk/alm/0, bmynd='borgarstjórnar-minnihlutinn', NFETgr)]
+```
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| w | `str` | | The word to decompose. |
+| at_sentence_start | `bool` | `False` | `True` if BinPackage should also look for lower-case forms when the input is upper-case. |
+
+The function returns `Tuple[str, List[BinEntry]]` — the resolved search
+key and a list of compound `BinEntry` interpretations. The list is empty
+when no compound interpretation is found.
+
+## `contains()` function and the `in` operator
+
+To test whether a word form is present in BÍN at all (without retrieving
+its entries), call `contains()`. The `in` operator on a `Bin` instance is
+equivalent.
+
+```python
+>>> b.contains("hestur")
+True
+>>> "hestur" in b
+True
+>>> "xyzzy" in b
+False
+```
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| w | `str` | | The word form to check. |
+
+Returns `bool`.
+
+## The `Orð` class
+
+`Orð` ("word") wraps a single word behind a stable, attribute-style API
+and supports producing arbitrary inflectional variants via Python's
+`format()` built-in. A singleton `Bin` instance is created on first use,
+so you don't need to manage one yourself.
+
+```python
+>>> from islenska import Orð
+>>> o = Orð("hestinum")
+>>> o.word        # the word as supplied
+'hestinum'
+>>> o.key         # the BÍN search key actually matched
+'hestinum'
+>>> o.ord         # the lemma/headword
+'hestur'
+>>> o.ofl         # the word category
+'kk'
+>>> o.bmynd       # the inflectional form
+'hestinum'
+>>> o.mark        # the beyging (inflection tag)
+'ÞGFETgr'
+>>> o.bin_id
+6179
+```
+
+The constructor accepts:
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| word | `str` | | The word to wrap. |
+| category | `Union[None, str, Iterable[str]]` | `None` | Optionally restrict matches to one or more word categories. Pass `"no"` to match any of `kk`, `kvk`, `hk`. |
+| at_sentence_start | `bool` | `False` | If `True`, also match lower-case forms when `word` is given in upper case. |
+
+Available properties:
+
+| Property | Description |
+|----------|-------------|
+| `word` | The word as passed to the constructor. |
+| `key` | The search key actually matched in BÍN (may differ from `word`). |
+| `entries` | `List[Ksnid]` of every entry matched by the constructor. |
+| `ord` | Lemma/headword. |
+| `ofl` | Word category (`kk`, `kvk`, `hk`, `lo`, `so`, …). |
+| `hluti` | Subcategory (`alm`, `ism`, `bær`, …). |
+| `bmynd` | The inflectional form. |
+| `mark` | The beyging string (empty if the word was not found in BÍN). |
+| `bin_id` | The BÍN identifier of the lemma (`0` if not found in BÍN). |
+
+`Orð` also implements `__format__`, so you can request a particular
+inflectional variant inline with an f-string. The format specifier is a
+hyphen- or underscore-separated list of BÍN tag fragments, in the same
+style accepted by `lookup_variants()`:
+
+```python
+>>> o = Orð("maður")
+>>> f"{o:ÞGF-FT-gr}"
+'mönnunum'
+>>> o = Orð("frábær", category="lo")
+>>> f"{o:EVB-KVK}"
+'frábærasta'
+```
+
+The casing of the formatted result follows the casing of the original
+input word.
 
 # Implementation
 

@@ -30,6 +30,8 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: Implementation :: CPython",
+    # PyPy support is limited to PyPy 3.11 — that is the only PyPy wheel
+    # we publish (see CIBW_BUILD in .github/workflows/wheels.yml).
     "Programming Language :: Python :: Implementation :: PyPy",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Utilities",

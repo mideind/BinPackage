@@ -88,21 +88,23 @@ You'll be prompted for your PyPI credentials (or use API token).
 
 ## Expected Wheel Artifacts
 
-For version 1.1.0, expect approximately 9 wheels:
+For version 1.1.0, expect 8 wheels plus the source distribution.
+One `cp39-abi3` wheel covers all CPython 3.9+ versions; PyPy support
+is limited to PyPy 3.11 (`pp311`).
 
 **Linux (x86_64):**
-- `islenska-1.1.0-cp39-abi3-manylinux_2_17_x86_64.whl`
-- `islenska-1.1.0-pp39-pypy39_pp73-manylinux_2_17_x86_64.whl`
-- `islenska-1.1.0-pp310-pypy310_pp73-manylinux_2_17_x86_64.whl`
+- `islenska-1.1.0-cp39-abi3-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl`
+- `islenska-1.1.0-pp311-pypy311_pp73-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl`
 
 **macOS (x86_64 + arm64):**
 - `islenska-1.1.0-cp39-abi3-macosx_10_9_x86_64.whl`
 - `islenska-1.1.0-cp39-abi3-macosx_11_0_arm64.whl`
-- PyPy wheels for both architectures
+- `islenska-1.1.0-pp311-pypy311_pp73-macosx_10_15_x86_64.whl`
+- `islenska-1.1.0-pp311-pypy311_pp73-macosx_11_0_arm64.whl`
 
 **Windows (AMD64):**
 - `islenska-1.1.0-cp39-abi3-win_amd64.whl`
-- PyPy wheels
+- `islenska-1.1.0-pp311-pypy311_pp73-win_amd64.whl`
 
 **Source:**
 - `islenska-1.1.0.tar.gz`

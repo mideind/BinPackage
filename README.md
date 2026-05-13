@@ -710,7 +710,7 @@ infinitive, `MM-NH`, as in the example for *þyrlast*.
 # Implementation
 
 BinPackage is written in [Python 3](https://www.python.org/)
-and requires Python 3.9 or later. It runs on CPython and [PyPy](http://pypy.org/).
+and requires Python 3.9 or later. It runs on CPython 3.9+ and [PyPy](http://pypy.org/) 3.11.
 
 The Python code calls a small C++ library to speed up lookup of word forms in the
 compressed binary structure into which BÍN has been encoded.
@@ -728,7 +728,7 @@ as `mypy` and `Pylance` / `Pyright`.
 
 # Installation and setup
 
-You must have Python >= 3.9 installed on your machine (CPython or PyPy).
+You must have Python >= 3.9 installed on your machine (CPython 3.9+ or PyPy 3.11).
 If you are using a Python virtual environment (`virtualenv`), activate it
 first (substituting your environment name for `venv` below):
 

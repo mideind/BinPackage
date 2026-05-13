@@ -12,7 +12,7 @@ from setuptools import setup
 
 # Use stable ABI for CPython to create portable wheels across Python versions
 # PyPy doesn't support the stable ABI, so we skip this for PyPy builds
-options = {}
+options: dict[str, str] = {}
 if platform.python_implementation() == "CPython":
     options["py_limited_api"] = "cp39"  # Requires Python 3.9+
 

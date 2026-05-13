@@ -45,7 +45,7 @@ Repository = "https://github.com/mideind/BinPackage"
 
 [project.optional-dependencies]
 # dev dependencies
-dev = ["pytest"]
+dev = ["pytest", "pyright"]
 
 # *** Configuration of tools ***
 

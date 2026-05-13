@@ -1,0 +1,17 @@
+{
+  "include": ["src", "test", "tools"],
+  "exclude": [
+    "**/__pycache__",
+    "**/*.egg-info",
+    "**/build",
+    "**/dist",
+    "**/dist-release",
+    "**/dist-wheels",
+    "**/venv-*",
+    "**/venv*"
+  ],
+  "pythonVersion": "3.9",
+  "typeCheckingMode": "strict",
+  "reportPrivateUsage": "none",
+  "reportUnknownLambdaType": "information"
+}

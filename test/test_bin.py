@@ -416,6 +416,22 @@ def test_compounds() -> None:
     assert set(lc) == {("fjármála- og efnahags-ráðherra", "kk")}
 
 
+def test_gauksstadamal_uses_deepest_split() -> None:
+    """`gauksstaðamál` should parse via the same 3-part split as
+    `gauksstaðamálið` so that downstream consumers see the full
+    `mál` paradigm regardless of input inflection. The 2-part split
+    `gauks-staðamál` has a plurale-tantum head and must lose to the
+    3-part split `gauks-staða-mál` whose head has a full paradigm."""
+    b = Bin()
+    _, bare = b.lookup("gauksstaðamál", auto_uppercase=True)
+    _, definite = b.lookup("gauksstaðamálið", auto_uppercase=True)
+    bare_ords = {e.ord for e in bare}
+    definite_ords = {e.ord for e in definite if e.ofl == "hk"}
+    assert "gauks-staða-mál" in bare_ords
+    assert "gauks-staða-mál" in definite_ords
+    assert "gauks-staðamál" not in bare_ords
+
+
 def test_key() -> None:
     db = Bin()
     w, m = db.lookup("Rússíbanamiðasala")

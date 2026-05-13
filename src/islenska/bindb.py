@@ -294,6 +294,69 @@ class Bin:
         # Convert the cached ksnid list to a list of BinEntry (SHsnid) tuples
         return [k.to_bin_entry() for k in klist]
 
+    def _last_part_is_defective(
+        self,
+        surface: str,
+        lookup_func: LookupFunc[_T],
+    ) -> bool:
+        """True iff every noun interpretation of ``surface`` is a defective
+        paradigm — plurale-tantum (only ``FT`` marks) or singulare-tantum
+        (only ``ET`` marks). Used to demote compound-split candidates
+        whose head lacks one number. If ``surface`` has no noun
+        interpretation we return False so the existing heuristic governs
+        the choice — only nouns exhibit the tantum pathology this is
+        guarding against."""
+        if self._bc is None:
+            return False
+        entries = lookup_func(surface, compound=True)
+        # First pass: if the surface-form entries themselves already cover
+        # both ET and FT for some lemma, that lemma's paradigm is complete
+        # and we can skip the per-lemma lookup entirely.
+        noun_ids: Set[int] = set()
+        sg_ids: Set[int] = set()
+        pl_ids: Set[int] = set()
+        for e in entries:
+            if e.ofl not in _NOUNS or not e.bin_id:
+                continue
+            noun_ids.add(e.bin_id)
+            if "ET" in e.mark:
+                sg_ids.add(e.bin_id)
+            if "FT" in e.mark:
+                pl_ids.add(e.bin_id)
+        if not noun_ids:
+            return False
+        if sg_ids & pl_ids:
+            return False
+        # Second pass: for lemmas not yet proven complete by the surface
+        # entries (a surface form unambiguous in number won't be enough),
+        # fetch the full paradigm and check for both ET and FT marks.
+        for bin_id in noun_ids - (sg_ids & pl_ids):
+            has_sg = False
+            has_pl = False
+            for k in self._bc.lookup_id(bin_id):
+                if not has_sg and "ET" in k.mark:
+                    has_sg = True
+                if not has_pl and "FT" in k.mark:
+                    has_pl = True
+                if has_sg and has_pl:
+                    return False
+        return True
+
+    def _select_compound_candidate(
+        self,
+        candidates: List[List[str]],
+        lookup_func: LookupFunc[_T],
+    ) -> List[str]:
+        """Pick the best compound-split candidate. Candidates arrive in
+        the existing heuristic order (longest last part, fewest parts).
+        Prefer the first candidate whose head is not a defective-paradigm
+        noun; fall back to the heuristic winner if every head is
+        defective."""
+        for cand in candidates:
+            if not self._last_part_is_defective(cand[-1], lookup_func):
+                return cand
+        return candidates[0]
+
     def _compound_meanings(
         self,
         w: str,
@@ -341,16 +404,16 @@ class Bin:
             )
             return w, m
         return_w = w
-        cw = Wordbase.slice_compound_word(w)
-        if len(cw) < 2 and lower_w != w:
+        candidates = Wordbase.slice_compound_word_candidates(w)
+        if not candidates and lower_w != w:
             # If not able to slice in original case, try lower case
-            cw = Wordbase.slice_compound_word(lower_w)
-            if len(cw) >= 2:
-                # Success
+            candidates = Wordbase.slice_compound_word_candidates(lower_w)
+            if candidates:
                 return_w = lower_w
-        if not cw:
+        if not candidates:
             # No way to find a compound meaning: give up
             return w, []
+        cw = self._select_compound_candidate(candidates, lookup_func)
         # This looks like a compound word:
         # use the meaning of its last part
         prefix = "-".join(cw[0:-1])

@@ -39,7 +39,7 @@
 
 """
 
-from typing import List, Optional, IO, Any, cast
+from typing import List, Optional, IO, Any, Set, Tuple, cast
 import os
 import threading
 import mmap
@@ -168,25 +168,34 @@ class Wordbase:
             return cls._dawg_suffixes
 
     @classmethod
+    def slice_compound_word_candidates(cls, word: str) -> List[List[str]]:
+        """Get every legal compound-word split of ``word``, sorted by the
+        ranking heuristic (longest last part, fewest total parts).
+        Each candidate is a list of word parts whose suffix is a legal
+        suffix and whose prefixes are all legal prefixes."""
+        w = cls.dawg().find_combinations(word)
+        if not w:
+            return []
+        # Sort by (1) longest last part and (2) the lowest overall number of parts
+        w.sort(key=lambda x: (len(x[-1]), -len(x)), reverse=True)
+        prefixes = cls.dawg_prefixes()
+        suffixes = cls.dawg_suffixes()
+        seen: Set[Tuple[str, ...]] = set()
+        result: List[List[str]] = []
+        for combination in w:
+            if (
+                combination[-1] in suffixes
+                and all(c in prefixes for c in combination[0:-1])
+            ):
+                key = tuple(combination)
+                if key in seen:
+                    continue
+                seen.add(key)
+                result.append(combination)
+        return result
+
+    @classmethod
     def slice_compound_word(cls, word: str) -> List[str]:
         """Get best combination of word parts if such a combination exists."""
-        # We get back a list of lists, i.e. all possible compound word combinations
-        # where each combination is a list of word parts.
-        w = cls.dawg().find_combinations(word)
-        if w:
-            # Sort by (1) longest last part and (2) the lowest overall number of parts
-            w.sort(key=lambda x: (len(x[-1]), -len(x)), reverse=True)
-            prefixes = cls.dawg_prefixes()
-            suffixes = cls.dawg_suffixes()
-            # Loop over the sorted combinations until we find a legal one,
-            # i.e. where the suffix is a legal suffix and all prefixes are
-            # legal prefixes
-            for combination in w:
-                if (
-                    combination[-1] in suffixes
-                    and all(c in prefixes for c in combination[0:-1])
-                ):
-                    # Valid combination: return it
-                    return combination
-        # No legal combination found
-        return []
+        candidates = cls.slice_compound_word_candidates(word)
+        return candidates[0] if candidates else []

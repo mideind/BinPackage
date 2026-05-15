@@ -39,7 +39,7 @@
 
 """
 
-from typing import List, Optional, IO, Any, Set, Tuple, cast
+from typing import Iterator, List, Optional, IO, Any, cast
 import os
 import threading
 import mmap
@@ -168,34 +168,39 @@ class Wordbase:
             return cls._dawg_suffixes
 
     @classmethod
-    def slice_compound_word_candidates(cls, word: str) -> List[List[str]]:
-        """Get every legal compound-word split of ``word``, sorted by the
-        ranking heuristic (longest last part, fewest total parts).
-        Each candidate is a list of word parts whose suffix is a legal
-        suffix and whose prefixes are all legal prefixes."""
+    def _iter_legal_compound_splits(cls, word: str) -> Iterator[List[str]]:
+        """Yield each legal compound-word split of ``word`` in
+        heuristic-ranked order (longest last part, fewest total parts).
+        A split is legal when its suffix appears in the suffix DAWG and
+        all preceding parts appear in the prefix DAWG. Callers that only
+        need the best split can consume a single item via next();
+        callers that need to inspect several candidates can materialize
+        the full list."""
         w = cls.dawg().find_combinations(word)
         if not w:
-            return []
+            return
         # Sort by (1) longest last part and (2) the lowest overall number of parts
         w.sort(key=lambda x: (len(x[-1]), -len(x)), reverse=True)
         prefixes = cls.dawg_prefixes()
         suffixes = cls.dawg_suffixes()
-        seen: Set[Tuple[str, ...]] = set()
-        result: List[List[str]] = []
         for combination in w:
             if (
                 combination[-1] in suffixes
                 and all(c in prefixes for c in combination[0:-1])
             ):
-                key = tuple(combination)
-                if key in seen:
-                    continue
-                seen.add(key)
-                result.append(combination)
-        return result
+                yield combination
+
+    @classmethod
+    def slice_compound_word_candidates(cls, word: str) -> List[List[str]]:
+        """Get every legal compound-word split of ``word``, sorted by the
+        ranking heuristic (longest last part, fewest total parts).
+        Each candidate is a list of word parts whose suffix is a legal
+        suffix and whose prefixes are all legal prefixes."""
+        return list(cls._iter_legal_compound_splits(word))
 
     @classmethod
     def slice_compound_word(cls, word: str) -> List[str]:
         """Get best combination of word parts if such a combination exists."""
-        candidates = cls.slice_compound_word_candidates(word)
-        return candidates[0] if candidates else []
+        for combination in cls._iter_legal_compound_splits(word):
+            return combination
+        return []

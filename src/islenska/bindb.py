@@ -336,18 +336,34 @@ class Bin:
         if not noun_ids:
             return False
         if sg_ids & pl_ids:
+            # Fast path: some lemma's surface entries already span both
+            # numbers, e.g. the bare form `mál` matches NFET, ÞFET, NFFT
+            # and ÞFFT all at once. That lemma is provably bi-numerical
+            # without a second lookup.
             return False
-        # Second pass: for lemmas not yet proven complete by the surface
-        # entries (a surface form unambiguous in number won't be enough),
-        # fetch the full paradigm and check for both ET and FT marks.
-        for bin_id in noun_ids - (sg_ids & pl_ids):
-            has_sg = False
-            has_pl = False
+        # Slow path: the surface form is number-unambiguous (matches
+        # only ET-marked or only FT-marked entries for each lemma), so
+        # the surface entries alone can't tell us whether the lemma is
+        # bi-numerical. We have to consult the rest of the paradigm.
+        #
+        # Concrete example: when the compound splitter hands us the
+        # definite-singular surface `málið` (from `gauksstaðamálið`),
+        # the surface entries only match NFETgr and ÞFETgr of the
+        # `mál` lemma, putting `mál` in sg_ids but not pl_ids. The
+        # lemma is in fact full-paradigm (NFFT `mál`, ÞGFFT `málum`,
+        # etc.) — we only see that by inspecting lookup_id(bin_id).
+        # Without this loop we'd misclassify `mál` as singulare-tantum
+        # and pick the wrong split.
+        #
+        # We pre-seed has_sg / has_pl from the surface-entry sets so
+        # the inner loop can exit as soon as the missing number turns
+        # up in the paradigm.
+        for bin_id in noun_ids:
+            has_sg = bin_id in sg_ids
+            has_pl = bin_id in pl_ids
             for k in self._bc.lookup_id(bin_id):
-                if not has_sg and "ET" in k.mark:
-                    has_sg = True
-                if not has_pl and "FT" in k.mark:
-                    has_pl = True
+                has_sg = has_sg or "ET" in k.mark
+                has_pl = has_pl or "FT" in k.mark
                 if has_sg and has_pl:
                     return False
         return True

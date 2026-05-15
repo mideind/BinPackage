@@ -687,9 +687,12 @@ void PackedNavigation::navigate_from_edge(const std::string& prefix, UINT32 next
     while (j < lenp && m_nav.accepting()) {
         char current_char = prefix[j];
 
-        // Finality marker: signals a complete word at this position
+        // Finality marker: '|' always follows the character it marks final
+        // (see m_encoding[i | 0x80] = c + "|" in the DAWG constructor). The
+        // look-ahead below already issues accept(matched, true) one iteration
+        // earlier when it sees prefix[j] == '|', so we just advance past
+        // the marker here without re-firing accept.
         if (current_char == '|') {
-             m_nav.accept(matched, true);  // Final=true: complete word
              j++;
              continue;
         }
@@ -722,11 +725,12 @@ void PackedNavigation::navigate_from_edge(const std::string& prefix, UINT32 next
         m_nav.accept(matched, final);
     }
 
-    // Handle any trailing finality marker
-    if (j < lenp && prefix[j] == '|') {
-         m_nav.accept(matched, true);
-    } else if (j < lenp) {
-        // Didn't consume entire prefix - Navigator stopped accepting
+    // If we exited mid-edge, stop here. The look-ahead inside the loop
+    // already issued an accept() call for whatever position we reached
+    // (with the right finality), so there is nothing more to emit, and
+    // we must not continue to the next node since the edge isn't fully
+    // consumed.
+    if (j < lenp) {
         return;
     }
 
@@ -839,6 +843,14 @@ char* serialize_combinations(const std::vector<std::vector<std::string>>& combin
     ss << "]";
 
     std::string s = ss.str();
+    // The string-to-char[] copy below looks redundant but is unavoidable:
+    // std::string has no release()-style API, the destructor at end of
+    // scope would free the buffer, and SSO often inlines the bytes into
+    // the std::string object itself so there's no heap buffer to "take"
+    // anyway. The compiler can't elide the copy either. For this hot
+    // path the JSON strings are tiny (typically SSO-sized) so the copy
+    // is negligible compared to the JSON encoding above — not worth
+    // optimizing.
     char* result = new char[s.length() + 1];
     std::strcpy(result, s.c_str());
     return result;

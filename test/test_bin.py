@@ -1233,7 +1233,7 @@ def test_readme_examples() -> None:
 
     # ## `soft_hyphenate()` function
     assert b.soft_hyphenate("skólabókasafn") == "skóla\xadbóka\xadsafn"
-    assert b.soft_hyphenate("EFNAHAGSRÁÐHERRA") == "EFNAHAGS\xadRÁÐ\xadHERRA"
+    assert b.soft_hyphenate("EFNAHAGSRÁÐHERRA") == "EFNA\xadHAGS\xadRÁÐ\xadHERRA"
     assert b.soft_hyphenate("ásamt") == "ásamt"
 
     # ## `contains()` function and the `in` operator
@@ -1263,13 +1263,14 @@ def test_soft_hyphenate() -> None:
 
     b = Bin()
 
-    # The default ("natural") mode: preferred split, head recursively
-    # decomposed, modifiers kept whole
+    # The default ("natural") mode: preferred split with the head recursively
+    # decomposed. Bin.soft_hyphenate additionally unpacks possessive (genitive)
+    # modifiers (efnahags -> efna|hags, rauðvíns -> rauð|víns)
     assert b.soft_hyphenate("skólabókasafn") == SH.join(["skóla", "bóka", "safn"])
     assert b.soft_hyphenate("efnahagsráðherra") == SH.join(
-        ["efnahags", "ráð", "herra"]
+        ["efna", "hags", "ráð", "herra"]
     )
-    assert b.soft_hyphenate("rauðvínsglas") == SH.join(["rauðvíns", "glas"])
+    assert b.soft_hyphenate("rauðvínsglas") == SH.join(["rauð", "víns", "glas"])
 
     # Mode selection: "primary" stops at the single best split, "natural"
     # descends into the head
@@ -1286,19 +1287,20 @@ def test_soft_hyphenate() -> None:
         == SH.join(["efnahags", "ráðherra"])
     )
 
-    # Regression: head-only recursion must not re-slice modifiers, so the
-    # spurious splits the raw DAWG offers (`…|arf|lokkur`, `bygg|ingar`,
-    # `efna|hags`) never appear
+    # Possessive (genitive) modifiers ARE unpacked: morgunverðar (gen of
+    # morgunverður) -> morgun|verðar, fixing the earlier head-only blind spot
+    assert b.soft_hyphenate("morgunverðarhlaðborð") == SH.join(
+        ["morgun", "verðar", "hlað", "borð"]
+    )
+    # ríkis/byggingar are possessive too, but recursing them stays clean:
+    # ríkis is atomic, and byggingar no longer splits at all since the bad
+    # suffix 'ingar' was pruned from the suffix list (so no bygg|ingar) — and
+    # the garbage `…|arf|lokkur` the raw DAWG offers never survives either
     assert b.soft_hyphenate("ríkisstjórnarflokkur") == SH.join(
         ["ríkis", "stjórnar", "flokkur"]
     )
     assert b.soft_hyphenate("byggingarkostnaður") == SH.join(
         ["byggingar", "kostnaður"]
-    )
-    # Blind spot we accept: a compound *modifier* is left whole, so
-    # `morgun|verðar` is not split out of the modifier `morgunverðar`
-    assert b.soft_hyphenate("morgunverðarhlaðborð") == SH.join(
-        ["morgunverðar", "hlað", "borð"]
     )
 
     # Casing: lower, Capitalized and ALL-UPPERCASE all hyphenate, and the
@@ -1306,7 +1308,7 @@ def test_soft_hyphenate() -> None:
     assert b.soft_hyphenate("SKÓLABÓKASAFN") == SH.join(["SKÓLA", "BÓKA", "SAFN"])
     assert b.soft_hyphenate("Skólabókasafn") == SH.join(["Skóla", "bóka", "safn"])
     assert b.soft_hyphenate("EFNAHAGSRÁÐHERRA") == SH.join(
-        ["EFNAHAGS", "RÁÐ", "HERRA"]
+        ["EFNA", "HAGS", "RÁÐ", "HERRA"]
     )
     assert b.soft_hyphenate("Vesturbæjarskóli") == SH.join(
         ["Vestur", "bæjar", "skóli"]
@@ -1337,7 +1339,7 @@ def test_soft_hyphenate() -> None:
         b.soft_hyphenate("fjármála- og efnahagsráðherra")
         == SH.join(["fjár", "mála"])
         + "- og "
-        + SH.join(["efnahags", "ráð", "herra"])
+        + SH.join(["efna", "hags", "ráð", "herra"])
     )
 
     # Short words, non-Icelandic words and words with no legal split are
@@ -1373,13 +1375,14 @@ def test_soft_hyphenate_examples() -> None:
 
     b = Bin()
 
-    # Long compounds: the compound modifier (gervigreindar = gervi+greindar)
-    # is left whole, the head is decomposed
+    # Long compounds: the possessive modifier gervigreindar (gen of
+    # gervigreind) is itself unpacked into gervi|greindar, and the head is
+    # decomposed too
     assert b.soft_hyphenate("gervigreindarskipulagningu") == SH.join(
-        ["gervigreindar", "skipulagningu"]
+        ["gervi", "greindar", "skipulagningu"]
     )
     assert b.soft_hyphenate("gervigreindargagnaverin") == SH.join(
-        ["gervigreindar", "gagna", "verin"]
+        ["gervi", "greindar", "gagna", "verin"]
     )
 
     # Capitalized compound: directional modifier kept whole, casing preserved

@@ -848,7 +848,7 @@ which point it renders as an ordinary hyphen.
 >>> b.soft_hyphenate("skólabókasafn")
 'skóla\xadbóka\xadsafn'      # skóla|bóka|safn
 >>> b.soft_hyphenate("EFNAHAGSRÁÐHERRA")
-'EFNAHAGS\xadRÁÐ\xadHERRA'   # casing preserved; modifier kept whole
+'EFNA\xadHAGS\xadRÁÐ\xadHERRA'   # casing preserved
 >>> b.soft_hyphenate("ásamt")  # a function word: left untouched
 'ásamt'
 ```
@@ -865,11 +865,14 @@ conjunctions, pronouns, articles, ...) — are returned unchanged.
 
 The decomposition follows the compound splitter's preferred split (longest
 last part, fewest parts) and then recursively decomposes the *head* (the
-last part), which is always a legal standalone suffix. Modifier parts are
-left whole, since re-slicing a connecting/genitive modifier in isolation
-would manufacture spurious boundaries; the trade-off is that a compound
-modifier is not broken up (`morgunverðarhlaðborð` →
-`morgunverðar‑hlað‑borð`, leaving `morgunverðar` intact).
+last part), which is always a legal standalone suffix. A modifier part is
+decomposed too when it is a possessive (genitive) prefix — recognised via
+BÍN as a form with a genitive noun reading — so `morgunverðarhlaðborð`
+becomes `morgun‑verðar‑hlað‑borð`. Other modifiers are left whole, since
+re-slicing a non-genitive connecting form in isolation can manufacture
+spurious boundaries. (The lower-level `Wordbase.insert_soft_hyphens()` has no
+access to BÍN inflection data, so it decomposes only the head and leaves all
+modifiers whole, unless given a `recurse_modifier` predicate.)
 
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
@@ -878,7 +881,7 @@ modifier is not broken up (`morgunverðarhlaðborð` →
 | min_left | `int` | `2` | Minimum number of characters that must precede any break (the typographic `lefthyphenmin`). |
 | min_right | `int` | `2` | Minimum number of characters that must follow any break (the typographic `righthyphenmin`). |
 | min_word | `int` | `8` | Words shorter than this many characters are not hyphenated. |
-| hyphen | `str` | `"­"` | The character inserted at each break; override to use a visible hyphen or another separator. |
+| hyphen | `str` | `"\u00ad"` | The character inserted at each break; override to use a visible hyphen or another separator. |
 
 Returns `str` — the word with soft hyphens inserted, or the original word
 when it cannot (or should not) be hyphenated.
@@ -886,7 +889,9 @@ when it cannot (or should not) be hyphenated.
 The lower-level, database-independent primitive
 `islenska.dawgdictionary.Wordbase.insert_soft_hyphens()` accepts the same
 keyword arguments and performs the DAWG-based splitting without the
-function-word guard.
+function-word guard. It additionally accepts a `recurse_modifier` predicate
+(`Callable[[str], bool]`); `soft_hyphenate()` passes one that recognises
+possessive prefixes, which is how modifier decomposition is enabled.
 
 ## `contains()` function and the `in` operator
 

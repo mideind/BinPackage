@@ -39,7 +39,7 @@
 
 """
 
-from typing import Iterator, List, Optional, Set, IO, Any, cast
+from typing import Callable, Iterator, List, Optional, Set, IO, Any, cast
 import os
 import re
 import threading
@@ -243,37 +243,53 @@ class Wordbase:
         return offsets
 
     @classmethod
-    def _natural_seam_offsets(cls, s: str) -> Set[int]:
+    def _natural_seam_offsets(
+        cls,
+        s: str,
+        recurse_modifier: Optional[Callable[[str], bool]] = None,
+    ) -> Set[int]:
         """Return the boundaries of the natural compound decomposition of
         ``s``: take the preferred split (longest last part, fewest parts),
-        keep the modifier part(s), and descend *only* into the head — the
-        last part — repeating until the head no longer splits, e.g.
+        always descend into the head (the last part), and descend into a
+        modifier part only when ``recurse_modifier`` accepts it. e.g.
         ``skólabókasafn`` -> {5, 9} (``skóla|bóka|safn``).
 
-        Only the head is re-sliced because the head is always a legal
-        standalone suffix, so its sub-splits are genuine compound seams.
-        Modifier parts are connecting/genitive forms whose standalone
-        re-slicing manufactures spurious seams (``byggingar`` would split as
-        ``bygg|ingar``), so they are left whole. The trade-off is that a
-        compound *modifier* is not decomposed (``morgunverðarhlaðborð`` ->
-        ``morgunverðar|hlað|borð``, missing ``morgun|verðar``) — we accept a
-        missed break rather than risk a wrong one."""
+        The head is always re-sliced because it is a legal standalone suffix,
+        so its sub-splits are genuine compound seams. A modifier is a
+        connecting/genitive form whose standalone re-slicing can manufacture
+        spurious seams, so by default (``recurse_modifier is None``) modifiers
+        are left whole — at the cost of leaving a compound modifier
+        undecomposed (``morgunverðarhlaðborð`` -> ``morgunverðar|hlað|borð``).
+        Callers with access to inflection data can pass ``recurse_modifier``
+        (see ``Bin.soft_hyphenate``) to also unpack modifiers it deems safe,
+        e.g. possessive (genitive) prefixes -> ``morgun|verðar|hlað|borð``."""
+        best = cls._best_multipart_split(s)
+        if best is None:
+            return set()
         offsets: Set[int] = set()
-        base = 0
-        while True:
-            best = cls._best_multipart_split(s)
-            if best is None:
-                break
-            pos = base
-            for part in best[:-1]:
-                pos += len(part)
+        pos = 0
+        last = len(best) - 1
+        for i, part in enumerate(best):
+            if i > 0:
+                # Boundary between the previous part and this one
                 offsets.add(pos)
-            # Descend into the head (the last part) only
-            base, s = pos, best[-1]
+            if i == last or (
+                recurse_modifier is not None and recurse_modifier(part)
+            ):
+                offsets.update(
+                    pos + o
+                    for o in cls._natural_seam_offsets(part, recurse_modifier)
+                )
+            pos += len(part)
         return offsets
 
     @classmethod
-    def _seam_offsets(cls, token: str, mode: str) -> Set[int]:
+    def _seam_offsets(
+        cls,
+        token: str,
+        mode: str,
+        recurse_modifier: Optional[Callable[[str], bool]] = None,
+    ) -> Set[int]:
         """Compute compound-part boundary offsets within a single token,
         independent of case. The lowercase form is tried first, as it is by
         far the most productive in the DAWG (capitalized and all-uppercase
@@ -284,7 +300,8 @@ class Wordbase:
         case-folding is one-to-one and length-preserving within Latin-1, so
         the offsets apply unchanged to the original-case token."""
         if mode == "natural":
-            finder = cls._natural_seam_offsets
+            def finder(s: str) -> Set[int]:
+                return cls._natural_seam_offsets(s, recurse_modifier)
         elif mode == "primary":
             finder = cls._primary_seam_offsets
         else:
@@ -311,6 +328,7 @@ class Wordbase:
         min_right: int,
         min_word: int,
         hyphen: str,
+        recurse_modifier: Optional[Callable[[str], bool]] = None,
     ) -> str:
         """Insert ``hyphen`` at the eligible compound boundaries of a single
         token (one with no internal spaces or hyphens)."""
@@ -320,7 +338,9 @@ class Wordbase:
         # Keep only breaks that leave at least min_left characters before and
         # min_right characters after the break (lefthyphenmin/righthyphenmin)
         offsets = sorted(
-            o for o in cls._seam_offsets(token, mode) if min_left <= o <= n - min_right
+            o
+            for o in cls._seam_offsets(token, mode, recurse_modifier)
+            if min_left <= o <= n - min_right
         )
         if not offsets:
             return token
@@ -342,6 +362,7 @@ class Wordbase:
         min_right: int = 2,
         min_word: int = 8,
         hyphen: str = SOFT_HYPHEN,
+        recurse_modifier: Optional[Callable[[str], bool]] = None,
     ) -> str:
         """Return ``word`` with soft hyphens (U+00AD by default) inserted at
         its internal compound-component boundaries, so a typesetter may break
@@ -364,6 +385,11 @@ class Wordbase:
         idempotent. Words with no legal compound split (and those containing
         characters outside the Latin-1 range) are returned unchanged.
 
+        ``recurse_modifier`` (``"natural"`` mode only) is an optional predicate
+        that decides whether a given modifier part should itself be decomposed;
+        modifiers it rejects are left whole. ``Bin.soft_hyphenate`` passes one
+        that recurses possessive (genitive) prefixes.
+
         This is the pure-DAWG primitive; ``Bin.soft_hyphenate`` wraps it with
         an additional BÍN-backed guard against splitting function words."""
         if not word:
@@ -380,7 +406,8 @@ class Wordbase:
             else:
                 out.append(
                     cls._hyphenate_token(
-                        token, mode, min_left, min_right, min_word, hyphen
+                        token, mode, min_left, min_right, min_word, hyphen,
+                        recurse_modifier,
                     )
                 )
         return "".join(out)

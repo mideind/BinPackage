@@ -1059,11 +1059,14 @@ class Bin:
 
         This is the database-backed counterpart of
         ``Wordbase.insert_soft_hyphens`` (see there for the meaning of
-        ``mode`` and the ``min_*`` parameters): in addition to the length
-        guards, it consults BÍN and leaves closed-class function words
-        (prepositions, conjunctions, pronouns, articles, ...) untouched, so
-        that a word such as ``ásamt`` — which the DAWG would otherwise
-        mis-split as ``ás|amt`` — is returned unchanged."""
+        ``mode`` and the ``min_*`` parameters). On top of the length guards it
+        consults BÍN to (1) leave closed-class function words (prepositions,
+        conjunctions, pronouns, articles, ...) untouched, so that a word such
+        as ``ásamt`` — which the DAWG would otherwise mis-split as ``ás|amt``
+        — is returned unchanged, and (2) also decompose compound modifiers
+        that are possessive (genitive) prefixes, which the pure-DAWG
+        primitive leaves whole (``morgunverðarhlaðborð`` ->
+        ``morgun|verðar|hlað|borð``)."""
         # A word is a function word when it has direct BÍN readings but none
         # of them fall in an open word category (noun, verb, adjective).
         # `lookup_cats` only falls back to compound resolution when there is
@@ -1080,6 +1083,21 @@ class Bin:
             min_right=min_right,
             min_word=min_word,
             hyphen=hyphen,
+            recurse_modifier=self._is_possessive_prefix,
+        )
+
+    def _is_possessive_prefix(self, form: str) -> bool:
+        """True if ``form`` is a possessive (genitive) prefix — a modifier
+        safe to decompose further. In compound-modifier position a form that
+        can be genitive almost certainly is the linking genitive, so it is
+        enough that ``form`` is in BÍN with at least one genitive noun reading.
+        Gating on ``contains`` keeps the lookup from falling back to compound
+        resolution, so we inspect the form's own readings."""
+        if not self.contains(form):
+            return False
+        return any(
+            e.ofl in _NOUNS and "EF" in e.mark
+            for e in self.lookup_ksnid(form)[1]
         )
 
 

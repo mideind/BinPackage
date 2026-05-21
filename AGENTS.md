@@ -10,24 +10,28 @@ generation, and compound word handling for the Icelandic language.
 
 ## Key Commands
 
+This project is managed with [uv](https://docs.astral.sh/uv/): dependencies are
+declared in `pyproject.toml` and pinned in `uv.lock`. Run dev tools through
+`uv run` so they use the locked project environment.
+
 ### Development Setup
 ```bash
-# Install in editable mode with dev dependencies
-pip install -e ".[dev]"
+# Sync the environment, including dev dependencies (pytest, pyright)
+uv sync --extra dev
 
 # Build the compressed binary data (requires KRISTINsnid.csv.zip in src/islenska/resources/)
-python tools/binpack.py
+uv run python tools/binpack.py
 
 # Build DAWG structures for compound word handling
-python tools/dawgbuilder.py
+uv run python tools/dawgbuilder.py
 ```
 
 ### Rebuilding C++ Extensions
 
-**Always use `pip install -e .` to rebuild C++ extensions** (not `bin_build.py` directly):
+**Always use `uv pip install -e .` to rebuild C++ extensions** (not `bin_build.py` directly):
 
 ```bash
-{path-to-venv}/bin/python -m pip install -e . --no-build-isolation
+uv pip install -e . --no-build-isolation
 ```
 
 Running `bin_build.py` directly creates `.so` files in the wrong location (`islenska/` instead of `src/islenska/`) because it doesn't respect the `src/` layout from `pyproject.toml`.
@@ -35,23 +39,25 @@ Running `bin_build.py` directly creates `.so` files in the wrong location (`isle
 ### Testing
 ```bash
 # Run all tests
-python -m pytest
+uv run pytest
 
 # Run specific test file
-python -m pytest test/test_bin.py
-python -m pytest test/test_ord.py
+uv run pytest test/test_bin.py
+uv run pytest test/test_ord.py
 
 # Run tests with verbose output
-python -m pytest -v
+uv run pytest -v
 ```
 
 ### Linting and Type Checking
 ```bash
-# Run ruff linter
-ruff check src/islenska
+# Type-check with pyright
+# (honors pyrightconfig.json: strict mode, target Python 3.9, checks src/test/tools)
+uv run pyright
 
-# Run type checking with mypy
-mypy --python-version=3.9 src/islenska
+# Lint with ruff (ruff is not a project dependency; install it separately,
+# as CI does)
+ruff check src/islenska
 ```
 
 ## Architecture

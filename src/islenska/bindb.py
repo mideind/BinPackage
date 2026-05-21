@@ -39,6 +39,7 @@
 """
 
 from typing import (
+    Mapping,
     Optional,
     Callable,
     List,
@@ -72,7 +73,7 @@ from .settings import (
     BinErrata,
     BinDeletions,
 )
-from .dawgdictionary import Wordbase
+from .dawgdictionary import Wordbase, SOFT_HYPHEN
 from .bincompress import BinCompressed
 
 
@@ -141,7 +142,7 @@ _OPEN_CATS = frozenset(("so", "kk", "hk", "kvk", "lo"))  # Open word categories
 
 # A dictionary of functions, one for each word category, that return
 # True for declension (mark) strings of canonical/lemma forms
-_LEMMA_FILTERS: Dict[str, InflectionFilter] = {
+_LEMMA_FILTERS: Mapping[str, InflectionFilter] = {
     # Nouns: Nominative, singular
     "kk": lambda b: b == "NFET",
     "kvk": lambda b: b == "NFET",
@@ -1041,6 +1042,45 @@ class Bin:
         )
 
         return w, m
+
+    def soft_hyphenate(
+        self,
+        word: str,
+        *,
+        mode: str = "natural",
+        min_left: int = 2,
+        min_right: int = 2,
+        min_word: int = 8,
+        hyphen: str = SOFT_HYPHEN,
+    ) -> str:
+        """Return ``word`` with soft hyphens (U+00AD by default) inserted at
+        its internal compound-component boundaries, suitable for flexible
+        line-breaking by a typesetter.
+
+        This is the database-backed counterpart of
+        ``Wordbase.insert_soft_hyphens`` (see there for the meaning of
+        ``mode`` and the ``min_*`` parameters): in addition to the length
+        guards, it consults BÍN and leaves closed-class function words
+        (prepositions, conjunctions, pronouns, articles, ...) untouched, so
+        that a word such as ``ásamt`` — which the DAWG would otherwise
+        mis-split as ``ás|amt`` — is returned unchanged."""
+        # A word is a function word when it has direct BÍN readings but none
+        # of them fall in an open word category (noun, verb, adjective).
+        # `lookup_cats` only falls back to compound resolution when there is
+        # no direct reading, so a genuine compound still reports its (open)
+        # head category here and is hyphenated normally.
+        bare = word.replace(SOFT_HYPHEN, "")
+        cats = self.lookup_cats(bare)
+        if cats and cats.isdisjoint(_OPEN_CATS):
+            return bare
+        return Wordbase.insert_soft_hyphens(
+            word,
+            mode=mode,
+            min_left=min_left,
+            min_right=min_right,
+            min_word=min_word,
+            hyphen=hyphen,
+        )
 
 
 class GreynirBin(Bin):

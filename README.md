@@ -836,6 +836,58 @@ The function returns `Tuple[str, List[BinEntry]]` — the resolved search
 key and a list of compound `BinEntry` interpretations. The list is empty
 when no compound interpretation is found.
 
+## `soft_hyphenate()` function
+
+Return a word with [soft hyphens](https://en.wikipedia.org/wiki/Soft_hyphen)
+(U+00AD) inserted at its internal compound-component boundaries, so that a
+typesetter can break the word across lines at morphologically valid points.
+A soft hyphen is invisible until a line break is actually taken there, at
+which point it renders as an ordinary hyphen.
+
+```python
+>>> b.soft_hyphenate("skólabókasafn")
+'skóla\xadbóka\xadsafn'      # skóla|bóka|safn
+>>> b.soft_hyphenate("EFNAHAGSRÁÐHERRA")
+'EFNAHAGS\xadRÁÐ\xadHERRA'   # casing preserved; modifier kept whole
+>>> b.soft_hyphenate("ásamt")  # a function word: left untouched
+'ásamt'
+```
+
+The lookup is case-insensitive and preserves the original casing of the
+input, so lower-case, `Capitalized` and `ALL-UPPERCASE` words are all
+hyphenated correctly. Real hyphens and spaces are treated as hard
+boundaries and preserved verbatim, with each token between them hyphenated
+on its own. Pre-existing soft hyphens are stripped first, so the function
+is idempotent, and removing the soft hyphens from the result recovers the
+original word. Words with no legal compound split — and words that are
+recognised in BÍN solely as closed-class function words (prepositions,
+conjunctions, pronouns, articles, ...) — are returned unchanged.
+
+The decomposition follows the compound splitter's preferred split (longest
+last part, fewest parts) and then recursively decomposes the *head* (the
+last part), which is always a legal standalone suffix. Modifier parts are
+left whole, since re-slicing a connecting/genitive modifier in isolation
+would manufacture spurious boundaries; the trade-off is that a compound
+modifier is not broken up (`morgunverðarhlaðborð` →
+`morgunverðar‑hlað‑borð`, leaving `morgunverðar` intact).
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| word | `str` | | The word to hyphenate. |
+| mode | `str` | `"natural"` | Boundary granularity: `"natural"` (the preferred split with its head recursively decomposed) or `"primary"` (only the single most-preferred boundary, e.g. `skóla‑bókasafn`). |
+| min_left | `int` | `2` | Minimum number of characters that must precede any break (the typographic `lefthyphenmin`). |
+| min_right | `int` | `2` | Minimum number of characters that must follow any break (the typographic `righthyphenmin`). |
+| min_word | `int` | `8` | Words shorter than this many characters are not hyphenated. |
+| hyphen | `str` | `"­"` | The character inserted at each break; override to use a visible hyphen or another separator. |
+
+Returns `str` — the word with soft hyphens inserted, or the original word
+when it cannot (or should not) be hyphenated.
+
+The lower-level, database-independent primitive
+`islenska.dawgdictionary.Wordbase.insert_soft_hyphens()` accepts the same
+keyword arguments and performs the DAWG-based splitting without the
+function-word guard.
+
 ## `contains()` function and the `in` operator
 
 To test whether a word form is present in BÍN at all (without retrieving

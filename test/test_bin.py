@@ -1231,6 +1231,11 @@ def test_readme_examples() -> None:
     assert m[0].bmynd == "borgarstjórnar-minnihlutinn"
     assert m[0].mark == "NFETgr"
 
+    # ## `soft_hyphenate()` function
+    assert b.soft_hyphenate("skólabókasafn") == "skóla\xadbóka\xadsafn"
+    assert b.soft_hyphenate("EFNAHAGSRÁÐHERRA") == "EFNAHAGS\xadRÁÐ\xadHERRA"
+    assert b.soft_hyphenate("ásamt") == "ásamt"
+
     # ## `contains()` function and the `in` operator
     assert b.contains("hestur") is True
     assert "hestur" in b
@@ -1252,6 +1257,167 @@ def test_readme_examples() -> None:
     assert f"{o:EVB-KVK}" == "frábærasta"
 
 
+def test_soft_hyphenate() -> None:
+    """Soft-hyphen insertion at compound-component boundaries."""
+    from islenska.dawgdictionary import Wordbase, SOFT_HYPHEN as SH
+
+    b = Bin()
+
+    # The default ("natural") mode: preferred split, head recursively
+    # decomposed, modifiers kept whole
+    assert b.soft_hyphenate("skólabókasafn") == SH.join(["skóla", "bóka", "safn"])
+    assert b.soft_hyphenate("efnahagsráðherra") == SH.join(
+        ["efnahags", "ráð", "herra"]
+    )
+    assert b.soft_hyphenate("rauðvínsglas") == SH.join(["rauðvíns", "glas"])
+
+    # Mode selection: "primary" stops at the single best split, "natural"
+    # descends into the head
+    assert (
+        Wordbase.insert_soft_hyphens("skólabókasafn", mode="primary")
+        == SH.join(["skóla", "bókasafn"])
+    )
+    assert (
+        Wordbase.insert_soft_hyphens("skólabókasafn", mode="natural")
+        == SH.join(["skóla", "bóka", "safn"])
+    )
+    assert (
+        Wordbase.insert_soft_hyphens("efnahagsráðherra", mode="primary")
+        == SH.join(["efnahags", "ráðherra"])
+    )
+
+    # Regression: head-only recursion must not re-slice modifiers, so the
+    # spurious splits the raw DAWG offers (`…|arf|lokkur`, `bygg|ingar`,
+    # `efna|hags`) never appear
+    assert b.soft_hyphenate("ríkisstjórnarflokkur") == SH.join(
+        ["ríkis", "stjórnar", "flokkur"]
+    )
+    assert b.soft_hyphenate("byggingarkostnaður") == SH.join(
+        ["byggingar", "kostnaður"]
+    )
+    # Blind spot we accept: a compound *modifier* is left whole, so
+    # `morgun|verðar` is not split out of the modifier `morgunverðar`
+    assert b.soft_hyphenate("morgunverðarhlaðborð") == SH.join(
+        ["morgunverðar", "hlað", "borð"]
+    )
+
+    # Casing: lower, Capitalized and ALL-UPPERCASE all hyphenate, and the
+    # original casing is preserved verbatim in the output
+    assert b.soft_hyphenate("SKÓLABÓKASAFN") == SH.join(["SKÓLA", "BÓKA", "SAFN"])
+    assert b.soft_hyphenate("Skólabókasafn") == SH.join(["Skóla", "bóka", "safn"])
+    assert b.soft_hyphenate("EFNAHAGSRÁÐHERRA") == SH.join(
+        ["EFNAHAGS", "RÁÐ", "HERRA"]
+    )
+    assert b.soft_hyphenate("Vesturbæjarskóli") == SH.join(
+        ["Vestur", "bæjar", "skóli"]
+    )
+    assert b.soft_hyphenate("VESTURBÆJARSKÓLI") == SH.join(
+        ["VESTUR", "BÆJAR", "SKÓLI"]
+    )
+    # Proper nouns are stored capitalized in the DAWG, so an all-uppercase
+    # form is split via the capitalized-form fallback
+    assert b.soft_hyphenate("Hallgrímskirkja") == SH.join(["Hallgríms", "kirkja"])
+    assert b.soft_hyphenate("HALLGRÍMSKIRKJA") == SH.join(["HALLGRÍMS", "KIRKJA"])
+
+    # Closed-class function words are left untouched by the Bin guard, even
+    # though the bare DAWG would happily split them. `gagnvart` is a pure
+    # preposition (cats == {"fs"}) long enough to clear the min_word filter,
+    # so the guard — not the length check — is what suppresses the split.
+    assert Wordbase.insert_soft_hyphens("gagnvart") == SH.join(["gagn", "vart"])
+    assert b.soft_hyphenate("gagnvart") == "gagnvart"
+    # A word that is *also* an open-category form (here the noun/adverb
+    # `umhverfis`) is still hyphenated — the guard only fires for pure
+    # function words
+    assert b.soft_hyphenate("umhverfis") == SH.join(["um", "hverfis"])
+
+    # Real hyphens and spaces are hard boundaries and preserved; each token
+    # between them is hyphenated independently
+    assert b.soft_hyphenate("Ytri-Hnaus") == "Ytri-Hnaus"
+    assert (
+        b.soft_hyphenate("fjármála- og efnahagsráðherra")
+        == SH.join(["fjár", "mála"])
+        + "- og "
+        + SH.join(["efnahags", "ráð", "herra"])
+    )
+
+    # Short words, non-Icelandic words and words with no legal split are
+    # returned unchanged
+    assert b.soft_hyphenate("sól") == "sól"
+    assert b.soft_hyphenate("ogłosiły") == "ogłosiły"
+    assert b.soft_hyphenate("") == ""
+
+    # min_word, min_left and min_right knobs
+    assert Wordbase.insert_soft_hyphens("sólarljós", min_word=99) == "sólarljós"
+    assert Wordbase.insert_soft_hyphens("sólarljós") == SH.join(["sólar", "ljós"])
+
+    # Idempotency: re-hyphenating strips and re-inserts, giving the same result
+    once = b.soft_hyphenate("efnahagsráðherra")
+    assert b.soft_hyphenate(once) == once
+    # Removing the soft hyphens recovers the original word
+    assert once.replace(SH, "") == "efnahagsráðherra"
+
+    # Unknown mode is rejected
+    try:
+        Wordbase.insert_soft_hyphens("skólabókasafn", mode="bogus")
+    except ValueError:
+        pass
+    else:
+        assert False, "Expected ValueError for unknown mode"
+
+
+def test_soft_hyphenate_examples() -> None:
+    """Real-world inputs covering long modern compounds, capitalized and
+    all-uppercase forms, hyphenated proper nouns, abbreviation/number
+    prefixes and acronyms."""
+    from islenska.dawgdictionary import SOFT_HYPHEN as SH
+
+    b = Bin()
+
+    # Long compounds: the compound modifier (gervigreindar = gervi+greindar)
+    # is left whole, the head is decomposed
+    assert b.soft_hyphenate("gervigreindarskipulagningu") == SH.join(
+        ["gervigreindar", "skipulagningu"]
+    )
+    assert b.soft_hyphenate("gervigreindargagnaverin") == SH.join(
+        ["gervigreindar", "gagna", "verin"]
+    )
+
+    # Capitalized compound: directional modifier kept whole, casing preserved
+    assert b.soft_hyphenate("Suðvesturkjördæmið") == SH.join(
+        ["Suðvestur", "kjör", "dæmið"]
+    )
+
+    # All-uppercase compound, split via the head chain (fals+spá+maður)
+    assert b.soft_hyphenate("FALSSPÁMÖNNUM") == SH.join(["FALS", "SPÁ", "MÖNNUM"])
+
+    # Real hyphens / number- and acronym-prefixes are hard boundaries; tokens
+    # below min_word and acronyms with no BÍN reading pass through untouched
+    assert b.soft_hyphenate("Ytri-Hnausum") == "Ytri-Hnausum"
+    assert b.soft_hyphenate("EES") == "EES"
+    assert b.soft_hyphenate("2000-vandinn") == "2000-vandinn"
+
+    # KNOWN LIMITATION: the head chain over-segments when a head's longest
+    # legal suffix is really an inflectional ending that coincides with a
+    # DAWG word — `sýslunni` -> sýsl|unni, `samtakanna` -> ...|tak|anna.
+    # These assertions pin current behaviour; revisit if the head recursion
+    # learns to stop at inflectional boundaries.
+    assert (
+        b.soft_hyphenate("Suðvestur-Múlasýslunni")
+        == SH.join(["Suð", "vestur"]) + "-" + SH.join(["Múla", "sýsl", "unni"])
+    )
+    assert b.soft_hyphenate("AA-samtakanna") == "AA-" + SH.join(
+        ["sam", "tak", "anna"]
+    )
+
+    # Every result must round-trip back to the original word
+    for w in [
+        "gervigreindarskipulagningu", "gervigreindargagnaverin",
+        "Suðvesturkjördæmið", "Suðvestur-Múlasýslunni", "Ytri-Hnausum",
+        "AA-samtakanna", "FALSSPÁMÖNNUM", "EES", "2000-vandinn",
+    ]:
+        assert b.soft_hyphenate(w).replace(SH, "") == w
+
+
 if __name__ == "__main__":
 
     test_lookup()
@@ -1268,5 +1434,7 @@ if __name__ == "__main__":
     test_sorting()
     test_id()
     test_non_latin1_words()
+    test_soft_hyphenate()
+    test_soft_hyphenate_examples()
     test_ksnid()
     test_readme_examples()

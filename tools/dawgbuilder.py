@@ -878,6 +878,12 @@ def generate_dawgs():
         # Output file - extension will be added
         "ordalisti-suffixes",
         resources_path,  # Subfolder of input and output files
+        # Drop non-modern forms that make poor inflection-template seeds
+        # (e.g. 'ingar', the NFFT of the poetic noun 'ingi'); the list is
+        # produced by tools/find_bad_suffixes.py. Removing them from the
+        # suffix DAWG alone suffices: the compound splitter rejects any split
+        # whose last part is not a legal suffix.
+        removals="suffix-removals.txt",
     )
     t1 = time.time()
     print("Build took {0:.2f} seconds".format(t1 - t0))

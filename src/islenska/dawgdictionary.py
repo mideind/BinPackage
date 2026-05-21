@@ -39,8 +39,9 @@
 
 """
 
-from typing import Iterator, List, Optional, IO, Any, cast
+from typing import Callable, Iterator, List, Optional, Set, IO, Any, cast
 import os
+import re
 import threading
 import mmap
 import json
@@ -57,6 +58,16 @@ ffi = cast(Any, ffi_unknown)
 
 
 _PATH = os.path.dirname(__file__) or "."
+
+# The Unicode SOFT HYPHEN (U+00AD): an invisible character that marks a
+# permitted line-break position, rendered as a hyphen only if the break is
+# actually taken by the typesetter. Spelled as an escape so it stays visible
+# in editors.
+SOFT_HYPHEN = "\u00ad"
+
+# Tokens are hyphenated independently between these hard boundaries, which
+# are preserved verbatim in the output.
+_HARD_BOUNDARY_RE = re.compile(r"([ \-])")
 
 
 class Dawg:
@@ -204,3 +215,199 @@ class Wordbase:
         for combination in cls._iter_legal_compound_splits(word):
             return combination
         return []
+
+    @classmethod
+    def _best_multipart_split(cls, s: str) -> Optional[List[str]]:
+        """Return the heuristically preferred split of ``s`` into two or
+        more parts, or None if ``s`` has no legal compound split. The
+        single-part candidate (the whole word, which carries no internal
+        boundary) is skipped; the candidates are already ranked so that the
+        winner has the longest last part and the fewest parts."""
+        return next(
+            (c for c in cls.slice_compound_word_candidates(s) if len(c) > 1), None
+        )
+
+    @classmethod
+    def _primary_seam_offsets(cls, s: str) -> Set[int]:
+        """Return the boundary offsets of the single best multi-part split of
+        ``s``, without descending into the parts, e.g. ``skólabókasafn`` ->
+        {5} (``skóla|bókasafn``)."""
+        best = cls._best_multipart_split(s)
+        if best is None:
+            return set()
+        offsets: Set[int] = set()
+        pos = 0
+        for part in best[:-1]:
+            pos += len(part)
+            offsets.add(pos)
+        return offsets
+
+    @classmethod
+    def _natural_seam_offsets(
+        cls,
+        s: str,
+        recurse_modifier: Optional[Callable[[str], bool]] = None,
+    ) -> Set[int]:
+        """Return the boundaries of the natural compound decomposition of
+        ``s``: take the preferred split (longest last part, fewest parts),
+        always descend into the head (the last part), and descend into a
+        modifier part only when ``recurse_modifier`` accepts it. e.g.
+        ``skólabókasafn`` -> {5, 9} (``skóla|bóka|safn``).
+
+        The head is always re-sliced because it is a legal standalone suffix,
+        so its sub-splits are genuine compound seams. A modifier is a
+        connecting/genitive form whose standalone re-slicing can manufacture
+        spurious seams, so by default (``recurse_modifier is None``) modifiers
+        are left whole — at the cost of leaving a compound modifier
+        undecomposed (``morgunverðarhlaðborð`` -> ``morgunverðar|hlað|borð``).
+        Callers with access to inflection data can pass ``recurse_modifier``
+        (see ``Bin.soft_hyphenate``) to also unpack modifiers it deems safe,
+        e.g. possessive (genitive) prefixes -> ``morgun|verðar|hlað|borð``."""
+        best = cls._best_multipart_split(s)
+        if best is None:
+            return set()
+        offsets: Set[int] = set()
+        pos = 0
+        last = len(best) - 1
+        for i, part in enumerate(best):
+            if i > 0:
+                # Boundary between the previous part and this one
+                offsets.add(pos)
+            if i == last or (
+                recurse_modifier is not None and recurse_modifier(part)
+            ):
+                offsets.update(
+                    pos + o
+                    for o in cls._natural_seam_offsets(part, recurse_modifier)
+                )
+            pos += len(part)
+        return offsets
+
+    @classmethod
+    def _seam_offsets(
+        cls,
+        token: str,
+        mode: str,
+        recurse_modifier: Optional[Callable[[str], bool]] = None,
+    ) -> Set[int]:
+        """Compute compound-part boundary offsets within a single token,
+        independent of case. The lowercase form is tried first, as it is by
+        far the most productive in the DAWG (capitalized and all-uppercase
+        common nouns do not match directly); we then fall back to the form as
+        given and finally to a capitalized form, which lets proper nouns
+        stored only in capitalized form — e.g. ``Hallgrímskirkja`` — still be
+        split, whether they arrive capitalized or in all-uppercase. Icelandic
+        case-folding is one-to-one and length-preserving within Latin-1, so
+        the offsets apply unchanged to the original-case token."""
+        if mode == "natural":
+            def finder(s: str) -> Set[int]:
+                return cls._natural_seam_offsets(s, recurse_modifier)
+        elif mode == "primary":
+            finder = cls._primary_seam_offsets
+        else:
+            raise ValueError(
+                f"Unknown soft-hyphenation mode {mode!r}; "
+                "expected 'natural' or 'primary'"
+            )
+        tried: Set[str] = set()
+        for variant in (token.lower(), token, token.capitalize()):
+            if variant in tried:
+                continue
+            tried.add(variant)
+            offsets = finder(variant)
+            if offsets:
+                return offsets
+        return set()
+
+    @classmethod
+    def _hyphenate_token(
+        cls,
+        token: str,
+        mode: str,
+        min_left: int,
+        min_right: int,
+        min_word: int,
+        hyphen: str,
+        recurse_modifier: Optional[Callable[[str], bool]] = None,
+    ) -> str:
+        """Insert ``hyphen`` at the eligible compound boundaries of a single
+        token (one with no internal spaces or hyphens)."""
+        n = len(token)
+        if n < min_word:
+            return token
+        # Keep only breaks that leave at least min_left characters before and
+        # min_right characters after the break (lefthyphenmin/righthyphenmin)
+        offsets = sorted(
+            o
+            for o in cls._seam_offsets(token, mode, recurse_modifier)
+            if min_left <= o <= n - min_right
+        )
+        if not offsets:
+            return token
+        pieces: List[str] = []
+        prev = 0
+        for o in offsets:
+            pieces.append(token[prev:o])
+            prev = o
+        pieces.append(token[prev:])
+        return hyphen.join(pieces)
+
+    @classmethod
+    def insert_soft_hyphens(
+        cls,
+        word: str,
+        *,
+        mode: str = "natural",
+        min_left: int = 2,
+        min_right: int = 2,
+        min_word: int = 8,
+        hyphen: str = SOFT_HYPHEN,
+        recurse_modifier: Optional[Callable[[str], bool]] = None,
+    ) -> str:
+        """Return ``word`` with soft hyphens (U+00AD by default) inserted at
+        its internal compound-component boundaries, so a typesetter may break
+        the word across lines at morphologically valid points.
+
+        ``mode`` selects the boundary granularity:
+
+        * ``"natural"`` (default): the natural decomposition — the preferred
+          split (longest last part, fewest parts) with its head recursively
+          decomposed, e.g. ``skólabókasafn`` -> ``skóla|bóka|safn``.
+        * ``"primary"``: only the single most-preferred boundary, e.g.
+          ``skólabókasafn`` -> ``skóla|bókasafn``.
+
+        ``min_left`` / ``min_right`` enforce a minimum number of characters on
+        either side of any break (the typographic ``lefthyphenmin`` /
+        ``righthyphenmin``); ``min_word`` skips words shorter than this many
+        characters. Real hyphens and spaces are treated as hard boundaries and
+        preserved, with each token between them hyphenated independently.
+        Pre-existing soft hyphens are stripped first, so the function is
+        idempotent. Words with no legal compound split (and those containing
+        characters outside the Latin-1 range) are returned unchanged.
+
+        ``recurse_modifier`` (``"natural"`` mode only) is an optional predicate
+        that decides whether a given modifier part should itself be decomposed;
+        modifiers it rejects are left whole. ``Bin.soft_hyphenate`` passes one
+        that recurses possessive (genitive) prefixes.
+
+        This is the pure-DAWG primitive; ``Bin.soft_hyphenate`` wraps it with
+        an additional BÍN-backed guard against splitting function words."""
+        if not word:
+            return word
+        # Strip any pre-existing soft hyphens so the result is idempotent.
+        # We always remove the canonical U+00AD (not the ``hyphen`` argument),
+        # so that overriding ``hyphen`` with a visible "-" cannot accidentally
+        # delete real hyphens, which act as hard boundaries below.
+        word = word.replace(SOFT_HYPHEN, "")
+        out: List[str] = []
+        for token in _HARD_BOUNDARY_RE.split(word):
+            if token in (" ", "-", ""):
+                out.append(token)
+            else:
+                out.append(
+                    cls._hyphenate_token(
+                        token, mode, min_left, min_right, min_word, hyphen,
+                        recurse_modifier,
+                    )
+                )
+        return "".join(out)

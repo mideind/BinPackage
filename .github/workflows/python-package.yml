@@ -61,10 +61,12 @@ jobs:
         if [ "${{ matrix.python-version }}" == "3.9" ]; then uv pip install --system ruff; fi
         if [ "${{ matrix.python-version }}" == "3.9" ]; then ruff check src/islenska; fi
 
-    - name: Type check with mypy
+    - name: Type check with pyright
       run: |
-        if [ "${{ matrix.python-version }}" == "3.9" ]; then uv pip install --system mypy; fi
-        if [ "${{ matrix.python-version }}" == "3.9" ]; then mypy --python-version=3.9 src/islenska; fi
+        if [ "${{ matrix.python-version }}" == "3.9" ]; then uv pip install --system pyright; fi
+        # pyrightconfig.json pins the target Python version and strict mode;
+        # --pythonpath points pyright at the interpreter holding the deps
+        if [ "${{ matrix.python-version }}" == "3.9" ]; then pyright --pythonpath "$(which python)"; fi
 
     - name: Build *.dawg.bin
       run: |

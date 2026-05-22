@@ -141,7 +141,24 @@ Lookups that are resolved via the compounding algorithm have a `bin_id` of zero.
 Note that the compounding algorithm will occasionally recognize nonexistent
 words, for instance spelling errors, as compounds.
 
-If desired, the compounding algorithm can be disabled
+If you would rather receive the bare, concatenated word form without these
+inserted hyphens, create the `Bin` instance with `add_compound_hyphens=False`:
+
+```python
+>>> b = Bin(add_compound_hyphens=False)
+>>> b.lookup("síamskattarkjóll")
+('síamskattarkjóll', [
+    (ord='síamskattarkjóll', kk/alm/0, bmynd='síamskattarkjóll', NFET)
+])
+```
+
+This suppresses only the synthetic boundaries that the algorithm discovers;
+hyphens that are part of the queried word, or that occur in BÍN itself (such
+as `Vestur-Þýskaland`), are always returned as-is. The `get_compound()`
+function (see below) is unaffected by this flag and always marks the component
+boundaries, since exposing the compound structure is its sole purpose.
+
+If desired, the compounding algorithm can be disabled altogether
 via an optional flag; see the documentation below.
 
 # Examples
@@ -296,6 +313,7 @@ constructor call:
 | `add_negation`    | `True`    | For adjectives, find forms with the prefix `ó` even if only the non-prefixed version is present in BÍN. Example: find `ófíkinn` because `fíkinn` is in BÍN. |
 | `add_legur`       | `True`    | For adjectives, find all forms with an "adjective-like" suffix, i.e. `-legur`, `-leg`, etc. even if they are not present in BÍN. Example: `sólarolíulegt`. |
 | `add_compounds`   | `True`    | Find compound words that can be derived from BinPackage's collection of allowed prefixes and suffixes. The algorithm finds the compound word with the fewest components and the longest suffix. Example: `síamskattar-kjóll`. |
+| `add_compound_hyphens` | `True` | Mark the component boundaries that the compounding algorithm discovers with a hyphen in the `ord` and `bmynd` fields (`síamskattar-kjóll`). Set to `False` to get the bare, concatenated form instead (`síamskattarkjóll`). This affects only the synthetic boundaries found by the algorithm; hyphens that are part of the queried word, or that occur in BÍN itself (e.g. `Vestur-Þýskaland`), are always preserved. |
 | `replace_z`       | `True`    | Find words containing `tzt` and `z` by replacing these strings by `st` and `s`, respectively. Example: `veitzt` -> `veist`. |
 | `only_bin`        | `False`   | Find only word forms that are originally present in BÍN, disabling all of the above described flags. |
 
@@ -510,8 +528,10 @@ call the `lookup_cats` function:
 ```
 
 The function returns a `Set[str]` with all possible word classes/categories
-of the word form. If the word is not found in BÍN, or recognized using the
-compounding algorithm, the function returns an empty set.
+of the word form. Word forms that are not present in BÍN are resolved via the
+compounding algorithm where possible (e.g. `borgarstjórnarminnihlutinn` yields
+`{'kk'}`); an empty set is returned only when the word can neither be found in
+BÍN nor interpreted as a compound.
 
 `lookup_cats()` has the following parameters:
 
@@ -531,9 +551,11 @@ To look up the possible lemmas/headwords and classes/categories of a word
 ```
 
 The function returns a `Set[Tuple[str, str]]` where each tuple contains
-a lemma/headword and a class/category, respectively.
-If the word is not found in BÍN, or recognized using the
-compounding algorithm, the function returns an empty set.
+a lemma/headword and a class/category, respectively. Word forms that are not
+present in BÍN are resolved via the compounding algorithm where possible (e.g.
+`borgarstjórnarminnihlutinn` yields `{('borgarstjórnar-minnihluti', 'kk')}`);
+an empty set is returned only when the word can neither be found in BÍN nor
+interpreted as a compound.
 
 `lookup_lemmas_and_cats()` has the following parameters:
 
@@ -739,6 +761,12 @@ alternative that supports more selective queries.
 The function returns a `List[BinEntry]`. As with the other case-lookup
 functions below, the order of entries in the list is not guaranteed.
 
+If the lemma is not present in BÍN but can be resolved as a compound word,
+the forms of its head (last component) are enumerated and re-prefixed, e.g.
+`lookup_forms("síamskattarkjóll", "kk", "ÞGF")` yields `síamskattar-kjól`,
+`síamskattar-kjólnum`, `síamskattar-kjólum` and `síamskattar-kjólunum`. The
+inserted hyphen follows the [`add_compound_hyphens`](#bin-constructor) flag.
+
 ## `lookup_nominative()`, `lookup_accusative()`, `lookup_dative()`, `lookup_genitive()`
 
 These four functions return the inflectional forms of a word's lemma(s)
@@ -781,6 +809,16 @@ Each function returns `List[BinEntry]`. The order of entries within the
 returned list is not guaranteed (results are derived from a `set`); the
 example outputs above show one possible ordering.
 
+A word form that is not present in BÍN but can be interpreted as a compound
+is resolved by casting its head (last component) and re-prefixing the result,
+just as `lookup()` does — so `lookup_nominative("síamskattarkjólnum", cat="kk")`
+returns `(ord='síamskattar-kjóll', bmynd='síamskattar-kjóllinn', NFETgr)`. The
+inserted hyphen follows the [`add_compound_hyphens`](#bin-constructor) flag,
+while hyphens that are part of the queried word are always kept. Compounding
+is not attempted when a `bin_id` is supplied (a constructed compound has no id
+of its own), nor when the word does occur in BÍN but is excluded by the `cat`
+or `lemma` constraints.
+
 ## `cast_to_accusative()`, `cast_to_dative()`, `cast_to_genitive()`
 
 Cast a single word from nominative case into another case, returning the
@@ -802,6 +840,10 @@ unchanged.
 The casting is context-free: the functions only see one word at a time.
 That means an ambiguous form may not be cast as intended in your
 sentence. To narrow the choice you can supply a `filter_func`.
+
+Compound words are cast by resolving their head, so a compound that is not in
+BÍN is still cast — `cast_to_accusative("Vestur-hestur")` gives `Vestur-hest`.
+Hyphens that are part of the input are preserved in the result.
 
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
@@ -835,6 +877,10 @@ to inspect compound structure.
 The function returns `Tuple[str, List[BinEntry]]` — the resolved search
 key and a list of compound `BinEntry` interpretations. The list is empty
 when no compound interpretation is found.
+
+This function always marks the component boundaries with hyphens, even when
+the `Bin` instance was created with `add_compound_hyphens=False`, since
+exposing the compound structure is the whole point of the function.
 
 ## `soft_hyphenate()` function
 

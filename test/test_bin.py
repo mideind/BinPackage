@@ -416,6 +416,72 @@ def test_compounds() -> None:
     assert set(lc) == {("fjármála- og efnahags-ráðherra", "kk")}
 
 
+def test_no_compound_hyphens() -> None:
+    """The add_compound_hyphens=False flag suppresses the synthetic hyphens
+    that the compounding algorithm inserts at the boundaries it discovers,
+    while leaving hyphens that belong to the queried word, or that occur in
+    BÍN, untouched."""
+    db = Bin()  # Default: add_compound_hyphens=True
+    nh = Bin(add_compound_hyphens=False)
+
+    # A plain compound: the synthetic boundary is dropped in the lemma (ord)
+    # and in every inflection form (bmynd)
+    _, m = db.lookup("síamskattarkjólanna")
+    assert m[0].ord == "síamskattar-kjóll" and m[0].bmynd == "síamskattar-kjólanna"
+    _, m = nh.lookup("síamskattarkjólanna")
+    assert len(m) == 1
+    assert m[0].ord == "síamskattarkjóll" and m[0].bmynd == "síamskattarkjólanna"
+    assert m[0].bin_id == 0 and m[0].mark == "EFFTgr"
+
+    # Same for the Ksnid variant of lookup
+    _, mk = nh.lookup_ksnid("síamskattarkjólanna")
+    assert mk[0].ord == "síamskattarkjóll" and mk[0].bmynd == "síamskattarkjólanna"
+
+    # ...and for grammatical variants
+    v = nh.lookup_variants("síamskattarkjóll", "kk", "ÞGF")
+    assert v and all(
+        e.ord == "síamskattarkjóll" and "-" not in e.bmynd for e in v
+    )
+
+    # A three-part compound concatenates fully, with no internal hyphens
+    _, m = nh.lookup("alþjóðaviðskiptastofnunin")
+    assert m[0].ord == "alþjóðaviðskiptastofnun"
+    assert m[0].bmynd == "alþjóðaviðskiptastofnunin"
+
+    # lookup_cats / lookup_lemmas_and_cats respect the flag too
+    assert nh.lookup_lemmas_and_cats("síamskattarkjólanna") == {
+        ("síamskattarkjóll", "kk")
+    }
+    assert nh.lookup_cats("síamskattarkjólanna") == {"kk"}
+
+    # A hyphen that is part of the queried word is always preserved, even
+    # when the word is resolved as a compound (bin_id == 0)
+    _, m = nh.lookup("fjármála-ráðherra")
+    assert m and all(e.ord == "fjármála-ráðherra" and e.bin_id == 0 for e in m)
+
+    # A hyphen that occurs in BÍN itself is always preserved
+    _, m = nh.lookup("Vestur-Þýskaland")
+    assert m and all(e.ord == "Vestur-Þýskaland" and e.bin_id != 0 for e in m)
+
+    # In a multi-word compound the user's own separators are kept, while only
+    # the synthetic boundary before the head is dropped
+    _, m = db.lookup("fjármála- og efnahagsráðherra")
+    assert m[0].ord == "fjármála- og efnahags-ráðherra"
+    _, m = nh.lookup("fjármála- og efnahagsráðherra")
+    assert m[0].ord == "fjármála- og efnahagsráðherra"
+
+    # get_compound always exposes the compound structure with hyphens,
+    # regardless of the flag
+    _, m = nh.get_compound("síamskattarkjóll")
+    assert m[0].ord == "síamskattar-kjóll" and m[0].bmynd == "síamskattar-kjóll"
+
+    # Case casting is unaffected: it never emits the synthetic hyphen in either
+    # mode, and always keeps a legitimate one
+    assert nh.cast_to_dative("síamskattarkjóll") == "síamskattarkjól"
+    assert db.cast_to_dative("síamskattarkjóll") == "síamskattarkjól"
+    assert nh.cast_to_genitive("Vestur-Þýskaland") == "Vestur-Þýskalands"
+
+
 def test_gauksstadamal_uses_deepest_split() -> None:
     """`gauksstaðamál` should parse via the same 3-part split as
     `gauksstaðamálið` so that downstream consumers see the full
@@ -642,6 +708,20 @@ def test_casting() -> None:
     assert db.cast_to_dative("Vestur-Þýskaland") == "Vestur-Þýskalandi"
     assert db.cast_to_genitive("Vestur-Þýskaland") == "Vestur-Þýskalands"
 
+    # A user-hyphenated compound that is not itself in BÍN is cast by resolving
+    # its head via the compounding algorithm, consistent with lookup(). The
+    # contrived 'Vestur-hestur' is not a BÍN entry, but its head 'hestur'
+    # inflects, so the whole word can now be cast (it was returned unchanged
+    # before the case-lookup functions gained compound support).
+    assert not db.contains("Vestur-hestur")
+    assert db.cast_to_accusative("Vestur-hestur") == "Vestur-hest"
+    assert db.cast_to_dative("Vestur-hestur") == "Vestur-hesti"
+    assert db.cast_to_genitive("Vestur-hestur") == "Vestur-hests"
+    # The user's own hyphen is retained even when synthetic compound hyphens
+    # are switched off
+    db_nh = Bin(add_compound_hyphens=False)
+    assert db_nh.cast_to_accusative("Vestur-hestur") == "Vestur-hest"
+
     f: BinFilterFunc = lambda mm: sorted(
         mm, key=lambda m: "2" in m.mark or "3" in m.mark
     )
@@ -696,6 +776,100 @@ def test_forms():
     assert "kattarins" in om
     assert "katta" in om
     assert "kattanna" in om
+
+
+def test_compound_case_lookups() -> None:
+    """lookup_nominative/accusative/dative/genitive and lookup_forms resolve
+    compound words that are not present in BÍN as a whole, by enumerating the
+    forms of the head and re-prefixing them."""
+    db = Bin()
+
+    # lookup_<case>() casts a compound surface form. By default the result
+    # inherits number/definiteness from the input (síamskattarkjólnum is
+    # dative singular definite -> nominative singular definite only).
+    m = db.lookup_nominative("síamskattarkjólnum", cat="kk")
+    assert [(e.ord, e.bmynd, e.mark) for e in m] == [
+        ("síamskattar-kjóll", "síamskattar-kjóllinn", "NFETgr")
+    ]
+    # all_forms=True returns the whole paradigm in the requested case
+    m = db.lookup_nominative("síamskattarkjólnum", cat="kk", all_forms=True)
+    assert {e.bmynd for e in m} == {
+        "síamskattar-kjóll",
+        "síamskattar-kjóllinn",
+        "síamskattar-kjólar",
+        "síamskattar-kjólarnir",
+    }
+    assert all(e.ord == "síamskattar-kjóll" and e.bin_id == 0 for e in m)
+
+    m = db.lookup_dative("síamskattarkjóll", cat="kk", all_forms=True)
+    assert {e.bmynd for e in m} == {
+        "síamskattar-kjól",
+        "síamskattar-kjólnum",
+        "síamskattar-kjólum",
+        "síamskattar-kjólunum",
+    }
+    m = db.lookup_genitive("borgarstjórnarminnihlutinn", cat="kk")
+    assert [(e.ord, e.bmynd) for e in m] == [
+        ("borgarstjórnar-minnihluti", "borgarstjórnar-minnihlutans")
+    ]
+
+    # lookup_forms() works on a compound lemma, returning every form in the case
+    m = db.lookup_forms("síamskattarkjóll", "kk", "ÞGF")
+    assert {e.bmynd for e in m} == {
+        "síamskattar-kjól",
+        "síamskattar-kjólnum",
+        "síamskattar-kjólum",
+        "síamskattar-kjólunum",
+    }
+
+    # The add_compound_hyphens=False flag carries through to these functions
+    nh = Bin(add_compound_hyphens=False)
+    m = nh.lookup_nominative("síamskattarkjólnum", cat="kk")
+    assert [(e.ord, e.bmynd) for e in m] == [
+        ("síamskattarkjóll", "síamskattarkjóllinn")
+    ]
+    m = nh.lookup_forms("síamskattarkjóll", "kk", "ÞGF")
+    assert {e.bmynd for e in m} == {
+        "síamskattarkjól",
+        "síamskattarkjólnum",
+        "síamskattarkjólum",
+        "síamskattarkjólunum",
+    }
+    # A hyphen that is part of the queried word is always kept, even with the
+    # flag off
+    m = nh.lookup_nominative("fjármála-ráðherranum", cat="kk")
+    assert [(e.ord, e.bmynd) for e in m] == [
+        ("fjármála-ráðherra", "fjármála-ráðherrann")
+    ]
+
+    # Non-compound lookups are unaffected
+    m = db.lookup_nominative("hestinum", cat="kk")
+    assert [(e.ord, e.bmynd) for e in m] == [("hestur", "hesturinn")]
+    # A hyphenated word that occurs in BÍN is resolved directly, not compounded
+    m = db.lookup_genitive("Vestur-Þýskalandi")
+    assert m and all(e.ord == "Vestur-Þýskaland" and e.bin_id != 0 for e in m)
+
+    # The lemma keyword, for a compound, restricts to the whole-word lemma
+    # (matched with or without the inserted hyphens)
+    assert db.lookup_nominative(
+        "síamskattarkjólnum", cat="kk", lemma="síamskattarkjóll"
+    )
+    assert db.lookup_nominative(
+        "síamskattarkjólnum", cat="kk", lemma="síamskattar-kjóll"
+    )
+    assert not db.lookup_nominative("síamskattarkjólnum", cat="kk", lemma="kjóll")
+
+    # Compounding is not attempted when: a specific bin_id is requested (a
+    # constructed compound has none); compounds are disabled; the word is a
+    # misspelling that does not slice; or the word is in BÍN but fails the
+    # cat/lemma constraints (so the empty result is intentional).
+    assert not db.lookup_nominative("síamskattarkjólnum", cat="kk", bin_id=999999)
+    assert not Bin(add_compounds=False).lookup_nominative(
+        "síamskattarkjólnum", cat="kk"
+    )
+    assert not db.lookup_forms("kötur", "kk", "nf")
+    assert not db.lookup_forms("kettirnir", "kk", "nf")
+    assert not db.lookup_forms("köttur", "kvk", "nf")
 
 
 def test_variants() -> None:

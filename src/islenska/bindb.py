@@ -186,6 +186,14 @@ class Bin:
         self._add_legur = options.pop("add_legur", True)
         self._add_compounds = options.pop("add_compounds", True)
         self._replace_z = options.pop("replace_z", True)
+        # When True (the default), the compounding algorithm marks the
+        # component boundaries it discovers with a hyphen in the 'ord' and
+        # 'bmynd' fields ('síamskattar-kjóll'). Set to False to get the bare,
+        # concatenated form ('síamskattarkjóll'). This only affects the
+        # synthetic boundaries found by the algorithm; hyphens that are part
+        # of the queried word, or that occur in BÍN itself (e.g.
+        # 'Vestur-Þýskaland'), are always preserved.
+        self._add_compound_hyphens = options.pop("add_compound_hyphens", True)
         if options.pop("only_bin", False):
             # If only_bin is set, disable all additions/modifications
             self._add_negation = False
@@ -391,16 +399,22 @@ class Bin:
         at_sentence_start: bool,
         lookup_func: LookupFunc[_T],
         ctor: EntryCtor[_T],
+        *,
+        insert_hyphen: bool = True,
     ) -> ResultTuple[_T]:
         """Return a list of matching entries for this word,
-        when interpreted as a compound word"""
+        when interpreted as a compound word. If insert_hyphen is False,
+        the boundary that the compounding algorithm discovers is not marked
+        with a hyphen, i.e. the bare concatenated form is returned. Hyphens
+        and spaces that are already present in ``w`` are always respected."""
         m: List[_T]
         if " " in w:
             # The word is a multi-word compound, such as
             # 'félags- og barnamálaráðherra': Look at the last part only
             prefix, suffix = w.rsplit(" ", maxsplit=1)
             w_suffix, m = self._compound_meanings(
-                suffix, suffix.lower(), False, lookup_func, ctor
+                suffix, suffix.lower(), False, lookup_func, ctor,
+                insert_hyphen=insert_hyphen,
             )
             if not m:
                 return w, m
@@ -419,13 +433,16 @@ class Bin:
             # look at the suffix only
             prefix, suffix = w.rsplit("-", maxsplit=1)
             _, m = self._compound_meanings(
-                suffix, suffix.lower(), False, lookup_func, ctor
+                suffix, suffix.lower(), False, lookup_func, ctor,
+                insert_hyphen=insert_hyphen,
             )
             if not m:
                 return w, m
             # For words such as 'Ytri-Hnaus', retain the uppercasing of the suffix
             uppercase_suffix = suffix[0].isupper() and suffix[1:].islower()
             w = prefix + "-" + suffix
+            # The hyphen here belongs to the queried word, so it is always
+            # retained, regardless of the insert_hyphen setting
             m = self._prefix_meanings(
                 m, prefix, ctor, uppercase_suffix=uppercase_suffix
             )
@@ -442,8 +459,10 @@ class Bin:
             return w, []
         cw = self._select_compound_candidate(candidates, lookup_func)
         # This looks like a compound word:
-        # use the meaning of its last part
-        prefix = "-".join(cw[0:-1])
+        # use the meaning of its last part. The component boundaries are
+        # marked with hyphens only if insert_hyphen is True; otherwise the
+        # prefix components are concatenated directly.
+        prefix = ("-" if insert_hyphen else "").join(cw[0:-1])
         # Lookup the entries that match the last part, setting
         # the compound flag if we actually have a compound word
         m = lookup_func(cw[-1], compound=bool(prefix))
@@ -459,7 +478,9 @@ class Bin:
             # (nouns, verbs, adjectives, adverbs)
             m = self.open_cats(m)
         # Add the prefix to the remaining word lemmas
-        return return_w, self._prefix_meanings(m, prefix, ctor)
+        return return_w, self._prefix_meanings(
+            m, prefix, ctor, insert_hyphen=insert_hyphen
+        )
 
     def _lookup(
         self,
@@ -468,10 +489,14 @@ class Bin:
         auto_uppercase: bool,
         lookup_func: LookupFunc[_T],
         ctor: EntryCtor[_T],
+        *,
+        insert_hyphen: bool = True,
     ) -> ResultTuple[_T]:
         """Lookup a simple or compound word in the database and
         return its meaning(s). This function checks for abbreviations,
-        upper/lower case variations, etc."""
+        upper/lower case variations, etc. The insert_hyphen flag controls
+        whether compound-component boundaries found by the compounding
+        algorithm are marked with a hyphen (see _compound_meanings())."""
 
         # Start with a straightforward, cached lookup of the word as-is
         lower_w = w
@@ -555,7 +580,8 @@ class Bin:
         if not m and self._add_compounds:
             # Still nothing: check compound words
             w, m = self._compound_meanings(
-                w, lower_w, at_sentence_start, lookup_func, ctor
+                w, lower_w, at_sentence_start, lookup_func, ctor,
+                insert_hyphen=insert_hyphen,
             )
 
         if not m and self._add_negation and lower_w.startswith("ó"):
@@ -592,6 +618,7 @@ class Bin:
                 auto_uppercase,
                 lookup_func,
                 ctor,
+                insert_hyphen=insert_hyphen,
             )
             if m:
                 # Return the word form that was actually found
@@ -726,6 +753,24 @@ class Bin:
             auto_uppercase,
             self._meanings_cache_lookup,
             make_bin_entry,
+            insert_hyphen=self._add_compound_hyphens,
+        )
+
+    def _lookup_keep_hyphens(
+        self, w: str, at_sentence_start: bool = False, auto_uppercase: bool = False
+    ) -> ResultTuple[BinEntry]:
+        """Like lookup(), but always marks compound-component boundaries with
+        a hyphen, regardless of the add_compound_hyphens flag. Used internally
+        by the case-casting functions, which rely on the hyphen to locate the
+        boundary between prefix and suffix; the hyphen itself does not appear
+        in their (concatenated) output."""
+        return self._lookup(
+            w,
+            at_sentence_start,
+            auto_uppercase,
+            self._meanings_cache_lookup,
+            make_bin_entry,
+            insert_hyphen=True,
         )
 
     def lookup_ksnid(
@@ -738,6 +783,7 @@ class Bin:
             auto_uppercase,
             self._ksnid_cache_lookup,
             Ksnid.make,
+            insert_hyphen=self._add_compound_hyphens,
         )
 
     def lookup_id(self, bin_id: int) -> KsnidList:
@@ -753,6 +799,7 @@ class Bin:
             False,
             self._ksnid_cache_lookup,
             Ksnid.make,
+            insert_hyphen=self._add_compound_hyphens,
         )
         return set(mm.ofl for mm in m)
 
@@ -766,6 +813,7 @@ class Bin:
             False,
             self._ksnid_cache_lookup,
             Ksnid.make,
+            insert_hyphen=self._add_compound_hyphens,
         )
         return set((mm.ord, mm.ofl) for mm in m)
 
@@ -774,16 +822,30 @@ class Bin:
         This is mainly used to retrieve inflection forms of nouns, where
         we want to retrieve singular and plural, definite and indefinite
         forms in particular cases. Note that lookup_variants() below is
-        a more flexible alternative to this function."""
+        a more flexible alternative to this function. If the lemma is not
+        found in BÍN but can be resolved as a compound word, the forms of
+        its head are enumerated and re-prefixed."""
         assert self._bc is not None
-        mset = self._bc.lookup_case(
-            lemma,
-            case.upper().replace("GR", "gr"),
-            lemma=lemma,
-            cat=cat,
-            all_forms=True,
+        bc: BinCompressed = self._bc
+        norm_case = case.upper().replace("GR", "gr")
+        m = self._filter_meanings(
+            bc.lookup_case(lemma, norm_case, lemma=lemma, cat=cat, all_forms=True)
         )
-        return self._filter_meanings(mset)
+        if m or bc.contains(lemma):
+            # Either the lemma was found, or it is present in BÍN as a non-lemma
+            # surface form (and thus deliberately yields nothing here): only a
+            # lemma that is absent from BÍN is a candidate for compounding.
+            return m
+
+        def suffix_forms_lookup(key: str, compound: bool = False) -> BinEntryList:
+            """Enumerate the forms of a compound head (the last component),
+            in the requested case. The head is a genuine BÍN word, so no
+            further compounding or lemma/id constraints apply."""
+            return self._filter_meanings(
+                bc.lookup_case(key, norm_case, cat=cat, all_forms=True)
+            )
+
+        return self._compound_case(lemma, suffix_forms_lookup)
 
     def lookup_variants(
         self,
@@ -817,7 +879,10 @@ class Bin:
             klist = self._filter_ksnid(mlist)
             return [k for k in klist if compound or k.birting != "S"]
 
-        _, m = self._lookup(w, False, False, variant_lookup, Ksnid.make)
+        _, m = self._lookup(
+            w, False, False, variant_lookup, Ksnid.make,
+            insert_hyphen=self._add_compound_hyphens,
+        )
         return m
 
     def lookup_lemmas(self, lemma: str) -> ResultTuple[BinEntry]:
@@ -853,6 +918,30 @@ class Bin:
         assert self._bc is not None
         return self._filter_meanings(self._bc.raw_nominative(w))
 
+    def _compound_case(
+        self, w: str, suffix_lookup: LookupFunc[BinEntry]
+    ) -> BinEntryList:
+        """Resolve case forms for a word that is not present in BÍN as a whole
+        but can be interpreted as a compound. The compounding algorithm splits
+        ``w``; ``suffix_lookup`` is then applied to the head (the last
+        component) to obtain its forms in the desired case, and the prefix is
+        prepended to each result. Component boundaries discovered by the
+        algorithm honour the add_compound_hyphens flag, while hyphens and
+        spaces that are part of ``w`` itself are always retained — exactly as
+        in lookup(). Returns [] when compounding is disabled or ``w`` has no
+        compound interpretation."""
+        if not self._add_compounds:
+            return []
+        _, m = self._compound_meanings(
+            w,
+            w.lower(),
+            False,
+            suffix_lookup,
+            make_bin_entry,
+            insert_hyphen=self._add_compound_hyphens,
+        )
+        return m
+
     def _lookup_case(
         self,
         case_func: Callable[..., Set[BinEntryTuple]],
@@ -868,7 +957,7 @@ class Bin:
     ) -> BinEntryList:
         """Shared implementation of lookup_nominative/accusative/dative/genitive."""
         assert self._bc is not None
-        return self._filter_meanings(case_func(
+        m = self._filter_meanings(case_func(
             w,
             cat=cat,
             lemma=lemma,
@@ -878,6 +967,36 @@ class Bin:
             all_forms=all_forms,
             inflection_filter=inflection_filter,
         ))
+        if m or bin_id is not None or self.contains(w):
+            # We resolve a compound only when the word is genuinely absent from
+            # BÍN, mirroring lookup(). So we stop here if anything was found, or
+            # a specific BÍN id was requested (a constructed compound has no id
+            # of its own), or the word does occur in BÍN but failed the
+            # cat/lemma/case constraints above (in which case the empty result
+            # is intentional and must not be second-guessed by compounding).
+            return m
+
+        def suffix_case_lookup(key: str, compound: bool = False) -> BinEntryList:
+            """Case forms of a compound head. The whole-word lemma/bin_id are
+            not propagated here, as they identify the compound, not its head;
+            the cat constraint, however, does apply to the head."""
+            return self._filter_meanings(case_func(
+                key,
+                cat=cat,
+                lemma=None,
+                utg=None,
+                singular=singular,
+                indefinite=indefinite,
+                all_forms=all_forms,
+                inflection_filter=inflection_filter,
+            ))
+
+        m = self._compound_case(w, suffix_case_lookup)
+        if lemma is not None:
+            # Restrict to the requested lemma, which for a compound is the
+            # whole-word lemma (matched with or without inserted hyphens)
+            m = [e for e in m if lemma in (e.ord, e.ord.replace("-", ""))]
+        return m
 
     def lookup_nominative(
         self,
@@ -994,7 +1113,7 @@ class Bin:
         # or whether a word such as 'við' is actually a preposition.
         return self._cast_to_case(
             w,
-            self.lookup,
+            self._lookup_keep_hyphens,
             self.lookup_accusative,
             filter_func=filter_func,
         )
@@ -1010,7 +1129,7 @@ class Bin:
         # or whether a word such as 'við' is actually a preposition.
         return self._cast_to_case(
             w,
-            self.lookup,
+            self._lookup_keep_hyphens,
             self.lookup_dative,
             filter_func=filter_func,
         )
@@ -1026,7 +1145,7 @@ class Bin:
         # or whether a word such as 'við' is actually a preposition.
         return self._cast_to_case(
             w,
-            self.lookup,
+            self._lookup_keep_hyphens,
             self.lookup_genitive,
             filter_func=filter_func,
         )
@@ -1035,10 +1154,14 @@ class Bin:
         self, w: str, at_sentence_start: bool = False
     ) -> ResultTuple[BinEntry]:
         """Lookup a word in the database and return its meaning(s),
-        prioritizing returning its compound structure."""
+        prioritizing returning its compound structure. The component
+        boundaries are always marked with hyphens, even when the instance
+        was created with add_compound_hyphens=False, since exposing the
+        compound structure is the whole purpose of this function."""
 
         w, m = self._compound_meanings(
-            w, w.lower(), at_sentence_start, self._meanings_cache_lookup, make_bin_entry
+            w, w.lower(), at_sentence_start, self._meanings_cache_lookup,
+            make_bin_entry, insert_hyphen=True,
         )
 
         return w, m

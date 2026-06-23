@@ -758,23 +758,22 @@ def test_capitalized_word_in_bin_not_compounded() -> None:
         db.lookup_genitive,
     ):
         assert case_func("Æðarvarp") == []
-        assert all(
-            e.bin_id != 0 and "-" not in e.bmynd for e in case_func("æðarvarp")
-        )
+        lower = case_func("æðarvarp")
+        assert lower  # the lowercase form must resolve, or the test is vacuous
+        assert all(e.bin_id != 0 and "-" not in e.bmynd for e in lower)
 
     # lookup_forms() shares the same guard
     assert db.lookup_forms("Æðarvarp", "hk", "EF") == []
-    assert all(
-        e.bin_id != 0 and "-" not in e.bmynd
-        for e in db.lookup_forms("æðarvarp", "hk", "EF")
-    )
+    forms = db.lookup_forms("æðarvarp", "hk", "EF")
+    assert forms
+    assert all(e.bin_id != 0 and "-" not in e.bmynd for e in forms)
 
     # A genuine compound that is absent from BÍN in any casing is still resolved
     # by the compounder, as before
     assert not db.contains("síamskattarkjóll")
-    assert all(
-        e.bin_id == 0 for e in db.lookup_nominative("Síamskattarkjóll")
-    )
+    compound = db.lookup_nominative("Síamskattarkjóll")
+    assert compound
+    assert all(e.bin_id == 0 for e in compound)
 
 
 def test_forms():

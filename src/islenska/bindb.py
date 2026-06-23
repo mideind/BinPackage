@@ -832,7 +832,7 @@ class Bin:
             bc.lookup_case(lemma, norm_case, lemma=lemma, cat=cat, all_forms=True)
         )
         if m or bc.contains(lemma) or (
-            not lemma.islower() and bc.contains(lemma.lower())
+            lemma != lemma.lower() and bc.contains(lemma.lower())
         ):
             # Either the lemma was found, or it is present in BÍN as a non-lemma
             # surface form (and thus deliberately yields nothing here): only a
@@ -975,7 +975,7 @@ class Bin:
             m
             or bin_id is not None
             or self.contains(w)
-            or (not w.islower() and self.contains(w.lower()))
+            or (w != w.lower() and self.contains(w.lower()))
         ):
             # We resolve a compound only when the word is genuinely absent from
             # BÍN, mirroring lookup(). So we stop here if anything was found, or

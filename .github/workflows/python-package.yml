@@ -45,10 +45,22 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     - name: Restore cached KRISTINsnid.csv.zip
+      id: cache-kristin
       uses: actions/cache@v4
       with:
         path: src/islenska/resources/KRISTINsnid.csv.zip
         key: kristin-csv-zip-v1
+
+    # The prepare-cache job warms the cache, but GitHub's cache service is
+    # eventually consistent: on the very first run (cold cache) the entry it
+    # just saved is not always queryable when this restore runs, so the cache
+    # can miss here even though prepare-cache succeeded. Download as a fallback
+    # so a miss is never fatal; this job then saves the cache for later jobs.
+    - name: Download KRISTINsnid.csv.zip
+      if: steps.cache-kristin.outputs.cache-hit != 'true'
+      run: |
+        mkdir -p src/islenska/resources
+        wget -q -O src/islenska/resources/KRISTINsnid.csv.zip 'https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip'
 
     - name: Install BinPackage
       run: |

@@ -831,10 +831,14 @@ class Bin:
         m = self._filter_meanings(
             bc.lookup_case(lemma, norm_case, lemma=lemma, cat=cat, all_forms=True)
         )
-        if m or bc.contains(lemma):
+        if m or bc.contains(lemma) or (
+            lemma != lemma.lower() and bc.contains(lemma.lower())
+        ):
             # Either the lemma was found, or it is present in BÍN as a non-lemma
             # surface form (and thus deliberately yields nothing here): only a
-            # lemma that is absent from BÍN is a candidate for compounding.
+            # lemma that is absent from BÍN is a candidate for compounding. A
+            # capitalized lemma whose lowercase spelling is in BÍN ('Æðarvarp')
+            # is likewise a genuine word, not a compound to be split.
             return m
 
         def suffix_forms_lookup(key: str, compound: bool = False) -> BinEntryList:
@@ -967,13 +971,23 @@ class Bin:
             all_forms=all_forms,
             inflection_filter=inflection_filter,
         ))
-        if m or bin_id is not None or self.contains(w):
+        if (
+            m
+            or bin_id is not None
+            or self.contains(w)
+            or (w != w.lower() and self.contains(w.lower()))
+        ):
             # We resolve a compound only when the word is genuinely absent from
             # BÍN, mirroring lookup(). So we stop here if anything was found, or
             # a specific BÍN id was requested (a constructed compound has no id
             # of its own), or the word does occur in BÍN but failed the
             # cat/lemma/case constraints above (in which case the empty result
             # is intentional and must not be second-guessed by compounding).
+            # The last clause covers a capitalized surface form (e.g. an address
+            # or sentence-initial word) whose canonical lowercase spelling is a
+            # genuine BÍN word ('Æðarvarp' -> 'æðarvarp'): casting that must use
+            # the whole-word entry, not split it into 'æðar-varp'. The empty
+            # result lets the caller retry with the lowercase form.
             return m
 
         def suffix_case_lookup(key: str, compound: bool = False) -> BinEntryList:

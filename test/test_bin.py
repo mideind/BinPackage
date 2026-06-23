@@ -735,6 +735,47 @@ def test_casting() -> None:
     )
 
 
+def test_capitalized_word_in_bin_not_compounded() -> None:
+    """A capitalized surface form (e.g. an address or sentence-initial word)
+    whose canonical lowercase spelling is a genuine BÍN word must be resolved
+    via the whole-word entry, not split by the compounding algorithm. The
+    compounder only runs when the word is genuinely absent from BÍN; otherwise
+    'Æðarvarp' would be mis-resolved as the compound 'æðar-varp' (bin_id 0)
+    instead of the real noun 'æðarvarp' (bin_id != 0)."""
+    db = Bin()
+    # 'æðarvarp' is in BÍN; 'Æðarvarp' is merely its capitalization
+    assert db.contains("æðarvarp")
+    assert not db.contains("Æðarvarp")
+
+    # The case-lookup functions must not compound the capitalized form. They
+    # return [] (no whole-word match for the exact casing), leaving it to the
+    # caller to retry with the lowercase spelling, rather than emitting a
+    # spurious 'æðar-varp' split.
+    for case_func in (
+        db.lookup_nominative,
+        db.lookup_accusative,
+        db.lookup_dative,
+        db.lookup_genitive,
+    ):
+        assert case_func("Æðarvarp") == []
+        lower = case_func("æðarvarp")
+        assert lower  # the lowercase form must resolve, or the test is vacuous
+        assert all(e.bin_id != 0 and "-" not in e.bmynd for e in lower)
+
+    # lookup_forms() shares the same guard
+    assert db.lookup_forms("Æðarvarp", "hk", "EF") == []
+    forms = db.lookup_forms("æðarvarp", "hk", "EF")
+    assert forms
+    assert all(e.bin_id != 0 and "-" not in e.bmynd for e in forms)
+
+    # A genuine compound that is absent from BÍN in any casing is still resolved
+    # by the compounder, as before
+    assert not db.contains("síamskattarkjóll")
+    compound = db.lookup_nominative("Síamskattarkjóll")
+    assert compound
+    assert all(e.bin_id == 0 for e in compound)
+
+
 def test_forms():
     db = Bin()
     l: List[BinEntry]

@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(chmod:*)",
+      "Bash(./build.sh)",
+      "Bash(rm:*)",
+      "Bash(make:*)",
+      "Bash(./test_lookup)",
+      "Bash(python3:*)",
+      "Bash(grep:*)",
+      "Bash(g++:*)",
+      "Bash(./test_mapping)",
+      "Bash(xxd:*)",
+      "Bash(pip show:*)"
+    ],
+    "deny": []
+  }
+}

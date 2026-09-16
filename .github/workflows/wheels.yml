@@ -93,6 +93,10 @@ jobs:
           CIBW_PROJECT_REQUIRES_PYTHON: ">=3.9"
           CIBW_BEFORE_BUILD_MACOS: python3 -m pip install --upgrade setuptools wheel cffi
           CIBW_ARCHS_MACOS: "x86_64 arm64"
+          # libbin is C++17, which needs the libc++ of macOS 10.13; the
+          # extension is built with that target (bin_build.py) and the
+          # wheel repair step (delocate) must expect the same one
+          MACOSX_DEPLOYMENT_TARGET: "10.13"
           CIBW_ARCHS_WINDOWS: "AMD64"
           CIBW_BEFORE_BUILD_WINDOWS: python -m pip install "setuptools<72"
           CIBW_ARCHS_LINUX: "x86_64"

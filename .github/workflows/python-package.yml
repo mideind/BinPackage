@@ -213,7 +213,11 @@ jobs:
         ISLENSKA_BIN_FILE: src/islenska/resources/compressed-compact.bin
 
     - name: Parity check (sample)
-      run: python tools/parity.py src/islenska/resources/compressed.bin src/islenska/resources/compressed-compact.bin --sample 200000
+      # The check reads the word forms from the BÍN source, which the
+      # build steps above unpack only on a cache miss
+      run: |
+        unzip -q -o -d src/islenska/resources/ src/islenska/resources/KRISTINsnid.csv.zip
+        python tools/parity.py src/islenska/resources/compressed.bin src/islenska/resources/compressed-compact.bin --sample 200000
 
     - name: Build and test libbin
       run: |

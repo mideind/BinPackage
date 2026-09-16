@@ -65,9 +65,20 @@ INT32 = struct.Struct("<i")
 UINT32 = struct.Struct("<I")
 
 # BÍN compressed file format version (used in tools/binpack.py and bincompress.py)
-BIN_COMPRESSOR_VERSION = b"Greynir 04.00.00"
+BIN_COMPRESSOR_VERSION = b"Greynir 05.00.00"
 assert len(BIN_COMPRESSOR_VERSION) == 16
 BIN_COMPRESSED_FILE = "compressed.bin"
+# Environment variable that overrides the location of the compressed file,
+# e.g. to point at a compact build (see tools/binpack.py --compact)
+BIN_FILE_ENV = "ISLENSKA_BIN_FILE"
+
+# Flag bits in the first 32-bit word of a lemma record
+# (see tools/binpack.py, BinCompressor.write_binary())
+# The lemma has an inflection template (a list of its word forms)
+LEMMA_HAS_TEMPLATE = 0x80000000
+# The lemma is dropped from the word-form trie of a compact build;
+# the record holds the indices of the head lemmas that regenerate it
+LEMMA_DROPPED = 0x40000000
 
 # The following are encoded with each word form
 # Bits allocated for the bin_id number (currently max 558,214)

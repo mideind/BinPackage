@@ -1030,8 +1030,11 @@ input word.
 BinPackage is written in [Python 3](https://www.python.org/)
 and requires Python 3.9 or later. It runs on CPython 3.9+ and [PyPy](http://pypy.org/) 3.11.
 
-The Python code calls a small C++ library to speed up lookup of word forms in the
-compressed binary structure into which BÍN has been encoded.
+The Python code calls a C++ library, `libbin` (in the `libbin/` directory of
+the repository), for lookup of word forms in the compressed binary structure
+into which BÍN has been encoded, and for the compound word splitter. The same
+library has a C API and can be used directly from C/C++ programs; see
+`libbin/README.md`.
 This means that if a pre-compiled Python wheel is not
 available on PyPI for your platform, you may need a set of development tools installed
 on your machine, before you install BinPackage using `pip`:
@@ -1114,14 +1117,46 @@ BinPackage:
   the compressed data in a binary buffer in memory.
 * `basics.py`: Basic data structures, such as the `BinEntry` NamedTuple.
 * `dawgdictionary.py`: Classes that handle compound words.
-* `bin.h`, `bin.cpp`: C++ code for fast lookup of word forms, called from Python via CFFI.
+* `bin_build.py`: The CFFI build script that compiles `libbin` into the
+  `_bin` extension module.
 * `tools/binpack.py`: A command-line tool that reads vocabulary data in .CSV
-  form and outputs a compressed binary file, `compressed.bin`.
+  form and outputs a compressed binary file, `compressed.bin`. With `--compact`
+  it leaves out the word forms of compounds that the compound word algorithm
+  regenerates exactly (see below).
+* `tools/compact.py`: The selection of those compounds, used by `binpack.py --compact`.
+* `tools/parity.py`: Checks that a compact `compressed.bin` answers every
+  query exactly as the full file does.
 * `tools/dawgbuilder.py`: A command-line tool that reads information about word prefixes and suffixes
   and creates corresponding directed acyclic word graph (DAWG) structures for
   the word compounding logic.
 * `resources/prefixes.txt`, `resources/suffixes.txt`: Text files containing
   valid Icelandic word prefixes and suffixes, respectively.
+
+The C++ code lives in `libbin/` at the root of the repository:
+`include/libbin/bin.h` is the C API, and `src/` holds the trie, the DAWG
+reader and the dictionary. See `libbin/README.md`.
+
+## Compact build
+
+About half of the word forms in BÍN belong to compounds, such as
+*bókahilla*, whose inflection is exactly that of their last component
+(*hilla*) with the other components (*bóka*) glued in front. The compound
+word algorithm can regenerate those forms, so `tools/binpack.py --compact`
+produces a `compressed.bin` that leaves them out. The file is about half the
+size of the full one and answers every query identically: the dropped
+compounds are restored transparently, with their original BÍN ids,
+subcategories and KRISTINsnid fields. The selection is made by
+`tools/compact.py`, and `tools/parity.py` verifies the result against the
+full file:
+
+```bash
+python tools/binpack.py --compact -o compressed-compact.bin --report compact.tsv
+python tools/parity.py src/islenska/resources/compressed.bin compressed-compact.bin
+```
+
+The `islenska` package on PyPI ships the full file. To use a compact file
+instead, point the `ISLENSKA_BIN_FILE` environment variable at it; the
+compound word DAWGs must be available alongside as usual.
 
 # Copyright and licensing
 

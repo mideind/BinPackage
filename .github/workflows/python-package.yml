@@ -101,3 +101,74 @@ jobs:
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
       if: failure() # Pick up event if the job fails
+
+  # The compact build (tools/binpack.py --compact) and the C++ library:
+  # the test suite must pass unchanged against the compact file, a sample
+  # parity check must find no difference from the full file, and libbin
+  # must build and pass its smoke test standalone on both files.
+  compact:
+    needs: prepare-cache
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Restore cached KRISTINsnid.csv.zip
+      id: cache-kristin
+      uses: actions/cache@v4
+      with:
+        path: src/islenska/resources/KRISTINsnid.csv.zip
+        key: kristin-csv-zip-v1
+
+    - name: Download KRISTINsnid.csv.zip
+      if: steps.cache-kristin.outputs.cache-hit != 'true'
+      run: |
+        mkdir -p src/islenska/resources
+        wget -q -O src/islenska/resources/KRISTINsnid.csv.zip 'https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip'
+
+    - name: Install BinPackage
+      run: |
+        python -m pip install uv
+        uv pip install --system --upgrade wheel setuptools pytest cffi
+        uv pip install --system -e .
+
+    - name: Build *.dawg.bin
+      run: python tools/dawgbuilder.py
+
+    - name: Build compressed.bin, full and compact
+      run: |
+        unzip -q -d src/islenska/resources/ src/islenska/resources/KRISTINsnid.csv.zip
+        python tools/binpack.py
+        python tools/binpack.py --compact -o src/islenska/resources/compressed-compact.bin --report compact-report.tsv
+        ls -l src/islenska/resources/compressed*.bin
+        head -5 compact-report.tsv
+
+    - name: Test with pytest against the compact file
+      run: python -m pytest
+      env:
+        ISLENSKA_BIN_FILE: src/islenska/resources/compressed-compact.bin
+
+    - name: Parity check (sample)
+      run: python tools/parity.py src/islenska/resources/compressed.bin src/islenska/resources/compressed-compact.bin --sample 200000
+
+    - name: Build and test libbin
+      run: |
+        cmake -S libbin -B libbin/build -DCMAKE_BUILD_TYPE=Release
+        cmake --build libbin/build -j
+        libbin/build/bin_test src/islenska/resources
+        mkdir compact-data
+        cp src/islenska/resources/compressed-compact.bin compact-data/compressed.bin
+        cp src/islenska/resources/ordalisti-*.dawg.bin compact-data/
+        libbin/build/bin_test compact-data
+
+    - name: Slack notification
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        author_name: Compact build and libbin
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      if: failure()

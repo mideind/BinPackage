@@ -95,6 +95,15 @@
         strings ('hluti' field in BÍN). Domains are strings such as
         'föð', 'móð', 'örn', etc.
 
+        compact section (compact builds only, see --compact and tools/compact.py):
+        the bin_ids of the lemmas whose word forms were left out of the
+        mapping and forms sections because the compounder regenerates them
+        exactly, sorted by lemma string. Such a lemma's record in the lemmas
+        section is flagged (LEMMA_DROPPED) and holds, instead of a variant
+        template, the index of the ksnid string shared by all of its entries
+        and the bin_ids of the kept lemmas that regenerate it (its heads).
+        The lookup code restores the entries of these lemmas transparently.
+
     ************************************************************************
 
     LICENSE NOTICE:
@@ -134,12 +143,16 @@ from typing import (
     Iterable,
     IO,
     TypeVar,
+    TYPE_CHECKING,
 )
 
 import os
 import io
+import sys
 import time
 import struct
+import argparse
+from array import array
 from collections import defaultdict
 
 from islenska.basics import (
@@ -159,7 +172,12 @@ from islenska.basics import (
     KSNID_COMMON_1,
     COMMON_KIX_0,
     COMMON_KIX_1,
+    LEMMA_HAS_TEMPLATE,
+    LEMMA_DROPPED,
 )
+
+if TYPE_CHECKING:
+    from compact import DroppedLemma  # type: ignore[import-not-found]
 
 
 MeaningTuple = Tuple[bytes, bytes]  # ordfl, beyging
@@ -515,6 +533,11 @@ class BinCompressor:
         self._lookup_form: Dict[int, Set[Tuple[int, int, int]]] = defaultdict(set)
         # map bin_id -> set of all associated word forms
         self._lemma_forms: Dict[int, Set[bytes]] = defaultdict(set)
+        # Form index -> form (the inverse of the trie)
+        self._form_list: List[bytes] = []
+        # map bin_id -> flat array of (form index, meaning index, ksnid index)
+        # triples, i.e. every entry of the lemma; used by the compactor
+        self._lemma_entries: Dict[int, "array[int]"] = defaultdict(lambda: array("I"))
         # Count of lemma word categories
         self._lemma_cat_count: Dict[str, int] = defaultdict(int)
         # Word form templates
@@ -525,6 +548,8 @@ class BinCompressor:
         self._begin_greynir_utg = 0
         # Highest bin_id
         self._max_bin_id = 0
+        # Dropped lemmas, if this is a compact build (see apply_dropped())
+        self._dropped: Dict[int, "DroppedLemma"] = {}
         # The indices of the most common ksnid_strings
         common_kix_0 = self._ksnid_strings.add(KSNID_COMMON_0.encode("latin-1"))
         assert COMMON_KIX_0 == common_kix_0
@@ -709,10 +734,15 @@ class BinCompressor:
                     self._lemmas[wix] = (lemma, cix)
                     # Form index
                     fix = self._forms.add(form)
+                    if fix == len(self._form_list):
+                        # New form
+                        self._form_list.append(form)
                     # Combined (ofl, meaning) index
                     mix = self._meanings.add((ofl, meaning))
                     # Ksnid string index
                     kix = self._ksnid_strings.add(ksnid)
+                    if (wix, mix, kix) not in self._lookup_form[fix]:
+                        self._lemma_entries[wix].extend((fix, mix, kix))
                     self._lookup_form[fix].add((wix, mix, kix))
                     # Add this word form to the set of word forms
                     # of its lemma, if it is different from the lemma
@@ -825,6 +855,37 @@ class BinCompressor:
         except KeyError:
             return []
 
+    def apply_dropped(self, dropped: Dict[int, "DroppedLemma"]) -> None:
+        """Turn this into a compact build: remove the word forms of the
+        dropped lemmas from the trie and the mappings. The lemmas
+        themselves stay, and are written as dropped-lemma records by
+        write_binary(). See tools/compact.py for how the set is chosen."""
+        print(f"Applying {len(dropped)} dropped lemmas...")
+        start_time = time.time()
+        new_forms = Trie()
+        new_lookup: Dict[int, Set[Tuple[int, int, int]]] = defaultdict(set)
+        new_list: List[bytes] = []
+        for fix, form in enumerate(self._form_list):
+            entries = self._lookup_form[fix]
+            kept = {e for e in entries if e[0] not in dropped}
+            if not kept:
+                # Every reading of this form belongs to a dropped lemma
+                continue
+            # The compactor never drops a lemma that shares a form
+            # with a kept one
+            assert len(kept) == len(entries), form
+            nfix = new_forms.add(form)
+            assert nfix == len(new_list)
+            new_list.append(form)
+            new_lookup[nfix] = kept
+        self._forms = new_forms
+        self._lookup_form = new_lookup
+        self._form_list = new_list
+        for bin_id in dropped:
+            self._lemma_forms.pop(bin_id, None)
+        self._dropped = dropped
+        print("Time: {0:.1f} seconds".format(time.time() - start_time))
+
     def write_forms(self, f: IO[bytes], alphabet: bytes, lookup_map: List[int]) -> None:
         """Write the forms trie contents to a packed binary stream"""
         # We assume that the alphabet can be represented in 7 bits
@@ -933,6 +994,10 @@ class BinCompressor:
 
         # Store the highest allowed BÍN id
         f.write(UINT32.pack(self._max_bin_id))
+        # Placeholder for the pointer to the compact section, or 0
+        # if this is not a compact build
+        compact_offset = f.tell()
+        f.write(UINT32.pack(0))
 
         def write_padded(b: bytes, n: int) -> None:
             assert len(b) <= n
@@ -1150,19 +1215,33 @@ class BinCompressor:
                 continue
             lemma, cix = self._lemmas[bin_id]
             lookup_map.append(f.tell())
-            # Squeeze the subcategory index into the lower 31 bits.
-            # The uppermost bit flags whether a canonical forms list is present.
+            # Squeeze the subcategory index into the lower 8 bits.
+            # The uppermost bit flags whether a canonical forms list is present;
+            # the bit below it flags a dropped lemma of a compact build.
             assert 0 <= cix < 2**SUBCAT_BITS
             bits = cix
             has_template = False
-            if bin_id in self._lemma_forms:
+            d = self._dropped.get(bin_id)
+            if d is not None:
+                bits |= LEMMA_DROPPED
+            elif bin_id in self._lemma_forms:
                 # We have a set of word forms for this lemma
                 # (that differ from the lemma itself)
-                bits |= 0x80000000
+                bits |= LEMMA_HAS_TEMPLATE
                 has_template = True
             f.write(UINT32.pack(bits))
             # Write the lemma
             write_string(lemma)
+            if d is not None:
+                # Dropped lemma: instead of a template, write the index of
+                # the ksnid string shared by all of its entries and the
+                # bin_ids of the kept head lemmas that regenerate it
+                assert 0 <= d.kix < 2**16 and 0 < len(d.heads) < 2**16
+                f.write(UINT32.pack(d.kix | (len(d.heads) << 16)))
+                for z in d.heads:
+                    assert z not in self._dropped
+                    f.write(UINT32.pack(z))
+                continue
             # Write the inflection template, compressed, if the lemma
             # has multiple associated word forms
             if has_template:
@@ -1234,28 +1313,79 @@ class BinCompressor:
         b = b" ".join(self._subcats[ix] for ix in range(len(self._subcats)))
         f.write(UINT32.pack(len(b)))
         write_aligned(b)
+        if self._dropped:
+            # Write the compact section: the bin_ids of the dropped lemmas,
+            # sorted by lemma string (Latin-1 byte order) so that the
+            # lookup code can binary search for a lemma by comparing
+            # against the lemma records
+            write_padded(b"[compact]", 16)
+            fixup(compact_offset)
+            ids = sorted(self._dropped, key=lambda bid: (self._lemmas[bid][0], bid))
+            f.write(UINT32.pack(len(ids)))
+            for bin_id in ids:
+                f.write(UINT32.pack(bin_id))
+            print(f"Dropped lemmas are {len(ids)}")
 
         # Write the entire byte buffer stream to the compressed file
         with open(fname, "wb") as stream:
             stream.write(f.getvalue())
 
 
-print("Welcome to the BinPackage compressed vocabulary file generator")
+SOURCE_FILES = [
+    # Note: KRISTINsnid.csv must be the first file in the list
+    "KRISTINsnid.csv",
+    "ord.add.csv",
+    "ord.auka.csv",
+    "systematic_additions.csv",
+    "ord.suffixes.csv",
+]
 
-b = BinCompressor()
-b.read(
-    [
-        # Note: KRISTINsnid.csv must be the first file in the list
-        os.path.join(_path, "resources", "KRISTINsnid.csv"),
-        os.path.join(_path, "resources", "ord.add.csv"),
-        os.path.join(_path, "resources", "ord.auka.csv"),
-        os.path.join(_path, "resources", "systematic_additions.csv"),
-        os.path.join(_path, "resources", "ord.suffixes.csv"),
-    ]
-)
-b.print_stats()
 
-filename = os.path.join(_path, "resources", BIN_COMPRESSED_FILE)
-b.write_binary(filename)
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Generate the BinPackage compressed vocabulary file"
+    )
+    parser.add_argument(
+        "-o", "--output",
+        default=os.path.join(_path, "resources", BIN_COMPRESSED_FILE),
+        help="output file (default: src/islenska/resources/compressed.bin)",
+    )
+    parser.add_argument(
+        "--compact", action="store_true",
+        help="build a compact file that leaves out the word forms of "
+             "compounds that the compounder regenerates exactly (see tools/compact.py)",
+    )
+    parser.add_argument(
+        "--keep", metavar="FILE",
+        help="with --compact: file of bin_ids (one per line) that must never be dropped",
+    )
+    parser.add_argument(
+        "--report", metavar="FILE",
+        help="with --compact: write a tab-separated listing of the dropped lemmas",
+    )
+    parser.add_argument(
+        "--procs", type=int, default=max(1, min(8, os.cpu_count() or 1)),
+        help="with --compact: number of worker processes for the selection",
+    )
+    args = parser.parse_args()
+    print("Welcome to the BinPackage compressed vocabulary file generator")
+    b = BinCompressor()
+    b.read([os.path.join(_path, "resources", fname) for fname in SOURCE_FILES])
+    b.print_stats()
+    if args.compact:
+        sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+        import compact  # type: ignore[import-not-found]
 
-print("Done; the compressed vocabulary was written to {0}".format(filename))
+        keep: Set[int] = compact.read_keep_list(args.keep) if args.keep else set()
+        dropped = compact.select(b, procs=args.procs, keep=keep)
+        if args.report:
+            compact.write_report(b, dropped, args.report)
+        b.apply_dropped(dropped)
+        b.print_stats()
+    b.write_binary(args.output)
+    print("Done; the compressed vocabulary was written to {0}".format(args.output))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -20,21 +20,47 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Fetch BÍN source data and build compressed.bin
+      # The BÍN source and the built data are cached with the same keys as
+      # in the tests workflow (python-package.yml), so a release normally
+      # finds both already built.
+      - name: Restore cached KRISTINsnid.csv.zip
+        id: cache-kristin
+        uses: actions/cache@v4
+        with:
+          path: src/islenska/resources/KRISTINsnid.csv.zip
+          key: kristin-csv-zip-v1
+
+      - name: Download KRISTINsnid.csv.zip
+        if: steps.cache-kristin.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p src/islenska/resources
+          curl -s -o src/islenska/resources/KRISTINsnid.csv.zip 'https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip'
+
+      - name: Restore built BÍN data
+        id: cache-bin-data
+        uses: actions/cache@v4
+        with:
+          path: |
+            src/islenska/resources/compressed.bin
+            src/islenska/resources/compressed-compact.bin
+            src/islenska/resources/ordalisti-all.dawg.bin
+            src/islenska/resources/ordalisti-prefixes.dawg.bin
+            src/islenska/resources/ordalisti-suffixes.dawg.bin
+          key: bin-data-v1-${{ hashFiles('src/islenska/resources/KRISTINsnid.csv.zip', 'src/islenska/resources/*.csv', 'src/islenska/resources/*.txt', 'src/islenska/basics.py', 'src/islenska/dawgdictionary.py', 'src/islenska/config/*.conf', 'tools/binpack.py', 'tools/compact.py', 'tools/dawgbuilder.py', 'libbin/src/*', 'libbin/include/libbin/bin.h') }}
+
+      - name: Build the BÍN data
+        if: steps.cache-bin-data.outputs.cache-hit != 'true'
         run: |
           pip3 install -e .
-          echo "Fetching BÍN source data..."
-          cd src/islenska/resources
-          curl -o KRISTINsnid.csv.zip 'https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip'
-          unzip KRISTINsnid.csv.zip
-          rm KRISTINsnid.csv.*
-          cd ../../..
+          unzip -q -d src/islenska/resources/ src/islenska/resources/KRISTINsnid.csv.zip
           echo "Running binpack..."
           python3 tools/binpack.py
+          python3 tools/binpack.py --compact -o src/islenska/resources/compressed-compact.bin
           echo "Running dawgbuilder..."
           python3 tools/dawgbuilder.py
-          echo "Compressed data files generated:"
-          ls -lh src/islenska/resources/*.bin src/islenska/resources/*.dawg.* 2>/dev/null || true
+
+      - name: List the data files
+        run: ls -lh src/islenska/resources/*.bin src/islenska/resources/*.dawg.* 2>/dev/null || true
 
       - name: Upload compressed data artifacts
         uses: actions/upload-artifact@v4

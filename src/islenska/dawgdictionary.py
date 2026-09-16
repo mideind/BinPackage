@@ -44,16 +44,15 @@ import os
 import re
 import threading
 import mmap
-import json
 
 import importlib.resources as importlib_resources
 
-# CFFI bindings to the C++ implementation
+# CFFI bindings to the C++ implementation (libbin)
 from ._bin import lib as lib_unknown, ffi as ffi_unknown  # type: ignore
 
 
 # Go through shenanigans to satisfy Pylance/Mypy
-dawg_cffi = cast(Any, lib_unknown)
+bin_cffi = cast(Any, lib_unknown)
 ffi = cast(Any, ffi_unknown)
 
 
@@ -71,31 +70,40 @@ _HARD_BOUNDARY_RE = re.compile(r"([ \-])")
 
 
 class Dawg:
-    """A wrapper for the C++ DAWG implementation."""
+    """A packed DAWG (directed acyclic word graph) of word forms, read
+    from an ordalisti-*.dawg.bin file through the libbin C++ implementation.
+    Instances are immutable and safe to share between threads."""
 
     def __init__(self, fname: str) -> None:
-        self._handle: Optional[object] = None
+        self._handle: Any = None
         self._mmap: Optional[mmap.mmap] = None
         self._stream: Optional[IO[bytes]] = None
-
         self._stream = open(fname, "rb")
         self._mmap = mmap.mmap(self._stream.fileno(), 0, access=mmap.ACCESS_READ)
-
-        # Pass the memory map pointer to the C++ loader
-        self._handle = dawg_cffi.dawg_load(ffi.from_buffer(self._mmap))
+        # Keep a reference to the buffer object that pins the memory map
+        self._buffer = ffi.from_buffer(self._mmap)
+        self._handle = bin_cffi.bin_dawg_open(
+            ffi.cast("const uint8_t*", self._buffer), len(self._mmap)
+        )
         if not self._handle:
             raise MemoryError(f"Unable to load DAWG file: {fname}")
 
     def __del__(self) -> None:
         if self._handle:
-            dawg_cffi.dawg_unload(self._handle)
+            bin_cffi.bin_dawg_close(self._handle)
             self._handle = None
+        self._buffer = None
         if self._mmap:
             self._mmap.close()
             self._mmap = None
         if self._stream:
             self._stream.close()
             self._stream = None
+
+    @property
+    def handle(self) -> Any:
+        """The libbin handle (BinDawg*) of this DAWG"""
+        return self._handle
 
     def __contains__(self, word: str) -> bool:
         if not self._handle:
@@ -105,28 +113,38 @@ class Dawg:
         except UnicodeEncodeError:
             # Word contains characters outside Latin-1, so it can't be in the DAWG
             return False
-        return dawg_cffi.dawg_contains(self._handle, word_bytes)
+        return bool(bin_cffi.bin_dawg_contains(self._handle, word_bytes))
 
     def find_combinations(self, word: str) -> List[List[str]]:
         """Attempt to slice a word into valid parts using the DAWG."""
         if not self._handle:
             return []
-
         try:
             word_bytes = word.encode("latin-1")
         except UnicodeEncodeError:
             # Word contains characters outside Latin-1, so it can't be split
             return []
-        result_ptr = dawg_cffi.dawg_find_combinations(self._handle, word_bytes)
-        if not result_ptr:
+        splits = bin_cffi.bin_dawg_find_combinations(self._handle, word_bytes)
+        if not splits:
             return []
-
         try:
-            # C++ now returns UTF-8 bytes
-            result_bytes = ffi.string(result_ptr)
-            return json.loads(result_bytes)  # json.loads accepts UTF-8 bytes
+            return splits_to_list(splits)
         finally:
-            dawg_cffi.dawg_free_string(result_ptr)
+            bin_cffi.bin_splits_free(splits)
+
+
+def splits_to_list(splits: Any) -> List[List[str]]:
+    """Convert a BinSplits* structure to a list of lists of strings"""
+    result: List[List[str]] = []
+    for i in range(splits.count):
+        parts = splits.splits[i]
+        result.append(
+            [
+                ffi.string(parts.items[j]).decode("latin-1")
+                for j in range(parts.count)
+            ]
+        )
+    return result
 
 
 class Wordbase:

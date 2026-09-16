@@ -313,85 +313,6 @@ class Bin:
         # Convert the cached ksnid list to a list of BinEntry (SHsnid) tuples
         return [k.to_bin_entry() for k in klist]
 
-    def _last_part_is_defective(
-        self,
-        surface: str,
-        lookup_func: LookupFunc[_T],
-    ) -> bool:
-        """True iff every noun interpretation of ``surface`` is a defective
-        paradigm — plurale-tantum (only ``FT`` marks) or singulare-tantum
-        (only ``ET`` marks). Used to demote compound-split candidates
-        whose head lacks one number. If ``surface`` has no noun
-        interpretation we return False so the existing heuristic governs
-        the choice — only nouns exhibit the tantum pathology this is
-        guarding against."""
-        if self._bc is None:
-            return False
-        entries = lookup_func(surface, compound=True)
-        # First pass: if the surface-form entries themselves already cover
-        # both ET and FT for some lemma, that lemma's paradigm is complete
-        # and we can skip the per-lemma lookup entirely.
-        noun_ids: Set[int] = set()
-        sg_ids: Set[int] = set()
-        pl_ids: Set[int] = set()
-        for e in entries:
-            if e.ofl not in _NOUNS or not e.bin_id:
-                continue
-            noun_ids.add(e.bin_id)
-            if "ET" in e.mark:
-                sg_ids.add(e.bin_id)
-            if "FT" in e.mark:
-                pl_ids.add(e.bin_id)
-        if not noun_ids:
-            return False
-        if sg_ids & pl_ids:
-            # Fast path: some lemma's surface entries already span both
-            # numbers, e.g. the bare form `mál` matches NFET, ÞFET, NFFT
-            # and ÞFFT all at once. That lemma is provably bi-numerical
-            # without a second lookup.
-            return False
-        # Slow path: the surface form is number-unambiguous (matches
-        # only ET-marked or only FT-marked entries for each lemma), so
-        # the surface entries alone can't tell us whether the lemma is
-        # bi-numerical. We have to consult the rest of the paradigm.
-        #
-        # Concrete example: when the compound splitter hands us the
-        # definite-singular surface `málið` (from `gauksstaðamálið`),
-        # the surface entries only match NFETgr and ÞFETgr of the
-        # `mál` lemma, putting `mál` in sg_ids but not pl_ids. The
-        # lemma is in fact full-paradigm (NFFT `mál`, ÞGFFT `málum`,
-        # etc.) — we only see that by inspecting lookup_id(bin_id).
-        # Without this loop we'd misclassify `mál` as singulare-tantum
-        # and pick the wrong split.
-        #
-        # We pre-seed has_sg / has_pl from the surface-entry sets so
-        # the inner loop can exit as soon as the missing number turns
-        # up in the paradigm.
-        for bin_id in noun_ids:
-            has_sg = bin_id in sg_ids
-            has_pl = bin_id in pl_ids
-            for k in self._bc.lookup_id(bin_id):
-                has_sg = has_sg or "ET" in k.mark
-                has_pl = has_pl or "FT" in k.mark
-                if has_sg and has_pl:
-                    return False
-        return True
-
-    def _select_compound_candidate(
-        self,
-        candidates: List[List[str]],
-        lookup_func: LookupFunc[_T],
-    ) -> List[str]:
-        """Pick the best compound-split candidate. Candidates arrive in
-        the existing heuristic order (longest last part, fewest parts).
-        Prefer the first candidate whose head is not a defective-paradigm
-        noun; fall back to the heuristic winner if every head is
-        defective."""
-        for cand in candidates:
-            if not self._last_part_is_defective(cand[-1], lookup_func):
-                return cand
-        return candidates[0]
-
     def _compound_meanings(
         self,
         w: str,
@@ -448,16 +369,19 @@ class Bin:
             )
             return w, m
         return_w = w
-        candidates = Wordbase.slice_compound_word_candidates(w)
-        if not candidates and lower_w != w:
+        # The split policy (the first legal split, ranked by longest last
+        # part and fewest parts, whose last part is not a defective noun)
+        # is implemented in libbin, see Dict::compound_split()
+        assert self._bc is not None
+        cw = self._bc.compound_split(w)
+        if not cw and lower_w != w:
             # If not able to slice in original case, try lower case
-            candidates = Wordbase.slice_compound_word_candidates(lower_w)
-            if candidates:
+            cw = self._bc.compound_split(lower_w)
+            if cw:
                 return_w = lower_w
-        if not candidates:
+        if not cw:
             # No way to find a compound meaning: give up
             return w, []
-        cw = self._select_compound_candidate(candidates, lookup_func)
         # This looks like a compound word:
         # use the meaning of its last part. The component boundaries are
         # marked with hyphens only if insert_hyphen is True; otherwise the

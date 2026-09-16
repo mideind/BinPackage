@@ -74,10 +74,10 @@ from typing import (
     cast,
 )
 
+import os
 import struct
 import functools
 import mmap
-import json
 import importlib.resources as importlib_resources
 
 # Import the CFFI wrapper for the bin.cpp C++ module (see also build_bin.py)
@@ -90,10 +90,6 @@ ffi = cast(Any, ffi_unknown)
 
 # ruff: noqa: E402
 from .basics import (
-    BIN_ID_BITS,
-    BIN_ID_MASK,
-    COMMON_KIX_0,
-    COMMON_KIX_1,
     InflectionFilter,
     BinEntryTuple,
     Ksnid,
@@ -101,11 +97,9 @@ from .basics import (
     mark_to_set,
     BIN_COMPRESSOR_VERSION,
     BIN_COMPRESSED_FILE,
+    BIN_FILE_ENV,
     UINT32,
     SUBCAT_BITS,
-    KSNID_BITS,
-    KSNID_MASK,
-    MEANING_MASK,
 )
 
 
@@ -124,18 +118,23 @@ class BinCompressedPure:
     with importlib_resources.as_file(ref) as path:
         _FNAME = str(path)
 
-    def __init__(self) -> None:
+    def __init__(self, fname: Optional[str] = None) -> None:
         """We use a memory map, provided by the mmap module, to
         directly map the compressed file into memory without
         having to read it into a byte buffer. This also allows
-        the same memory map to be shared between processes."""
-        with open(self._FNAME, "rb") as stream:
+        the same memory map to be shared between processes.
+        The file is the one packaged with islenska unless a path
+        is given here or in the ISLENSKA_BIN_FILE environment variable."""
+        if fname is None:
+            fname = os.environ.get(BIN_FILE_ENV) or self._FNAME
+        self._fname = fname
+        with open(fname, "rb") as stream:
             self._b = mmap.mmap(stream.fileno(), 0, access=mmap.ACCESS_READ)
         # Check that the file version matches what we expect
-        assert not self._b.closed, "Could not open ord.compressed; file missing?"
+        assert not self._b.closed, f"Could not open {fname}; file missing?"
         assert (
             self._b[0:16] == BIN_COMPRESSOR_VERSION
-        ), "Invalid signature in ord.compressed; file missing or version mismatch?"
+        ), f"Invalid signature in {fname}; file missing or version mismatch?"
         self._begin_greynir_utg = 0
         self._max_bin_id = 0
         (
@@ -149,7 +148,11 @@ class BinCompressedPure:
             ksnid_offset,
             self._begin_greynir_utg,
             self._max_bin_id,
-        ) = struct.unpack("<IIIIIIIIII", self._b[16:56])
+            compact_offset,
+        ) = struct.unpack("<IIIIIIIIIII", self._b[16:60])
+        # A compact build (tools/binpack.py --compact) has a nonzero
+        # compact section offset; its lookups need the compounder DAWGs
+        self._compact_offset: int = compact_offset
         self._forms_offset: int = forms_offset
         self._mappings: bytes = self._b[mappings_offset:]
         self._lemmas: bytes = self._b[lemmas_offset:]
@@ -199,6 +202,17 @@ class BinCompressedPure:
     def begin_greynir_utg(self):
         """Return the lowest utg number of Greynir additions"""
         return self._begin_greynir_utg
+
+    @property
+    def is_compact(self) -> bool:
+        """True if this is a compact build, i.e. one that leaves the word
+        forms of regenerable compounds to the compounder"""
+        return self._compact_offset != 0
+
+    @property
+    def fname(self) -> str:
+        """The path of the compressed file in use"""
+        return self._fname
 
     def meaning(self, ix: int) -> Tuple[str, str]:
         """Find and decode a meaning (ofl, beyging) tuple,
@@ -281,55 +295,12 @@ class BinCompressedPure:
             "BinCompressedPure.lookup_id() must be overridden in BinCompressed"
         )
 
-    def _mapping_cffi(self, word: str) -> Optional[int]:
-        """Call the C++ mapping() function that has been wrapped using CFFI"""
-        try:
-            word_bytes = word.encode("latin-1")
-            m: int = bin_cffi.mapping(self._mmap_ptr, word_bytes)
-            return None if m == 0xFFFFFFFF else m
-        except UnicodeEncodeError:
-            # The word contains a non-latin-1 character:
-            # it can't be in the trie
-            return None
-
     def _raw_lookup(self, word: str) -> List[Tuple[int, int, int]]:
         """Return a list of lemma/meaning/ksnid tuples for the word, or
-        an empty list if it is not found in the trie"""
-        mapping = self._mapping_cffi(word)
-        if mapping is None:
-            # Word not found in trie: return an empty list of entries
-            return []
-        # Found the word in the trie; return potentially multiple entries
-        # Fetch the mapping-to-lemma/meaning tuples
-        result: List[Tuple[int, int, int]] = []
-        bin_id = -1
-        while True:
-            (w0,) = self._partial_mappings(mapping * 4)
-            mapping += 1
-            if w0 & 0x60000000 == 0x60000000:
-                # This is a single 32-bit packed entry
-                meaning_index = (w0 >> BIN_ID_BITS) & 0xFF  # 8 bits for freq_ix
-                bin_id = w0 & BIN_ID_MASK
-                meaning_index -= 1
-                ksnid_index = COMMON_KIX_1 if w0 & 0x10000000 else COMMON_KIX_0
-            elif w0 & 0x60000000 == 0x40000000:
-                # This is a single 32-bit entry with the same bin_id as the previous one
-                assert bin_id != -1
-                meaning_index = (w0 >> KSNID_BITS) & MEANING_MASK
-                ksnid_index = w0 & KSNID_MASK
-            else:
-                # This meaning is stored in two 32-bit words
-                assert w0 & 0x60000000 == 0
-                bin_id = w0 & BIN_ID_MASK
-                (w1,) = self._partial_mappings(mapping * 4)
-                mapping += 1
-                meaning_index = (w1 >> KSNID_BITS) & MEANING_MASK
-                ksnid_index = w1 & KSNID_MASK
-            result.append((bin_id, meaning_index, ksnid_index))
-            if w0 & 0x80000000:
-                # Last mapping indicator: we're done
-                break
-        return result
+        an empty list if it is not found - must be implemented in subclass"""
+        raise NotImplementedError(
+            "BinCompressedPure._raw_lookup() must be overridden in BinCompressed"
+        )
 
     def lookup_case(
         self,
@@ -572,42 +543,137 @@ class BinCompressed(BinCompressedPure):
     """Hybrid Python/C++ wrapper for the compressed binary dictionary.
 
     Inherits from BinCompressedPure and overrides methods with C++ implementations
-    for improved performance. Methods not yet migrated to C++ are inherited from
-    the base class.
+    (libbin) for improved performance. Methods not yet migrated to C++ are
+    inherited from the base class.
 
     The base class creates the memory-mapped file, which is shared with the C++
-    implementation to avoid duplication.
+    implementation to avoid duplication. A compact build additionally needs the
+    compounder DAWGs, which are loaded via Wordbase and handed to libbin.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, fname: Optional[str] = None) -> None:
         """Initialize base class and add C++ handle for optimized methods."""
         # Initialize base class (creates mmap, sets up all Python infrastructure)
-        super().__init__()
+        super().__init__(fname)
+        self._cpp_handle: Any = None
+        # Avoid a circular import at module load time
+        from .dawgdictionary import Wordbase
 
-        # Initialize C++ handle using the mmap from base class
-        self._cpp_handle = bin_cffi.bin_compressed_init(ffi.from_buffer(self._b))
+        # The DAWGs are needed for compact builds; loading them is cheap
+        # (memory maps), so always provide them
+        self._dawgs = (Wordbase.dawg(), Wordbase.dawg_prefixes(), Wordbase.dawg_suffixes())
+        errbuf = ffi.new("char[256]")
+        self._cpp_handle = bin_cffi.bin_open(
+            self._mmap_ptr,
+            len(self._b),
+            self._dawgs[0].handle,
+            self._dawgs[1].handle,
+            self._dawgs[2].handle,
+            errbuf,
+            256,
+        )
         if not self._cpp_handle:
-            raise RuntimeError("Failed to initialize C++ BinCompressed handle")
+            raise RuntimeError(
+                "Failed to open compressed dictionary: "
+                + ffi.string(errbuf).decode("latin-1")
+            )
 
     def __del__(self) -> None:
         """Clean up C++ resources."""
         if self._cpp_handle:
-            bin_cffi.bin_compressed_close(self._cpp_handle)
+            bin_cffi.bin_close(self._cpp_handle)
+            self._cpp_handle = None
+
+    def close(self) -> None:
+        """Close the C++ handle and the memory map"""
+        if self._cpp_handle:
+            bin_cffi.bin_close(self._cpp_handle)
+            self._cpp_handle = None
+        super().close()
+
+    @staticmethod
+    def _latin1(word: str) -> Optional[bytes]:
+        """Encode a word as Latin-1, or return None if that isn't possible
+        (in which case the word cannot be in the dictionary)"""
+        try:
+            return word.encode("latin-1")
+        except UnicodeEncodeError:
+            return None
+
+    @staticmethod
+    def _entries(result: Any) -> List[Tuple[str, int, str, str, str, str, str]]:
+        """Convert a BinResult* to a list of 7-tuples, freeing the result"""
+        try:
+            entries: List[Tuple[str, int, str, str, str, str, str]] = []
+            for i in range(result.count):
+                e = result.entries[i]
+                entries.append(
+                    (
+                        ffi.string(e.ord).decode("latin-1"),
+                        e.bin_id,
+                        ffi.string(e.ofl).decode("latin-1"),
+                        ffi.string(e.hluti).decode("latin-1"),
+                        ffi.string(e.bmynd).decode("latin-1"),
+                        ffi.string(e.mark).decode("latin-1"),
+                        ffi.string(e.ksnid).decode("latin-1"),
+                    )
+                )
+            return entries
+        finally:
+            bin_cffi.bin_result_free(result)
 
     # Override methods with C++ implementations
     def contains(self, word: str) -> bool:
         """Check if word exists in dictionary (C++ implementation).
-
-        Overrides base class method with optimized C++ version.
-        """
-        try:
-            word_bytes = word.encode("latin-1")
-            return bin_cffi.bin_compressed_contains(self._cpp_handle, word_bytes)
-        except UnicodeEncodeError:
-            # Word contains non-Latin-1 characters, can't be in dictionary
+        In a compact build, this includes the dropped compounds that
+        the compounder restores."""
+        word_bytes = self._latin1(word)
+        if word_bytes is None:
             return False
+        return bool(bin_cffi.bin_contains(self._cpp_handle, word_bytes))
 
     __contains__ = contains
+
+    def _raw_lookup(self, word: str) -> List[Tuple[int, int, int]]:
+        """Return a list of lemma/meaning/ksnid tuples for the word, or
+        an empty list if it is not found (C++ implementation, including
+        compact restoration)"""
+        word_bytes = self._latin1(word)
+        if word_bytes is None:
+            return []
+        raw = bin_cffi.bin_lookup_raw(self._cpp_handle, word_bytes)
+        if not raw:
+            return []
+        try:
+            return [
+                (raw.entries[i].bin_id, raw.entries[i].meaning_index, raw.entries[i].ksnid_index)
+                for i in range(raw.count)
+            ]
+        finally:
+            bin_cffi.bin_raw_result_free(raw)
+
+    def _lookup_entries(
+        self,
+        word: str,
+        cat: Optional[str],
+        lemma: Optional[str],
+        utg: Optional[int],
+    ) -> List[Tuple[str, int, str, str, str, str, str]]:
+        """Common implementation of lookup() and lookup_ksnid()"""
+        word_bytes = self._latin1(word)
+        if word_bytes is None:
+            return []
+        cat_bytes = cat.encode("latin-1") if cat else ffi.NULL
+        lemma_bytes = self._latin1(lemma) if lemma else ffi.NULL
+        if lemma_bytes is None:
+            # A lemma filter that is not Latin-1 cannot match anything
+            return []
+        result = bin_cffi.bin_lookup(
+            self._cpp_handle, word_bytes, cat_bytes, lemma_bytes, utg or 0
+        )
+        if not result:
+            return []
+        return self._entries(result)
 
     def lookup(
         self,
@@ -617,61 +683,16 @@ class BinCompressed(BinCompressedPure):
         utg: Optional[int] = None,
         inflection_filter: Optional[InflectionFilter] = None,
     ) -> List[BinEntryTuple]:
-        """Lookup word in dictionary (C++ implementation with Python fallback for filters).
-
-        Overrides base class method with optimized C++ version.
-        The C++ implementation handles cat, lemma, and utg filters.
-        If inflection_filter is provided, we fall back to Python filtering.
-        """
-        try:
-            word_bytes = word.encode("latin-1")
-
-            # Prepare filter parameters for C++
-            # CFFI requires ffi.NULL instead of None for null pointers
-            cat_bytes = cat.encode("latin-1") if cat else ffi.NULL
-            lemma_bytes = lemma.encode("latin-1") if lemma else ffi.NULL
-            utg_value = utg if utg is not None else -1
-
-            # Call C++ lookup
-            result_ptr = bin_cffi.bin_compressed_lookup(
-                self._cpp_handle,
-                word_bytes,
-                cat_bytes,
-                lemma_bytes,
-                utg_value
+        """Lookup word in dictionary (C++ implementation).
+        The C++ implementation handles the cat, lemma, and utg filters;
+        the inflection_filter, if any, is applied here."""
+        return [
+            (ord_, bin_id, ofl, hluti, bmynd, mark)
+            for ord_, bin_id, ofl, hluti, bmynd, mark, _ in self._lookup_entries(
+                word, cat, lemma, utg
             )
-
-            if not result_ptr:
-                return []
-
-            try:
-                # Parse JSON result (C++ now returns UTF-8 bytes)
-                result_bytes = ffi.string(result_ptr)
-                entries = json.loads(result_bytes)  # json.loads accepts UTF-8 bytes
-
-                # Convert to BinEntryTuple format: (stofn, utg, ofl, fl, ordmynd, beyging)
-                result: List[BinEntryTuple] = []
-                for entry in entries:
-                    tuple_entry: BinEntryTuple = (
-                        entry["stofn"],
-                        entry["utg"],
-                        entry["ofl"],
-                        entry["fl"],
-                        entry["ordmynd"],
-                        entry["beyging"]
-                    )
-
-                    # Apply inflection_filter if provided
-                    if inflection_filter is None or inflection_filter(tuple_entry[5]):
-                        result.append(tuple_entry)
-
-                return result
-            finally:
-                bin_cffi.bin_compressed_free_string(result_ptr)
-
-        except UnicodeEncodeError:
-            # Word contains non-Latin-1 characters, can't be in dictionary
-            return []
+            if inflection_filter is None or inflection_filter(mark)
+        ]
 
     def lookup_ksnid(
         self,
@@ -681,116 +702,81 @@ class BinCompressed(BinCompressedPure):
         utg: Optional[int] = None,
         inflection_filter: Optional[InflectionFilter] = None,
     ) -> List[Ksnid]:
-        """Lookup word and return Ksnid entries (C++ implementation with Python fallback for filters).
-
-        Overrides base class method with optimized C++ version.
-        The C++ implementation handles cat, lemma, and utg filters.
-        If inflection_filter is provided, we apply it to the C++ results.
-        """
-        try:
-            word_bytes = word.encode("latin-1")
-
-            # Prepare filter parameters for C++
-            # CFFI requires ffi.NULL instead of None for null pointers
-            cat_bytes = cat.encode("latin-1") if cat else ffi.NULL
-            lemma_bytes = lemma.encode("latin-1") if lemma else ffi.NULL
-            utg_value = utg if utg is not None else -1
-
-            # Call C++ lookup_ksnid
-            result_ptr = bin_cffi.bin_compressed_lookup_ksnid(
-                self._cpp_handle,
-                word_bytes,
-                cat_bytes,
-                lemma_bytes,
-                utg_value
+        """Lookup word and return Ksnid entries (C++ implementation).
+        The C++ implementation handles the cat, lemma, and utg filters;
+        the inflection_filter, if any, is applied here."""
+        return [
+            Ksnid.from_parameters(ord_, bin_id, ofl, hluti, bmynd, mark, ksnid)
+            for ord_, bin_id, ofl, hluti, bmynd, mark, ksnid in self._lookup_entries(
+                word, cat, lemma, utg
             )
-
-            if not result_ptr:
-                return []
-
-            try:
-                # Parse JSON result (C++ returns UTF-8 bytes)
-                result_bytes = ffi.string(result_ptr)
-                entries = json.loads(result_bytes)
-
-                # Convert to Ksnid objects
-                result: List[Ksnid] = []
-                for entry in entries:
-                    # Apply inflection_filter if provided
-                    if inflection_filter is not None and not inflection_filter(entry["mark"]):
-                        continue
-
-                    ksnid_obj = Ksnid.from_parameters(
-                        entry["ord"],
-                        entry["bin_id"],
-                        entry["ofl"],
-                        entry["hluti"],
-                        entry["form"],
-                        entry["mark"],
-                        entry["ksnid"]
-                    )
-                    result.append(ksnid_obj)
-
-                return result
-            finally:
-                bin_cffi.bin_compressed_free_string(result_ptr)
-
-        except UnicodeEncodeError:
-            # Word contains non-Latin-1 characters, can't be in dictionary
-            return []
+            if inflection_filter is None or inflection_filter(mark)
+        ]
 
     def lemma_forms(self, bin_id: int) -> List[str]:
         """Get all word forms for a lemma (C++ implementation).
-
         Returns all inflected forms of the lemma identified by bin_id,
-        decompressed from the templates section.
-        """
-        result_ptr = bin_cffi.bin_compressed_lemma_forms(self._cpp_handle, bin_id)
-
-        if not result_ptr:
+        decompressed from the templates section, the lemma itself last."""
+        if bin_id < 0:
             return []
-
+        strings = bin_cffi.bin_lemma_forms(self._cpp_handle, bin_id)
+        if not strings:
+            return []
         try:
-            result_bytes = ffi.string(result_ptr)
-            forms_utf8 = json.loads(result_bytes)
-            # Return the UTF-8 decoded strings directly
-            return forms_utf8
+            return [
+                ffi.string(strings.items[i]).decode("latin-1")
+                for i in range(strings.count)
+            ]
         finally:
-            bin_cffi.bin_compressed_free_string(result_ptr)
+            bin_cffi.bin_strings_free(strings)
 
     def lookup_id(self, bin_id: int) -> List[Ksnid]:
         """Get all Ksnid entries for a given BÍN ID (C++ implementation).
-
-        Overrides base class method with optimized C++ version.
-        Returns all word forms of the lemma with their full Ksnid information.
-        """
-        result_ptr = bin_cffi.bin_compressed_lookup_id(self._cpp_handle, bin_id)
-
-        if not result_ptr:
+        Returns all word forms of the lemma with their full Ksnid information."""
+        if bin_id < 0:
             return []
+        result = bin_cffi.bin_lookup_id(self._cpp_handle, bin_id)
+        if not result:
+            return []
+        return [
+            Ksnid.from_parameters(ord_, bin_id_, ofl, hluti, bmynd, mark, ksnid)
+            for ord_, bin_id_, ofl, hluti, bmynd, mark, ksnid in self._entries(result)
+        ]
 
+    def compound_candidates(self, word: str) -> List[List[str]]:
+        """The legal compound splits of the word, in the ranking order of
+        the compounder (longest last part first, then fewest parts),
+        including the single-part split if the whole word is a legal suffix"""
+        word_bytes = self._latin1(word)
+        if word_bytes is None:
+            return []
+        splits = bin_cffi.bin_compound_candidates(self._cpp_handle, word_bytes)
+        if not splits:
+            return []
         try:
-            # Parse JSON result (C++ returns UTF-8 bytes)
-            result_bytes = ffi.string(result_ptr)
-            entries = json.loads(result_bytes)
+            from .dawgdictionary import splits_to_list
 
-            # Convert to Ksnid objects
-            result: List[Ksnid] = []
-            for entry in entries:
-                ksnid_obj = Ksnid.from_parameters(
-                    entry["ord"],
-                    entry["bin_id"],
-                    entry["ofl"],
-                    entry["hluti"],
-                    entry["form"],
-                    entry["mark"],
-                    entry["ksnid"]
-                )
-                result.append(ksnid_obj)
-
-            return result
+            return splits_to_list(splits)
         finally:
-            bin_cffi.bin_compressed_free_string(result_ptr)
+            bin_cffi.bin_splits_free(splits)
+
+    def compound_split(self, word: str) -> List[str]:
+        """The split that the compounder settles on for the word: the
+        first legal candidate (longest last part, fewest parts) whose last
+        part is not a defective noun, or the first candidate if all are.
+        Empty if the word does not split."""
+        word_bytes = self._latin1(word)
+        if word_bytes is None:
+            return []
+        splits = bin_cffi.bin_compound_split(self._cpp_handle, word_bytes)
+        if not splits:
+            return []
+        try:
+            from .dawgdictionary import splits_to_list
+
+            return splits_to_list(splits)[0]
+        finally:
+            bin_cffi.bin_splits_free(splits)
 
     # Other methods (lookup_variants, lookup_case,
     # raw_nominative, nominative, accusative, dative, genitive, etc.)

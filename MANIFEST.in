@@ -1,12 +1,16 @@
 graft src
+graft libbin
+prune libbin/build
 prune src/islenska/__pycache__
 prune src/islenska/.mypy_cache
 prune test
 exclude src/islenska/_bin.cpp
+exclude src/islenska/_bin.c
 include src/islenska/resources/ordalisti-all.dawg.bin
 include src/islenska/resources/ordalisti-prefixes.dawg.bin
 include src/islenska/resources/ordalisti-suffixes.dawg.bin
 include src/islenska/resources/compressed.bin
+exclude src/islenska/resources/compressed-*.bin
 exclude src/islenska/resources/*.csv
 exclude src/islenska/resources/*.txt
 exclude src/islenska/resources/KRISTINsnid.*

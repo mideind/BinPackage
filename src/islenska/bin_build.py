@@ -2,7 +2,7 @@
 
     BinPackage
 
-    CFFI builder for _bin module
+    CFFI builder for the _bin module
 
     Copyright © 2025 Miðeind ehf.
     Original Author: Vilhjálmur Þorsteinsson
@@ -31,7 +31,10 @@
     This module only runs at setup/installation time. It is invoked
     from setup.py as requested by the cffi_modules=[] parameter of the
     setup() function. It causes the _bin.*.so CFFI wrapper library
-    to be built from its source in bin.cpp.
+    to be built from the libbin sources (see libbin/ at the root of the
+    repository). The C declarations are read from libbin/include/libbin/bin.h,
+    between the CFFI-BEGIN and CFFI-END markers, so the header is the
+    single source of truth for the interface.
 
 """
 
@@ -39,80 +42,56 @@ from typing import cast, Any
 
 import os
 import platform
+
 import cffi  # type: ignore
 
-
-# Don't change the name of this variable unless you
-# change it in setup.py as well
 ffibuilder = cast(Any, cffi).FFI()
 
 WINDOWS = platform.system() == "Windows"
 MACOS = platform.system() == "Darwin"
 IMPLEMENTATION = platform.python_implementation()
 
-# What follows is the actual Python-wrapped C interface to bin.*.so
+# The repository root, i.e. the parent of src/
+_here = os.path.dirname(os.path.abspath(__file__))
+_root = os.path.abspath(os.path.join(_here, "..", ".."))
+_libbin = os.path.join(_root, "libbin")
+_header = os.path.join(_libbin, "include", "libbin", "bin.h")
 
-declarations = """
-
-    // From bin.h
-    typedef unsigned int UINT;
-    typedef uint8_t BYTE;
-    UINT mapping(const BYTE* pbMap, const BYTE* pszWordLatin);
-
-    // From dawgdictionary.h
-    typedef void* DawgHandle;
-    DawgHandle dawg_load(const BYTE* pbMap);
-    void dawg_unload(DawgHandle handle);
-    bool dawg_contains(DawgHandle handle, const char* word);
-    char* dawg_find_combinations(DawgHandle handle, const char* word);
-    void dawg_free_string(char* str);
-
-    // From bincompress.h
-    typedef void* BcHandle;
-    BcHandle bin_compressed_init(const BYTE* pbMap);
-    void bin_compressed_close(BcHandle handle);
-    bool bin_compressed_contains(BcHandle handle, const char* word);
-    char* bin_compressed_lookup(BcHandle handle, const char* word, const char* cat, const char* lemma, int utg);
-    char* bin_compressed_lookup_ksnid(BcHandle handle, const char* word, const char* cat, const char* lemma, int utg);
-    char* bin_compressed_lemma_forms(BcHandle handle, int bin_id);
-    char* bin_compressed_lookup_id(BcHandle handle, int bin_id);
-    void bin_compressed_free_string(char* str);
-
-"""
-
-# Do the magic CFFI incantations necessary to get CFFI and setuptools
-# to compile bin.cpp at setup time, generate a .so library and
-# wrap it so that it is callable from Python and PyPy as _bin
+with open(_header, "r", encoding="utf-8") as f:
+    _header_text = f.read()
+_begin = _header_text.index("/* CFFI-BEGIN */") + len("/* CFFI-BEGIN */")
+_end = _header_text.index("/* CFFI-END */")
+declarations = _header_text[_begin:_end]
 
 if WINDOWS:
-    extra_compile_args = ["/Zc:offsetof-"]
+    extra_compile_args = ["/std:c++17", "/Zc:offsetof-"]
 else:
-    extra_compile_args = ["-std=c++11"]
+    extra_compile_args = ["-std=c++17"]
 
 extra_link_args = []
 if MACOS:
-    extra_link_args = ["-stdlib=libc++", "-mmacosx-version-min=10.9"]
-    os.environ["MACOSX_DEPLOYMENT_TARGET"] = "10.9"
+    extra_link_args = ["-stdlib=libc++", "-mmacosx-version-min=10.13"]
+    os.environ["MACOSX_DEPLOYMENT_TARGET"] = "10.13"
 
-# On some systems, the linker needs to be told to use the C++ compiler
-# due to changes in the default behaviour of distutils. If absent, the
-# package will not build for PyPy.
 if IMPLEMENTATION == "PyPy":
     os.environ["LDCXXSHARED"] = "c++ -shared"
 
 ffibuilder.cdef(declarations)  # type: ignore
 
-# Use stable ABI for CPython to create portable wheels across Python versions.
-# PyPy doesn't support the stable ABI, so we create version-specific wheels for it.
 py_limited_api = "cp39" if IMPLEMENTATION == "CPython" else False
 
 ffibuilder.set_source(  # type: ignore
     "islenska._bin",
-    # bin.cpp is written in C++ but must export a pure C interface.
-    # This is the reason for the "extern 'C' { ... }" wrapper.
-    'extern "C" {\n' + declarations + "\n}\n",
+    '#include "libbin/bin.h"\n',
     source_extension=".cpp",
-    sources=["src/islenska/bin.cpp", "src/islenska/dawgdictionary.cpp", "src/islenska/bincompress.cpp"],
+    sources=[
+        os.path.relpath(os.path.join(_libbin, "src", name), _root)
+        for name in ("trie.cpp", "dawg.cpp", "dict.cpp", "api.cpp")
+    ],
+    include_dirs=[
+        os.path.relpath(os.path.join(_libbin, "include"), _root),
+        os.path.relpath(os.path.join(_libbin, "src"), _root),
+    ],
     extra_compile_args=extra_compile_args,
     extra_link_args=extra_link_args,
     py_limited_api=py_limited_api,

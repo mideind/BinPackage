@@ -26,7 +26,7 @@ jobs:
           mkdir -p src/islenska/resources
           wget -q -O src/islenska/resources/KRISTINsnid.csv.zip 'https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip'
 
-      # The built data (compressed.bin, the compact variant and the three
+      # The built data (compressed.bin, a compact build, and the three
       # DAWGs) is cached under a hash of everything it depends on: the BÍN
       # source, the addition and word-list files, the packing tools and
       # the libbin DAWG code the compactor runs. It is built here, once,
@@ -38,7 +38,6 @@ jobs:
         with:
           path: |
             src/islenska/resources/compressed.bin
-            src/islenska/resources/compressed-compact.bin
             src/islenska/resources/ordalisti-all.dawg.bin
             src/islenska/resources/ordalisti-prefixes.dawg.bin
             src/islenska/resources/ordalisti-suffixes.dawg.bin
@@ -57,7 +56,6 @@ jobs:
           python tools/dawgbuilder.py
           unzip -q -d src/islenska/resources/ src/islenska/resources/KRISTINsnid.csv.zip
           python tools/binpack.py
-          python tools/binpack.py --compact -o src/islenska/resources/compressed-compact.bin
           ls -l src/islenska/resources/*.bin
 
   build:
@@ -120,7 +118,6 @@ jobs:
       with:
         path: |
           src/islenska/resources/compressed.bin
-          src/islenska/resources/compressed-compact.bin
           src/islenska/resources/ordalisti-all.dawg.bin
           src/islenska/resources/ordalisti-prefixes.dawg.bin
           src/islenska/resources/ordalisti-suffixes.dawg.bin
@@ -150,11 +147,9 @@ jobs:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
       if: failure() # Pick up event if the job fails
 
-  # The compact build (tools/binpack.py --compact) and the C++ library:
-  # the test suite must pass unchanged against the compact file, a sample
-  # parity check must find no difference from the full file, and libbin
-  # must build and pass its smoke test standalone on both files.
-  compact:
+  # The C++ library must build and pass its smoke test standalone,
+  # against the built data.
+  libbin:
     needs: prepare-cache
     runs-on: ubuntu-latest
     steps:
@@ -189,7 +184,6 @@ jobs:
       with:
         path: |
           src/islenska/resources/compressed.bin
-          src/islenska/resources/compressed-compact.bin
           src/islenska/resources/ordalisti-all.dawg.bin
           src/islenska/resources/ordalisti-prefixes.dawg.bin
           src/islenska/resources/ordalisti-suffixes.dawg.bin
@@ -199,41 +193,113 @@ jobs:
       if: steps.cache-bin-data.outputs.cache-hit != 'true'
       run: python tools/dawgbuilder.py
 
-    - name: Build compressed.bin, full and compact
+    - name: Build compressed.bin
       if: steps.cache-bin-data.outputs.cache-hit != 'true'
       run: |
         unzip -q -d src/islenska/resources/ src/islenska/resources/KRISTINsnid.csv.zip
         python tools/binpack.py
-        python tools/binpack.py --compact -o src/islenska/resources/compressed-compact.bin
-        ls -l src/islenska/resources/compressed*.bin
-
-    - name: Test with pytest against the compact file
-      run: python -m pytest
-      env:
-        ISLENSKA_BIN_FILE: src/islenska/resources/compressed-compact.bin
-
-    - name: Parity check (sample)
-      # The check reads the word forms from the BÍN source, which the
-      # build steps above unpack only on a cache miss
-      run: |
-        unzip -q -o -d src/islenska/resources/ src/islenska/resources/KRISTINsnid.csv.zip
-        python tools/parity.py src/islenska/resources/compressed.bin src/islenska/resources/compressed-compact.bin --sample 200000
 
     - name: Build and test libbin
       run: |
         cmake -S libbin -B libbin/build -DCMAKE_BUILD_TYPE=Release
         cmake --build libbin/build -j
         libbin/build/bin_test src/islenska/resources
-        mkdir compact-data
-        cp src/islenska/resources/compressed-compact.bin compact-data/compressed.bin
-        cp src/islenska/resources/ordalisti-*.dawg.bin compact-data/
-        libbin/build/bin_test compact-data
 
     - name: Slack notification
       uses: 8398a7/action-slack@v3
       with:
         status: ${{ job.status }}
-        author_name: Compact build and libbin
+        author_name: libbin
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      if: failure()
+
+  # The split into islenska (code) and islenska-data (data files): build an
+  # islenska wheel without the data files and the islenska-data wheel,
+  # install both into a fresh environment, and run the test suite there.
+  # The islenska-data wheel is kept as an artifact; nothing is published.
+  data-package:
+    needs: prepare-cache
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Restore cached KRISTINsnid.csv.zip
+      id: cache-kristin
+      uses: actions/cache@v4
+      with:
+        path: src/islenska/resources/KRISTINsnid.csv.zip
+        key: kristin-csv-zip-v1
+
+    - name: Download KRISTINsnid.csv.zip
+      if: steps.cache-kristin.outputs.cache-hit != 'true'
+      run: |
+        mkdir -p src/islenska/resources
+        wget -q -O src/islenska/resources/KRISTINsnid.csv.zip 'https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip'
+
+    - name: Install BinPackage
+      run: |
+        python -m pip install uv
+        uv pip install --system --upgrade wheel setuptools pytest cffi
+        uv pip install --system -e .
+
+    - name: Restore built BÍN data
+      id: cache-bin-data
+      uses: actions/cache@v4
+      with:
+        path: |
+          src/islenska/resources/compressed.bin
+          src/islenska/resources/ordalisti-all.dawg.bin
+          src/islenska/resources/ordalisti-prefixes.dawg.bin
+          src/islenska/resources/ordalisti-suffixes.dawg.bin
+        key: bin-data-v1-${{ hashFiles('src/islenska/resources/KRISTINsnid.csv.zip', 'src/islenska/resources/*.csv', 'src/islenska/resources/*.txt', 'src/islenska/basics.py', 'src/islenska/dawgdictionary.py', 'src/islenska/config/*.conf', 'tools/binpack.py', 'tools/compact.py', 'tools/dawgbuilder.py', 'libbin/src/*', 'libbin/include/libbin/bin.h') }}
+
+    - name: Build *.dawg.bin
+      if: steps.cache-bin-data.outputs.cache-hit != 'true'
+      run: python tools/dawgbuilder.py
+
+    - name: Build compressed.bin
+      if: steps.cache-bin-data.outputs.cache-hit != 'true'
+      run: |
+        unzip -q -d src/islenska/resources/ src/islenska/resources/KRISTINsnid.csv.zip
+        python tools/binpack.py
+
+    - name: Build the islenska-data wheel
+      run: |
+        python tools/data_package.py
+        uv build --wheel islenska-data -o dist-data
+
+    - name: Build an islenska wheel without the data files
+      run: |
+        rm -f src/islenska/resources/*.bin src/islenska/*.so
+        uv build --wheel -o dist-code
+        ls -l dist-data dist-code
+        if unzip -l dist-code/*.whl | grep -q '\.bin$'; then
+          echo "The islenska wheel contains data files"; exit 1
+        fi
+
+    - name: Test the two wheels together
+      run: |
+        uv venv /tmp/split
+        uv pip install --python /tmp/split/bin/python dist-data/*.whl dist-code/*.whl pytest
+        /tmp/split/bin/python -c "import islenska_data; from islenska.basics import data_dir; assert data_dir() == islenska_data.data_dir(), data_dir()"
+        /tmp/split/bin/python -m pytest -p no:cacheprovider test
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: islenska-data-wheel
+        path: dist-data/*.whl
+        retention-days: 7
+
+    - name: Slack notification
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        author_name: islenska-data package
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
       if: failure()

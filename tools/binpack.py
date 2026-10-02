@@ -95,7 +95,8 @@
         strings ('hluti' field in BÍN). Domains are strings such as
         'föð', 'móð', 'örn', etc.
 
-        compact section (compact builds only, see --compact and tools/compact.py):
+        compact section (see tools/compact.py; libbin also reads files
+        without one, in which no lemma is dropped):
         the bin_ids of the lemmas whose word forms were left out of the
         mapping and forms sections because the compounder regenerates them
         exactly, sorted by lemma string. Such a lemma's record in the lemmas
@@ -529,8 +530,13 @@ class BinCompressor:
         self._subcats = SubcatIndexer()  # hluti
         self._alphabet: Set[int] = set()
         self._alphabet_bytes = bytes()
-        # map form index -> { (bin_id, meaning_ix, ksnid_ix) }
-        self._lookup_form: Dict[int, Set[Tuple[int, int, int]]] = defaultdict(set)
+        # map form index -> { (bin_id, meaning_ix, ksnid_ix) }, as an
+        # insertion-ordered set (a dict with None values), so that entries
+        # that are otherwise equal in the canonical order keep their source
+        # order (see canonical_entries())
+        self._lookup_form: Dict[int, Dict[Tuple[int, int, int], None]] = defaultdict(dict)
+        # Cache of meaning index -> rank in the canonical order
+        self._mark_rank: Dict[int, int] = {}
         # map bin_id -> set of all associated word forms
         self._lemma_forms: Dict[int, Set[bytes]] = defaultdict(set)
         # Form index -> form (the inverse of the trie)
@@ -743,7 +749,7 @@ class BinCompressor:
                     kix = self._ksnid_strings.add(ksnid)
                     if (wix, mix, kix) not in self._lookup_form[fix]:
                         self._lemma_entries[wix].extend((fix, mix, kix))
-                    self._lookup_form[fix].add((wix, mix, kix))
+                        self._lookup_form[fix][(wix, mix, kix)] = None
                     # Add this word form to the set of word forms
                     # of its lemma, if it is different from the lemma
                     if lemma != form:
@@ -863,11 +869,11 @@ class BinCompressor:
         print(f"Applying {len(dropped)} dropped lemmas...")
         start_time = time.time()
         new_forms = Trie()
-        new_lookup: Dict[int, Set[Tuple[int, int, int]]] = defaultdict(set)
+        new_lookup: Dict[int, Dict[Tuple[int, int, int], None]] = defaultdict(dict)
         new_list: List[bytes] = []
         for fix, form in enumerate(self._form_list):
             entries = self._lookup_form[fix]
-            kept = {e for e in entries if e[0] not in dropped}
+            kept = {e: None for e in entries if e[0] not in dropped}
             if not kept:
                 # Every reading of this form belongs to a dropped lemma
                 continue
@@ -885,6 +891,25 @@ class BinCompressor:
             self._lemma_forms.pop(bin_id, None)
         self._dropped = dropped
         print("Time: {0:.1f} seconds".format(time.time() - start_time))
+
+    def canonical_entries(self, fix: int) -> List[Tuple[int, int, int]]:
+        """Return the (bin_id, meaning index, ksnid index) entries of a word
+        form in the canonical order in which lookups return them: by bin_id,
+        then by the position of the inflection in its category's paradigm
+        (resources/mark_order.csv, as in MarkOrder.index(); NFET, ÞFET, ÞGFET,
+        EFET, NFETgr, ... for nouns), then in source order. libbin restores
+        the dropped compounds of a compact build in the same order."""
+
+        def rank(mix: int) -> int:
+            r = self._mark_rank.get(mix)
+            if r is None:
+                ofl, mark = self._meanings[mix]
+                r = MarkOrder.index(ofl.decode("latin-1"), mark.decode("latin-1"))
+                self._mark_rank[mix] = r
+            return r
+
+        # sorted() is stable, so equal keys keep their insertion (source) order
+        return sorted(self._lookup_form[fix], key=lambda e: (e[0], rank(e[1])))
 
     def write_forms(self, f: IO[bytes], alphabet: bytes, lookup_map: List[int]) -> None:
         """Write the forms trie contents to a packed binary stream"""
@@ -1115,9 +1140,9 @@ class BinCompressor:
             # loop through them
             num_meanings = len(self._lookup_form[fix])
             assert num_meanings > 0
-            # Bucket the meanings by BÍN id
+            # Bucket the meanings by BÍN id, in the canonical order
             lookup_lemmas: DefaultDict[int, List[Tuple[int, int]]] = defaultdict(list)
-            for bin_id, mix, kix in self._lookup_form[fix]:
+            for bin_id, mix, kix in self.canonical_entries(fix):
                 lookup_lemmas[bin_id].append((mix, kix))
             # Index of the meaning being written
             ix = 0
@@ -1350,38 +1375,36 @@ def main() -> int:
         default=os.path.join(_path, "resources", BIN_COMPRESSED_FILE),
         help="output file (default: src/islenska/resources/compressed.bin)",
     )
-    parser.add_argument(
-        "--compact", action="store_true",
-        help="build a compact file that leaves out the word forms of "
-             "compounds that the compounder regenerates exactly (see tools/compact.py)",
-    )
+    # The file is always compact: it leaves out the word forms of compounds
+    # that the compounder regenerates exactly (see tools/compact.py).
+    # --compact is accepted, and ignored, for older build instructions.
+    parser.add_argument("--compact", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument(
         "--keep", metavar="FILE",
-        help="with --compact: file of bin_ids (one per line) that must never be dropped",
+        help="file of bin_ids (one per line) whose lemmas must never be dropped",
     )
     parser.add_argument(
         "--report", metavar="FILE",
-        help="with --compact: write a tab-separated listing of the dropped lemmas",
+        help="write a tab-separated listing of the dropped lemmas",
     )
     parser.add_argument(
         "--procs", type=int, default=max(1, min(8, os.cpu_count() or 1)),
-        help="with --compact: number of worker processes for the selection",
+        help="number of worker processes for the selection of dropped lemmas",
     )
     args = parser.parse_args()
     print("Welcome to the BinPackage compressed vocabulary file generator")
     b = BinCompressor()
     b.read([os.path.join(_path, "resources", fname) for fname in SOURCE_FILES])
     b.print_stats()
-    if args.compact:
-        sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
-        import compact  # type: ignore[import-not-found]
+    sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+    import compact  # type: ignore[import-not-found]
 
-        keep: Set[int] = compact.read_keep_list(args.keep) if args.keep else set()
-        dropped = compact.select(b, procs=args.procs, keep=keep)
-        if args.report:
-            compact.write_report(b, dropped, args.report)
-        b.apply_dropped(dropped)
-        b.print_stats()
+    keep: Set[int] = compact.read_keep_list(args.keep) if args.keep else set()
+    dropped = compact.select(b, procs=args.procs, keep=keep)
+    if args.report:
+        compact.write_report(b, dropped, args.report)
+    b.apply_dropped(dropped)
+    b.print_stats()
     b.write_binary(args.output)
     print("Done; the compressed vocabulary was written to {0}".format(args.output))
     return 0

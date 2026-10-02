@@ -1,5 +1,5 @@
 {
-  "include": ["src", "test", "tools"],
+  "include": ["src", "test", "tools", "islenska-data/src"],
   "exclude": [
     "**/__pycache__",
     "**/*.egg-info",

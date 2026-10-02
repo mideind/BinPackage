@@ -3,6 +3,42 @@
 Guidance for Claude Code in this repository. `AGENTS.md` holds the full project
 overview and architecture notes; the day-to-day essentials are below.
 
+## Status (2026-10-02): where to pick up
+
+Paused mid-way through the 1.6.0 packaging work. Details in "Roadmap" below.
+
+- **Released:** islenska 1.5.0 on PyPI (2026-10-02): deterministic order of
+  case lookups (PR #28), Python 3.10+ only (PR #29).
+- **Open PRs, CI green, merge in this order** (each builds on the previous,
+  so its diff includes the earlier ones until they are merged):
+  1. #30 `canonical-entry-order`: lookups return a form's readings by
+     bin_id, then paradigm order (`mark_order.csv`), then source order.
+     Changes some first-match results relative to 1.5.0 (nouns cast to the
+     singular more often): mention in the 1.6.0 release notes.
+  2. #31 `compact-only`: `compressed.bin` is always a compact build; the
+     full build and `tools/parity.py` are gone; `wheels.yml` builds the
+     DAWGs before `compressed.bin`.
+  3. #32 `data-package`: tentative `islenska-data` package (data files
+     only), `basics.data_dir()` (prefers it when installed), CI job
+     `data-package`, release workflow `data-release.yml` (dry run passed;
+     `wheels.yml` ignores `data-*` tags), `RELEASING.md` section. Nothing
+     published; islenska still embeds the data.
+- **PyPI:** a pending Trusted Publisher exists for `islenska-data`
+  (`mideind/BinPackage`, workflow `data-release.yml`, environment `pypi`).
+  It does not reserve the name. The data package's licensing text is
+  accepted.
+- **Next, for 1.6.0:**
+  1. islenska depends on `islenska-data ~= 5.0` and stops shipping the data
+     files (`MANIFEST.in`, `wheels.yml`); keep the `resources/` fallback.
+  2. Release islenska-data (tag `data-5.0.0`, creates the PyPI project),
+     then islenska 1.6.0.
+  3. PyPy wheels for `pp80` (PyPy 8.0) and `pp312`, keeping `pp73`: wait
+     for a cibuildwheel release after 4.2.1 (still the latest on
+     2026-10-02); Linux aarch64 wheels.
+  4. GreynirKbd: move its BinPackage submodule past 1.4.0 and rebuild its
+     data; its notes still refer to `binpack.py --compact` (now a no-op)
+     and to a full-vs-compact parity check (no full build any more).
+
 ## Tooling
 
 This project is managed with [uv](https://docs.astral.sh/uv/) — dependencies
@@ -32,10 +68,19 @@ never run `bin_build.py` directly (see `AGENTS.md` for the reason). The
 library also builds standalone: `cmake -S libbin -B libbin/build && cmake
 --build libbin/build && ctest --test-dir libbin/build`.
 
-The compressed data comes in a full and a compact variant (`tools/binpack.py
---compact`); see "Compact build" in `AGENTS.md`. After changing the selection
-rules (`tools/compact.py`) or the restoration code (`libbin/src/dict.cpp`),
-run `tools/parity.py` against a fresh compact build.
+`compressed.bin` is always a compact build: `tools/binpack.py` leaves out the
+word forms of compounds that the compounder regenerates exactly, and libbin
+restores them on lookup; see "Compact build" in `AGENTS.md`. There is no full
+build or parity tool any more (removed 2026-10-02 by decision). After changing
+the selection rules (`tools/compact.py`) or the restoration code
+(`libbin/src/dict.cpp`), rebuild the data and run the test suite
+(`test/test_compact.py`, `test/test_canonical_order.py`).
+
+The data files can also come from the separate package `islenska-data`
+(`islenska-data/` in this repo; see "Data package" in `AGENTS.md`):
+`basics.data_dir()` prefers it when installed with a matching data format.
+Stage and build it with `uv run python tools/data_package.py && uv build
+--wheel islenska-data -o dist-data`. Not published yet.
 
 ## Roadmap (recorded 2026-10-02)
 
@@ -73,12 +118,17 @@ Do the data package split first: it is what makes the extra wheels affordable.
   BÍN updates a few times a year that lasts for hundreds of releases. After
   the split an `islenska` release is ~20-40 MB, so its remaining ~1.3 GB lasts
   for dozens of releases.
-- Ship only the compact build (`tools/binpack.py --compact`, about half the
-  size). Verified 2026-10-02 with a throwaway Bin-level comparison (11.9 k
-  words incl. forms of dropped compounds, Greynir additions and made-up
-  compounds; every public lookup method; `Bin` default, `only_bin=True`,
-  `add_compounds=False`, `add_compound_hyphens=False`, and `GreynirBin`;
-  1.37 M comparisons):
+- Ship only the compact build: DONE in the branch `compact-only` (stacked
+  on PR #30). `tools/binpack.py` always builds compact (`--compact` is a
+  hidden no-op for GreynirKbd's build notes), `tools/parity.py` and the full
+  build are gone, CI's `compact` job is now a plain `libbin` job, and
+  `test/test_compact.py` checks dropped compounds against known BÍN rows.
+  About half the size of a full build. Before the switch it was verified
+  (2026-10-02) against the full build with a throwaway Bin-level comparison
+  (11.9 k words incl. forms of dropped compounds, Greynir additions and
+  made-up compounds; every public lookup method; `Bin` default,
+  `only_bin=True`, `add_compounds=False`, `add_compound_hyphens=False`, and
+  `GreynirBin`; 1.37 M comparisons):
   - Content is identical, dropped compounds included (they come back as
     genuine BÍN entries with their own bin_ids even with compounding off).
   - Order was not: binpack stored a form's readings in Python set order and
@@ -94,15 +144,37 @@ Do the data package split first: it is what makes the extra wheels affordable.
     miss now tries restoration first). Bin's cache absorbs much of it.
   - Size: compact `compressed.bin` 55 MB (26 MB deflated); with the DAWGs a
     data wheel is ~30 MB.
-  - Still open: whether anyone needs the full file (`ISLENSKA_BIN_FILE` can
-    point at one), and dropping the full build, the `compact` CI job's parity
-    step and `tools/parity.py` once it is gone.
-- Before the first upload, configure a pending Trusted Publisher for the new
-  project name on PyPI (it does not reserve the name; the first upload does).
-- Design points: how the code locates the data package (with
-  `ISLENSKA_BIN_FILE` still taking precedence), pinning the data package to
-  the data format (`Greynir 05.00.00`) the code expects, and a two-package
-  release process in `RELEASING.md` and `wheels.yml`.
+- Tentative split DONE in the branch `data-package` (stacked on PR #31):
+  the `islenska-data/` subproject (distribution `islenska-data`, import
+  `islenska_data`, version 5.0.0 = data format 05.00 + data release 0,
+  `py3-none-any`, ~30 MB wheel, BÍN license text in its README),
+  `basics.data_dir()`/`data_file()` (islenska-data if installed with a
+  matching `FORMAT` and files, else islenska's own `resources/`;
+  `ISLENSKA_BIN_FILE` still wins for `compressed.bin`),
+  `tools/data_package.py` (checks and stages the built files), and the CI
+  job `data-package` (islenska wheel without data, ~0.8 MB, plus the data
+  wheel in a fresh venv: the whole test suite passes). The name
+  `islenska-data` was free on PyPI on 2026-10-02.
+- Still to do for the switch:
+  1. DONE 2026-10-02: pending Trusted Publisher for `islenska-data` on PyPI
+     (owner `mideind`, repository `BinPackage`, workflow `data-release.yml`,
+     environment `pypi`). It does not reserve the name; the first upload
+     creates the project, under the account of whoever added the pending
+     publisher (move it to the Miðeind organization afterwards if needed).
+  2. DONE in PR #32: `.github/workflows/data-release.yml` (the name and the
+     environment `pypi` must match the publisher). A tag `data-X.Y.Z` that
+     matches `islenska-data/pyproject.toml` builds, tests (islenska wheel
+     without data + the data wheel) and publishes the wheel only; a tag
+     containing `test`, or a manual run, builds and tests only. `wheels.yml`
+     ignores `data-*` tags. Process in `RELEASING.md`.
+  3. In islenska: depend on `islenska-data ~= 5.0`, stop shipping the data
+     files (`MANIFEST.in` includes, and `wheels.yml` downloading them into
+     the build), and keep the `resources/` fallback for source checkouts.
+  4. Release order: islenska-data first, then islenska. Document the two
+     packages in `RELEASING.md` and the README (installation).
+  5. DONE 2026-10-02: the licensing text in `islenska-data/README.md` (CC
+     BY-SA 4.0 for the data as an adaptation of BÍN; MIT for the code) was
+     reviewed and accepted by the maintainer.
 
 **PyPy wheels for the new ABI, and PyPy 3.12.**
 

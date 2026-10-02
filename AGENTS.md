@@ -2,6 +2,14 @@
 
 This file provides guidance to AI coding agents when working with code in this repository.
 
+## Status (2026-10-02)
+
+Work on islenska 1.6.0 is paused with three open PRs (#30 canonical order of
+lookup results, #31 compact-only `compressed.bin`, #32 the tentative
+`islenska-data` package and its release workflow), to be merged in that
+order. See "Status" and "Roadmap" in `CLAUDE.md` for what is done and what
+comes next.
+
 ## Project Overview
 
 BinPackage is a Python package that encapsulates the Database of Icelandic Morphology (BÍN)
@@ -19,15 +27,17 @@ declared in `pyproject.toml` and pinned in `uv.lock`. Run dev tools through
 # Sync the environment, including dev dependencies (pytest, pyright)
 uv sync --extra dev
 
-# Build the compressed binary data (requires KRISTINsnid.csv.zip in src/islenska/resources/)
+# Build the compressed binary data, a compact build (see "Compact build" below;
+# requires KRISTINsnid.csv.zip, unzipped, in src/islenska/resources/; ~3 min)
 uv run python tools/binpack.py
-
-# Build a compact variant (see "Compact build" below) and check it against the full file
-uv run python tools/binpack.py --compact -o src/islenska/resources/compressed-compact.bin
-uv run python tools/parity.py src/islenska/resources/compressed.bin src/islenska/resources/compressed-compact.bin --sample 200000
 
 # Build DAWG structures for compound word handling
 uv run python tools/dawgbuilder.py
+
+# Stage the built data into the islenska-data package and build its wheel
+# (see "Data package" below; not published yet)
+uv run python tools/data_package.py
+uv build --wheel islenska-data -o dist-data
 ```
 
 ### Rebuilding C++ Extensions
@@ -114,20 +124,46 @@ ruff check src/islenska
 - The package name is `islenska` on PyPI, not `BinPackage`
 - BÍN data is under CC BY-SA 4.0 license from Stofnun Árna Magnússonar
 - Supports Python 3.10+ on CPython and PyPy
-- Binary data file (`compressed.bin`, format `Greynir 05.00.00`) is ~95MB,
-  mapped to memory at runtime; a compact build is ~48MB
+- Binary data file (`compressed.bin`, format `Greynir 05.00.00`) is ~55MB,
+  mapped to memory at runtime; it is always a compact build
 - Compound word algorithm can be disabled via `Bin(add_compounds=False)`
 
 ## Compact build
 
-`tools/binpack.py --compact` writes a `compressed.bin` without the word forms
-of compounds whose paradigm is exactly prefix + the paradigm of their last
-component, as decided by `tools/compact.py` (rules in its docstring). Each
-dropped lemma keeps a record (subcategory, ksnid string, head lemmas) and
-`libbin/src/dict.cpp` restores its entries on lookup by slicing the word with
-the compounder, so the public API returns identical results, bin_ids
-included. `tools/parity.py FULL COMPACT` proves that; run it after any change
-to the selection rules or to the restoration code. The CI job `compact`
-builds both files, runs the test suite against the compact one and a
-sampled parity check. The test suite runs against a compact file with
-`ISLENSKA_BIN_FILE=path/to/compressed-compact.bin uv run pytest`.
+`tools/binpack.py` writes a `compressed.bin` without the word forms of
+compounds whose paradigm is exactly prefix + the paradigm of their last
+component, as decided by `tools/compact.py` (rules in its docstring), about
+half the size of a file with every form. Each dropped lemma keeps a record
+(subcategory, ksnid string, head lemmas) and `libbin/src/dict.cpp` restores
+its entries on lookup by slicing the word with the compounder, so the public
+API returns the BÍN entries, bin_ids included. There is no full
+(non-compact) build any more; libbin still reads a file without a compact
+section, in which nothing is dropped. `test/test_compact.py` checks known
+dropped compounds against their BÍN rows.
+
+Lookups return the readings of a word form in a canonical order: by bin_id,
+then by the position of the inflection in its category's paradigm
+(`resources/mark_order.csv`), then in source order. `tools/binpack.py`
+stores them in that order (`canonical_entries()`), a restored compound copies
+the order of its head's readings, and `test/test_canonical_order.py` checks
+it. Keep both sides in step when changing either. The CI job `libbin`
+builds the C++ library standalone and runs its smoke test on the data.
+
+## Data package
+
+The data files (`compressed.bin` and the three DAWGs, `basics.DATA_FILES`)
+can come from a separate pure-Python package, `islenska-data` (import name
+`islenska_data`, in `islenska-data/` at the root of the repository), so that
+the code wheels stay small. `basics.data_dir()` picks the directory:
+`islenska_data`'s if it is installed, holds `compressed.bin` and declares the
+data format that this islenska reads (`islenska_data.FORMAT`), otherwise
+islenska's own `resources/`; `ISLENSKA_BIN_FILE` still overrides
+`compressed.bin`. Its version is `<format major>.<format minor>.<data
+release>` (5.0.x for `Greynir 05.00.00`). `tools/data_package.py` checks the
+built files and copies them into the package; the CI job `data-package`
+builds an islenska wheel without data and the islenska-data wheel, installs
+both into a fresh environment and runs the test suite. The release workflow
+is `.github/workflows/data-release.yml`, on `data-X.Y.Z` tags (see
+`RELEASING.md`). As of 2026-10-02 this is tentative: islenska wheels still
+embed the data, islenska does not depend on islenska-data, and it has never
+been published.

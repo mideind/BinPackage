@@ -36,6 +36,14 @@
    The first split in ranking order that restores anything wins, exactly
    as modelled by tools/compact.py when the file was built.
 
+   Canonical order: the readings of a word form are returned by bin_id,
+   then by the position of the inflection in its category's paradigm
+   (resources/mark_order.csv: NFET, ÞFET, ÞGFET, EFET, NFETgr, ... for
+   nouns), then in source order. tools/binpack.py stores the readings in
+   that order; a restored compound copies the order of its head's
+   readings, which have the same inflections, and the restored lemmas are
+   then put in bin_id order.
+
 */
 
 #include <string.h>
@@ -370,7 +378,11 @@ void Dict::compact_lookup(const std::string& word, std::vector<RawEntry>& out) c
             }
         }
         if (out.size() > before) {
-            // The first split that restores anything wins
+            // The first split that restores anything wins. Put the
+            // restored lemmas in bin_id order; within each, the readings
+            // keep the head's (canonical) order.
+            std::stable_sort(out.begin() + before, out.end(),
+                             [](const RawEntry& a, const RawEntry& b) { return a.bin_id < b.bin_id; });
             return;
         }
     }

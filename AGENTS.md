@@ -154,6 +154,8 @@ islenska's own `resources/`; `ISLENSKA_BIN_FILE` still overrides
 release>` (5.0.x for `Greynir 05.00.00`). `tools/data_package.py` checks the
 built files and copies them into the package; the CI job `data-package`
 builds an islenska wheel without data and the islenska-data wheel, installs
-both into a fresh environment and runs the test suite. As of 2026-10-02 this
-is tentative: islenska wheels still embed the data, islenska does not depend
-on islenska-data, and nothing publishes it.
+both into a fresh environment and runs the test suite. The release workflow
+is `.github/workflows/data-release.yml`, on `data-X.Y.Z` tags (see
+`RELEASING.md`). As of 2026-10-02 this is tentative: islenska wheels still
+embed the data, islenska does not depend on islenska-data, and it has never
+been published.

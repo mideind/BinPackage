@@ -125,11 +125,12 @@ Do the data package split first: it is what makes the extra wheels affordable.
      environment `pypi`). It does not reserve the name; the first upload
      creates the project, under the account of whoever added the pending
      publisher (move it to the Miðeind organization afterwards if needed).
-  2. A release workflow for the data package, which MUST be
-     `.github/workflows/data-release.yml` and publish from the GitHub
-     environment `pypi` to match the publisher (e.g. on tags `data-5.0.N`):
-     build the data, stage it, `uv build --wheel islenska-data`, publish
-     the wheel only (no sdist).
+  2. DONE in PR #32: `.github/workflows/data-release.yml` (the name and the
+     environment `pypi` must match the publisher). A tag `data-X.Y.Z` that
+     matches `islenska-data/pyproject.toml` builds, tests (islenska wheel
+     without data + the data wheel) and publishes the wheel only; a tag
+     containing `test`, or a manual run, builds and tests only. `wheels.yml`
+     ignores `data-*` tags. Process in `RELEASING.md`.
   3. In islenska: depend on `islenska-data ~= 5.0`, stop shipping the data
      files (`MANIFEST.in` includes, and `wheels.yml` downloading them into
      the build), and keep the `resources/` fallback for source checkouts.

@@ -325,6 +325,18 @@ in the original BÍN database, do like so:
 >>> b = Bin(only_bin=True)
 ```
 
+Note that the flags above control forms that `Bin` *generates* when looking
+up a word, such as compounds. They are separate from the additional vocabulary
+that Miðeind maintains for its [Greynir](https://github.com/mideind/GreynirEngine)
+parser, which is stored in the same data file (from
+`src/islenska/resources/ord.auka.csv` and `ord.add.csv`): words that are not
+in BÍN, such as `instagram`, and extra forms of BÍN words. `Bin` never returns
+these entries, whatever flags are set. They are only visible through the
+`GreynirBin` subclass in `islenska.bindb`, which GreynirPackage uses and which
+also applies the corrections in `config/BinErrata.conf`. So if a word that
+Greynir knows is missing from `Bin` results, it is probably one of these
+additions rather than a BÍN word.
+
 ## `lookup()` function
 
 To look up word forms and return summarized data in the Basic Format

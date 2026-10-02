@@ -3,6 +3,42 @@
 Guidance for Claude Code in this repository. `AGENTS.md` holds the full project
 overview and architecture notes; the day-to-day essentials are below.
 
+## Status (2026-10-02): where to pick up
+
+Paused mid-way through the 1.6.0 packaging work. Details in "Roadmap" below.
+
+- **Released:** islenska 1.5.0 on PyPI (2026-10-02): deterministic order of
+  case lookups (PR #28), Python 3.10+ only (PR #29).
+- **Open PRs, CI green, merge in this order** (each builds on the previous,
+  so its diff includes the earlier ones until they are merged):
+  1. #30 `canonical-entry-order`: lookups return a form's readings by
+     bin_id, then paradigm order (`mark_order.csv`), then source order.
+     Changes some first-match results relative to 1.5.0 (nouns cast to the
+     singular more often): mention in the 1.6.0 release notes.
+  2. #31 `compact-only`: `compressed.bin` is always a compact build; the
+     full build and `tools/parity.py` are gone; `wheels.yml` builds the
+     DAWGs before `compressed.bin`.
+  3. #32 `data-package`: tentative `islenska-data` package (data files
+     only), `basics.data_dir()` (prefers it when installed), CI job
+     `data-package`, release workflow `data-release.yml` (dry run passed;
+     `wheels.yml` ignores `data-*` tags), `RELEASING.md` section. Nothing
+     published; islenska still embeds the data.
+- **PyPI:** a pending Trusted Publisher exists for `islenska-data`
+  (`mideind/BinPackage`, workflow `data-release.yml`, environment `pypi`).
+  It does not reserve the name. The data package's licensing text is
+  accepted.
+- **Next, for 1.6.0:**
+  1. islenska depends on `islenska-data ~= 5.0` and stops shipping the data
+     files (`MANIFEST.in`, `wheels.yml`); keep the `resources/` fallback.
+  2. Release islenska-data (tag `data-5.0.0`, creates the PyPI project),
+     then islenska 1.6.0.
+  3. PyPy wheels for `pp80` (PyPy 8.0) and `pp312`, keeping `pp73`: wait
+     for a cibuildwheel release after 4.2.1 (still the latest on
+     2026-10-02); Linux aarch64 wheels.
+  4. GreynirKbd: move its BinPackage submodule past 1.4.0 and rebuild its
+     data; its notes still refer to `binpack.py --compact` (now a no-op)
+     and to a full-vs-compact parity check (no full build any more).
+
 ## Tooling
 
 This project is managed with [uv](https://docs.astral.sh/uv/) — dependencies

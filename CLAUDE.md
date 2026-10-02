@@ -74,11 +74,29 @@ Do the data package split first: it is what makes the extra wheels affordable.
   the split an `islenska` release is ~20-40 MB, so its remaining ~1.3 GB lasts
   for dozens of releases.
 - Ship only the compact build (`tools/binpack.py --compact`, about half the
-  size, same answers per `tools/parity.py`). Before switching, check what the
-  parity tool does not: `Bin`-level results (including `only_bin=True` and
-  `add_compounds=False`, where a dropped compound must still come back as a
-  genuine BÍN entry), lookup speed on a mixed word list, and whether anyone
-  still needs the full file (`ISLENSKA_BIN_FILE` can point at one).
+  size). Verified 2026-10-02 with a throwaway Bin-level comparison (11.9 k
+  words incl. forms of dropped compounds, Greynir additions and made-up
+  compounds; every public lookup method; `Bin` default, `only_bin=True`,
+  `add_compounds=False`, `add_compound_hyphens=False`, and `GreynirBin`;
+  1.37 M comparisons):
+  - Content is identical, dropped compounds included (they come back as
+    genuine BÍN entries with their own bin_ids even with compounding off).
+  - Order was not: binpack stored a form's readings in Python set order and
+    restored compounds copied their head's order, so first-match callers
+    differed (`cast_to_dative("kvótakerfi")` gave *kvótakerfum*). Fixed by
+    the canonical order (PR #30): by bin_id, then
+    paradigm order (`mark_order.csv`), then source order, in binpack and in
+    libbin's restoration; after it, 0 differences in order too. This changes
+    the order (and so some first-match results) relative to 1.5.0, mostly
+    for the better (singular before plural): say so in the release notes.
+  - Speed, uncached `Bin.lookup` per word: random forms 14 -> 21 µs, forms
+    of dropped compounds 12 -> 24 µs, made-up compounds 44 -> 61 µs (a trie
+    miss now tries restoration first). Bin's cache absorbs much of it.
+  - Size: compact `compressed.bin` 55 MB (26 MB deflated); with the DAWGs a
+    data wheel is ~30 MB.
+  - Still open: whether anyone needs the full file (`ISLENSKA_BIN_FILE` can
+    point at one), and dropping the full build, the `compact` CI job's parity
+    step and `tools/parity.py` once it is gone.
 - Before the first upload, configure a pending Trusted Publisher for the new
   project name on PyPI (it does not reserve the name; the first upload does).
 - Design points: how the code locates the data package (with

@@ -325,7 +325,13 @@ class BinCompressedPure:
         The word form is case-sensitive.
         The result is a read-only set view that iterates in BÍN data order,
         so callers that take the first matching entry get the same one in
-        every process (a plain set iterates in hash-seed-dependent order)."""
+        every process (a plain set iterates in hash-seed-dependent order).
+        Within a lemma, the data order is the sorted order of its word
+        forms, so when BÍN lists two variants of one inflection (such as
+        'instagrami' and 'instagrammi'), the first one is not a preferred
+        form, merely the one that sorts first.
+        The view cannot be modified, copied or pickled; use set(result)
+        if you need a mutable or picklable set."""
 
         # Note that singular=True means that we force the result to be
         # singular even if the original word given is plural.
@@ -512,7 +518,8 @@ class BinCompressedPure:
 
     def raw_nominative(self, word: str) -> AbstractSet[BinEntryTuple]:
         """Returns a set of all nominative forms of the lemmas of the given word form,
-        as a read-only set view in BÍN data order (see lookup_case).
+        as a read-only set view in BÍN data order (see lookup_case for what
+        that order means and how to get a mutable or picklable set).
         Note that the word form is case-sensitive."""
         result: Dict[BinEntryTuple, None] = {}
         for lemma_index, _, _ in self._raw_lookup(word):

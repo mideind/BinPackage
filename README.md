@@ -1144,12 +1144,10 @@ BinPackage:
 * `bin_build.py`: The CFFI build script that compiles `libbin` into the
   `_bin` extension module.
 * `tools/binpack.py`: A command-line tool that reads vocabulary data in .CSV
-  form and outputs a compressed binary file, `compressed.bin`. With `--compact`
-  it leaves out the word forms of compounds that the compound word algorithm
-  regenerates exactly (see below).
-* `tools/compact.py`: The selection of those compounds, used by `binpack.py --compact`.
-* `tools/parity.py`: Checks that a compact `compressed.bin` answers every
-  query exactly as the full file does.
+  form and outputs a compressed binary file, `compressed.bin`. It leaves out
+  the word forms of compounds that the compound word algorithm regenerates
+  exactly (see below).
+* `tools/compact.py`: The selection of those compounds, used by `binpack.py`.
 * `tools/dawgbuilder.py`: A command-line tool that reads information about word prefixes and suffixes
   and creates corresponding directed acyclic word graph (DAWG) structures for
   the word compounding logic.
@@ -1165,22 +1163,21 @@ reader and the dictionary. See `libbin/README.md`.
 About half of the word forms in BÍN belong to compounds, such as
 *bókahilla*, whose inflection is exactly that of their last component
 (*hilla*) with the other components (*bóka*) glued in front. The compound
-word algorithm can regenerate those forms, so `tools/binpack.py --compact`
-produces a `compressed.bin` that leaves them out. The file is about half the
-size of the full one and answers every query identically: the dropped
-compounds are restored transparently, with their original BÍN ids,
-subcategories and KRISTINsnid fields. The selection is made by
-`tools/compact.py`, and `tools/parity.py` verifies the result against the
-full file:
+word algorithm can regenerate those forms, so `tools/binpack.py` produces a
+`compressed.bin` that leaves them out: 55 MB instead of the 95 MB that every
+form would take. The dropped compounds are restored transparently on lookup,
+with their original BÍN ids, subcategories and KRISTINsnid fields, so they
+look the same to callers as any other BÍN word. The selection is made by
+`tools/compact.py`; `--report` lists the dropped lemmas:
 
 ```bash
-python tools/binpack.py --compact -o compressed-compact.bin --report compact.tsv
-python tools/parity.py src/islenska/resources/compressed.bin compressed-compact.bin
+python tools/binpack.py --report compact.tsv
 ```
 
-The `islenska` package on PyPI ships the full file. To use a compact file
-instead, point the `ISLENSKA_BIN_FILE` environment variable at it; the
-compound word DAWGs must be available alongside as usual.
+Restoring a compound takes a little longer than reading a stored word form,
+so lookups of such words are somewhat slower (tens of microseconds per
+uncached lookup). Earlier versions of `islenska` (up to 1.5) shipped a file
+with every word form.
 
 # Copyright and licensing
 

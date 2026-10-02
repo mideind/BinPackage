@@ -32,10 +32,13 @@ never run `bin_build.py` directly (see `AGENTS.md` for the reason). The
 library also builds standalone: `cmake -S libbin -B libbin/build && cmake
 --build libbin/build && ctest --test-dir libbin/build`.
 
-The compressed data comes in a full and a compact variant (`tools/binpack.py
---compact`); see "Compact build" in `AGENTS.md`. After changing the selection
-rules (`tools/compact.py`) or the restoration code (`libbin/src/dict.cpp`),
-run `tools/parity.py` against a fresh compact build.
+`compressed.bin` is always a compact build: `tools/binpack.py` leaves out the
+word forms of compounds that the compounder regenerates exactly, and libbin
+restores them on lookup; see "Compact build" in `AGENTS.md`. There is no full
+build or parity tool any more (removed 2026-10-02 by decision). After changing
+the selection rules (`tools/compact.py`) or the restoration code
+(`libbin/src/dict.cpp`), rebuild the data and run the test suite
+(`test/test_compact.py`, `test/test_canonical_order.py`).
 
 ## Roadmap (recorded 2026-10-02)
 
@@ -73,12 +76,17 @@ Do the data package split first: it is what makes the extra wheels affordable.
   BÍN updates a few times a year that lasts for hundreds of releases. After
   the split an `islenska` release is ~20-40 MB, so its remaining ~1.3 GB lasts
   for dozens of releases.
-- Ship only the compact build (`tools/binpack.py --compact`, about half the
-  size). Verified 2026-10-02 with a throwaway Bin-level comparison (11.9 k
-  words incl. forms of dropped compounds, Greynir additions and made-up
-  compounds; every public lookup method; `Bin` default, `only_bin=True`,
-  `add_compounds=False`, `add_compound_hyphens=False`, and `GreynirBin`;
-  1.37 M comparisons):
+- Ship only the compact build: DONE in the branch `compact-only` (stacked
+  on PR #30). `tools/binpack.py` always builds compact (`--compact` is a
+  hidden no-op for GreynirKbd's build notes), `tools/parity.py` and the full
+  build are gone, CI's `compact` job is now a plain `libbin` job, and
+  `test/test_compact.py` checks dropped compounds against known BÍN rows.
+  About half the size of a full build. Before the switch it was verified
+  (2026-10-02) against the full build with a throwaway Bin-level comparison
+  (11.9 k words incl. forms of dropped compounds, Greynir additions and
+  made-up compounds; every public lookup method; `Bin` default,
+  `only_bin=True`, `add_compounds=False`, `add_compound_hyphens=False`, and
+  `GreynirBin`; 1.37 M comparisons):
   - Content is identical, dropped compounds included (they come back as
     genuine BÍN entries with their own bin_ids even with compounding off).
   - Order was not: binpack stored a form's readings in Python set order and
@@ -94,9 +102,6 @@ Do the data package split first: it is what makes the extra wheels affordable.
     miss now tries restoration first). Bin's cache absorbs much of it.
   - Size: compact `compressed.bin` 55 MB (26 MB deflated); with the DAWGs a
     data wheel is ~30 MB.
-  - Still open: whether anyone needs the full file (`ISLENSKA_BIN_FILE` can
-    point at one), and dropping the full build, the `compact` CI job's parity
-    step and `tools/parity.py` once it is gone.
 - Before the first upload, configure a pending Trusted Publisher for the new
   project name on PyPI (it does not reserve the name; the first upload does).
 - Design points: how the code locates the data package (with

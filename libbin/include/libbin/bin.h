@@ -155,7 +155,7 @@ void bin_close(BinDict* dict);
 
 /* Nonzero if this is a compact build, i.e. a file from which the word
    forms of exactly regenerable compounds were left out (tools/binpack.py
-   --compact). All lookups below restore those compounds transparently,
+   always makes one). All lookups below restore those compounds transparently,
    with their original bin_ids and metadata, provided the DAWGs are
    present. */
 int bin_is_compact(const BinDict* dict);

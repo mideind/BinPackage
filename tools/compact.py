@@ -29,10 +29,10 @@
         TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
         SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-    This module decides which BÍN lemmas a *compact* compressed.bin can
-    leave out of its word-form trie without changing what the runtime
-    returns. It is driven by tools/binpack.py --compact and works on the
-    in-memory structures of a fully read BinCompressor.
+    This module decides which BÍN lemmas compressed.bin, which is always a
+    compact build, can leave out of its word-form trie without changing
+    what the runtime returns. It is driven by tools/binpack.py and works
+    on the in-memory structures of a fully read BinCompressor.
 
     The idea: BÍN lists a great many compounds ('bókahilla') whose
     inflection is exactly that of their last component ('hilla') with the
@@ -68,9 +68,9 @@
 
     Rule 4 depends on the set of dropped lemmas and their heads, so the
     selection iterates: lemmas that fail are put back and the verification
-    repeats until nothing changes. The rules mirror bincompress.cpp
-    (BinCompressed::compact_lookup) exactly; tools/parity.py is the
-    independent check that they do.
+    repeats until nothing changes. The rules mirror libbin/src/dict.cpp
+    (Dict::compact_lookup) exactly; test/test_compact.py checks known
+    compounds against their BÍN entries.
 
 """
 
@@ -372,5 +372,5 @@ def read_keep_list(fname: str) -> Set[int]:
 
 
 if __name__ == "__main__":
-    print("This module is used by tools/binpack.py --compact", file=sys.stderr)
+    print("This module is used by tools/binpack.py", file=sys.stderr)
     sys.exit(1)

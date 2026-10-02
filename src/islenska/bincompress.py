@@ -152,8 +152,8 @@ class BinCompressedPure:
             self._max_bin_id,
             compact_offset,
         ) = struct.unpack("<IIIIIIIIIII", self._b[16:60])
-        # A compact build (tools/binpack.py --compact) has a nonzero
-        # compact section offset; its lookups need the compounder DAWGs
+        # A compact build (which tools/binpack.py always makes) has a
+        # nonzero compact section offset; its lookups need the compounder DAWGs
         self._compact_offset: int = compact_offset
         self._forms_offset: int = forms_offset
         self._mappings: bytes = self._b[mappings_offset:]

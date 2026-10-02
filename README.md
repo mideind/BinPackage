@@ -348,15 +348,15 @@ To look up word forms and return summarized data in the Basic Format
 'mæla'
 >>> m
 [
-    (ord='mæla', kvk/alm/16302, bmynd='mæla', NFET),
-    (ord='mæla', kvk/alm/16302, bmynd='mæla', EFFT2),
-    (ord='mæla', so/alm/469211, bmynd='mæla', GM-NH),
-    (ord='mæla', so/alm/469211, bmynd='mæla', GM-FH-NT-3P-FT),
-    (ord='mæla', so/alm/469210, bmynd='mæla', GM-NH),
-    (ord='mæla', so/alm/469210, bmynd='mæla', GM-FH-NT-3P-FT),
     (ord='mæli', hk/alm/2512, bmynd='mæla', EFFT),
     (ord='mælir', kk/alm/4474, bmynd='mæla', ÞFFT),
-    (ord='mælir', kk/alm/4474, bmynd='mæla', EFFT)
+    (ord='mælir', kk/alm/4474, bmynd='mæla', EFFT),
+    (ord='mæla', kvk/alm/16302, bmynd='mæla', NFET),
+    (ord='mæla', kvk/alm/16302, bmynd='mæla', EFFT2),
+    (ord='mæla', so/alm/469210, bmynd='mæla', GM-NH),
+    (ord='mæla', so/alm/469210, bmynd='mæla', GM-FH-NT-3P-FT),
+    (ord='mæla', so/alm/469211, bmynd='mæla', GM-NH),
+    (ord='mæla', so/alm/469211, bmynd='mæla', GM-FH-NT-3P-FT)
 ]
 ```
 
@@ -371,6 +371,14 @@ headwords (lemmas), including two verbs (`so`):
 (1) *mæla* meaning *to measure* (past tense *mældi*), and (2) *mæla* meaning *to speak*
 (past tense *mælti*). Other headwords are nouns, in all three genders:
 feminine (`kvk`), neutral (`hk`) and masculine (`kk`).
+
+The entries always come in the same, canonical order: by BÍN id (*bin_id*),
+and the entries of each lemma in the order of its inflectional paradigm
+(for nouns `NFET`, `ÞFET`, `ÞGFET`, `EFET`, then the definite forms, then the
+plural; the full order for each word category is in
+`src/islenska/resources/mark_order.csv`). So if you take the first entry
+that fits your purpose, you get the same one every time, and a singular
+reading comes before a plural one.
 
 Let's try a different twist:
 
@@ -770,8 +778,8 @@ alternative that supports more selective queries.
 | cat | `str` | | The word category, e.g. `kk`, `kvk`, `hk`, `lo`, `so`. |
 | case | `str` | | The case to enumerate, one of `NF`, `ÞF`, `ÞGF`, `EF`. |
 
-The function returns a `List[BinEntry]`. As with the other case-lookup
-functions below, the order of entries in the list is not guaranteed.
+The function returns a `List[BinEntry]`, in the same order as the other
+case-lookup functions below (see there).
 
 If the lemma is not present in BÍN but can be resolved as a compound word,
 the forms of its head (last component) are enumerated and re-prefixed, e.g.
@@ -817,9 +825,13 @@ All four functions share the same signature:
 | all_forms | `bool` | `False` | Return every form regardless of number/definiteness. Overrides `singular`, `indefinite`, and the number/definiteness of the input word. |
 | inflection_filter | `Optional[Callable[[str], bool]]` | `None` | Callable applied to each candidate's `mark` (beyging) string; entries are kept only when it returns `True`. |
 
-Each function returns `List[BinEntry]`. The order of entries within the
-returned list is not guaranteed (results are derived from a `set`); the
-example outputs above show one possible ordering.
+Each function returns `List[BinEntry]`, in a deterministic order: the readings
+of the word looked up are taken in their canonical order (see
+[`lookup()`](#lookup-function)); for each, the matching word forms of its lemma
+come in a fixed order (sorted by their Latin-1 encoding, with the lemma itself
+last), and the entries of each form in paradigm order. When BÍN has two
+variants of one inflection (*instagrami* and *instagrammi*), the first is simply
+the one that sorts first.
 
 A word form that is not present in BÍN but can be interpreted as a compound
 is resolved by casting its head (last component) and re-prefixing the result,

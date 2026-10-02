@@ -126,8 +126,15 @@ component, as decided by `tools/compact.py` (rules in its docstring). Each
 dropped lemma keeps a record (subcategory, ksnid string, head lemmas) and
 `libbin/src/dict.cpp` restores its entries on lookup by slicing the word with
 the compounder, so the public API returns identical results, bin_ids
-included. `tools/parity.py FULL COMPACT` proves that; run it after any change
-to the selection rules or to the restoration code. The CI job `compact`
+included, in the same order. `tools/parity.py FULL COMPACT` proves that; run
+it after any change to the selection rules or to the restoration code.
+
+Lookups return the readings of a word form in a canonical order: by bin_id,
+then by the position of the inflection in its category's paradigm
+(`resources/mark_order.csv`), then in source order. `tools/binpack.py`
+stores them in that order (`canonical_entries()`), a restored compound copies
+the order of its head's readings, and `test/test_canonical_order.py` checks
+it. Keep both sides in step when changing either. The CI job `compact`
 builds both files, runs the test suite against the compact one and a
 sampled parity check. The test suite runs against a compact file with
 `ISLENSKA_BIN_FILE=path/to/compressed-compact.bin uv run pytest`.

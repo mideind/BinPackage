@@ -120,9 +120,14 @@ Do the data package split first: it is what makes the extra wheels affordable.
   wheel in a fresh venv: the whole test suite passes). The name
   `islenska-data` was free on PyPI on 2026-10-02.
 - Still to do for the switch:
-  1. Configure a pending Trusted Publisher for `islenska-data` on PyPI (it
-     does not reserve the name; the first upload does).
-  2. A release workflow for the data package (e.g. on tags `data-5.0.N`):
+  1. DONE 2026-10-02: pending Trusted Publisher for `islenska-data` on PyPI
+     (owner `mideind`, repository `BinPackage`, workflow `data-release.yml`,
+     environment `pypi`). It does not reserve the name; the first upload
+     creates the project, under the account of whoever added the pending
+     publisher (move it to the Miðeind organization afterwards if needed).
+  2. A release workflow for the data package, which MUST be
+     `.github/workflows/data-release.yml` and publish from the GitHub
+     environment `pypi` to match the publisher (e.g. on tags `data-5.0.N`):
      build the data, stage it, `uv build --wheel islenska-data`, publish
      the wheel only (no sdist).
   3. In islenska: depend on `islenska-data ~= 5.0`, stop shipping the data

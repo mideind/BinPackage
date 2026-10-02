@@ -2,44 +2,27 @@
 
     test_compact.py
 
-    Tests for the compact build of compressed.bin and for the libbin
-    compound policy. Copyright © 2026 Miðeind ehf.
+    Tests for the compact build of compressed.bin (the only build that
+    tools/binpack.py makes) and for the libbin compound policy.
+    Copyright © 2026 Miðeind ehf.
 
-    The tests that need a compact file look for it at
-    src/islenska/resources/compressed-compact.bin, or at the path in the
-    ISLENSKA_COMPACT_BIN environment variable, and are skipped otherwise
-    (the CI job 'compact' builds it). The other tests run against whatever
-    file the package is using.
+    The expected entries of the dropped compounds below are their rows in
+    BÍN, as a full (non-compact) build returned them: the compact build
+    must restore them exactly, bin_id, subcategory and KRISTINsnid fields
+    included.
 
 """
 
 from typing import List
-
-import os
-
-import pytest
 
 from islenska import Bin
 from islenska.basics import Ksnid
 from islenska.bincompress import BinCompressed
 from islenska.dawgdictionary import Wordbase
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
-_RESOURCES = os.path.join(_HERE, "..", "src", "islenska", "resources")
-_COMPACT = os.environ.get("ISLENSKA_COMPACT_BIN") or os.path.join(
-    _RESOURCES, "compressed-compact.bin"
-)
-_FULL = os.path.join(_RESOURCES, "compressed.bin")
-
-needs_compact = pytest.mark.skipif(
-    not os.path.isfile(_COMPACT), reason="no compact compressed.bin available"
-)
-
 
 def _keys(klist: List[Ksnid]):
-    return sorted(
-        (k.ord, k.bin_id, k.ofl, k.hluti, k.bmynd, k.mark, k.ksnid_string) for k in klist
-    )
+    return [(k.ord, k.bin_id, k.ofl, k.hluti, k.bmynd, k.mark, k.ksnid_string) for k in klist]
 
 
 def test_compound_split_matches_python_ranking() -> None:
@@ -72,57 +55,67 @@ def test_lookup_id_and_lemma_forms_agree() -> None:
     assert set(forms) == {k.bmynd for k in bc.lookup_id(bin_id)}
 
 
-@needs_compact
-def test_compact_file_opens() -> None:
-    c = BinCompressed(_COMPACT)
-    f = BinCompressed(_FULL)
-    assert c.is_compact and not f.is_compact
-    assert c._max_bin_id == f._max_bin_id
-    assert c.begin_greynir_utg == f.begin_greynir_utg
+def test_compressed_bin_is_compact() -> None:
+    assert BinCompressed().is_compact
 
 
-@needs_compact
+# Word form -> its BÍN entries. All but 'hestarnir' (a form of a kept
+# lemma) and 'xyzzy' (no entry) belong to compounds that the compact build
+# drops and restores on lookup.
+EXPECTED = {
+    "bókahillum": [("bókahilla", 154009, "kvk", "alm", "bókahillum", "ÞGFFT", "1;;;;K;1;;;")],
+    "járnbrautarlestin": [
+        ("járnbrautarlest", 118811, "kvk", "alm", "járnbrautarlestin", "NFETgr", "1;;;;K;1;;;")
+    ],
+    "knattspyrnusnillingur": [
+        ("knattspyrnusnillingur", 98703, "kk", "alm", "knattspyrnusnillingur", "NFET", "1;;;;V;1;;;")
+    ],
+    "hestarnir": [("hestur", 6179, "kk", "alm", "hestarnir", "NFFTgr", "1;;;;K;1;;;")],
+    "xyzzy": [],
+}
+
+
 def test_compact_restores_dropped_compounds() -> None:
-    c = BinCompressed(_COMPACT)
-    f = BinCompressed(_FULL)
-    # Every reading of a compound that the compact build drops comes back
-    # unchanged, bin_id, subcategory and KRISTINsnid fields included
-    for w in ("bókahillum", "járnbrautarlestin", "knattspyrnusnillingur", "hestarnir", "xyzzy"):
-        assert _keys(c.lookup_ksnid(w)) == _keys(f.lookup_ksnid(w))
-        assert c.contains(w) == f.contains(w)
-        assert (w in c) == (w in f)
-    bin_id = f.lookup_ksnid("bókahillum")[0].bin_id
-    assert _keys(c.lookup_id(bin_id)) == _keys(f.lookup_id(bin_id))
-    assert sorted(c.lemma_forms(bin_id)) == sorted(f.lemma_forms(bin_id))
-    assert c.lemma(bin_id) == f.lemma(bin_id)
+    c = BinCompressed()
+    for w, expected in EXPECTED.items():
+        assert _keys(c.lookup_ksnid(w)) == expected, w
+        assert c.contains(w) == bool(expected), w
+        assert (w in c) == bool(expected), w
+    bin_id = 154009
+    assert c.lemma(bin_id) == ("bókahilla", "alm")
+    assert c.lemma_forms(bin_id) == [
+        "bókahillan", "bókahillanna", "bókahillna", "bókahillnanna", "bókahillu",
+        "bókahillum", "bókahilluna", "bókahillunnar", "bókahillunni", "bókahillunum",
+        "bókahillur", "bókahillurnar", "bókahilla",
+    ]
+    entries = c.lookup_id(bin_id)
+    assert len(entries) == 18
+    assert {k.bmynd for k in entries} == set(c.lemma_forms(bin_id))
+    assert all(k.bin_id == bin_id and k.ord == "bókahilla" for k in entries)
 
 
-@needs_compact
 def test_compact_bin_api() -> None:
-    """The Bin class gives the same answers over the compact file,
-    including for words it has to interpret as novel compounds"""
-
-    class CompactBin(Bin):
-        _bc = BinCompressed(_COMPACT)
-
-    class FullBin(Bin):
-        _bc = BinCompressed(_FULL)
-
-    cb = CompactBin()
-    fb = FullBin()
-    for w in (
-        "bókahillum",
-        "Bókahillum",
-        "járnbrautarlestin",
-        "fornsögulegur",
-        "Fornsögulegur",
-        "síamskattarkjóll",
-        "xqbókahillum",
-        "óhefðbundinn",
-    ):
-        for kwargs in ({}, {"at_sentence_start": True}):
-            wa, ma = fb.lookup(w, **kwargs)
-            wb, mb = cb.lookup(w, **kwargs)
-            assert (wa, sorted(ma)) == (wb, sorted(mb)), w
-        assert _keys(fb.lookup_ksnid(w)[1]) == _keys(cb.lookup_ksnid(w)[1])
-        assert fb.lookup_forms("bókahilla", "kvk", "þgf") == cb.lookup_forms("bókahilla", "kvk", "þgf")
+    """The Bin class gives the BÍN answers for dropped compounds, and
+    still interprets novel compounds"""
+    b = Bin()
+    expected = {
+        "bókahillum": [("bókahilla", 154009, "ÞGFFT")],
+        "Bókahillum": [("bókahilla", 154009, "ÞGFFT")],
+        "járnbrautarlestin": [("járnbrautarlest", 118811, "NFETgr")],
+        "fornsögulegur": [("fornsögulegur", 390488, "FSB-KK-NFET")],
+        "síamskattarkjóll": [("síamskattar-kjóll", 0, "NFET")],
+        "xqbókahillum": [],
+        "óhefðbundinn": [
+            ("óhefðbundinn", 494839, "FSB-KK-NFET"),
+            ("óhefðbundinn", 494839, "FSB-KK-ÞFET"),
+        ],
+    }
+    for w, e in expected.items():
+        _, m = b.lookup(w, at_sentence_start=True)
+        assert [(x.ord, x.bin_id, x.mark) for x in m] == e, w
+    assert [(m.bmynd, m.mark) for m in b.lookup_forms("bókahilla", "kvk", "þgf")] == [
+        ("bókahillu", "ÞGFET"),
+        ("bókahillum", "ÞGFFT"),
+        ("bókahillunni", "ÞGFETgr"),
+        ("bókahillunum", "ÞGFFTgr"),
+    ]

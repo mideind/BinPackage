@@ -152,8 +152,8 @@ class BinCompressedPure:
             self._max_bin_id,
             compact_offset,
         ) = struct.unpack("<IIIIIIIIIII", self._b[16:60])
-        # A compact build (tools/binpack.py --compact) has a nonzero
-        # compact section offset; its lookups need the compounder DAWGs
+        # A compact build (which tools/binpack.py always makes) has a
+        # nonzero compact section offset; its lookups need the compounder DAWGs
         self._compact_offset: int = compact_offset
         self._forms_offset: int = forms_offset
         self._mappings: bytes = self._b[mappings_offset:]
@@ -323,13 +323,16 @@ class BinCompressedPure:
         inflection_filter argument, if present, should be a function that
         filters on the beyging field of each candidate BÍN entry.
         The word form is case-sensitive.
-        The result is a read-only set view that iterates in BÍN data order,
-        so callers that take the first matching entry get the same one in
-        every process (a plain set iterates in hash-seed-dependent order).
-        Within a lemma, the data order is the sorted order of its word
-        forms, so when BÍN lists two variants of one inflection (such as
-        'instagrami' and 'instagrammi'), the first one is not a preferred
-        form, merely the one that sorts first.
+        The result is a read-only set view that iterates in a fixed order,
+        so callers that take the first matching entry always get the same
+        one (a plain set iterates in hash-seed-dependent order): the
+        readings of the word form in their canonical order (by bin_id, then
+        paradigm order, see lookup()), for each the matching forms of its
+        lemma in lemma_forms() order, and the entries of each form in
+        canonical order. Since lemma_forms() is sorted, when BÍN lists two
+        variants of one inflection (such as 'instagrami' and
+        'instagrammi'), the first one is not a preferred form, merely the
+        one that sorts first.
         The view cannot be modified, copied or pickled; use set(result)
         if you need a mutable or picklable set."""
 
@@ -518,8 +521,8 @@ class BinCompressedPure:
 
     def raw_nominative(self, word: str) -> AbstractSet[BinEntryTuple]:
         """Returns a set of all nominative forms of the lemmas of the given word form,
-        as a read-only set view in BÍN data order (see lookup_case for what
-        that order means and how to get a mutable or picklable set).
+        as a read-only set view in a fixed order (see lookup_case for what
+        that order is and how to get a mutable or picklable set).
         Note that the word form is case-sensitive."""
         result: Dict[BinEntryTuple, None] = {}
         for lemma_index, _, _ in self._raw_lookup(word):
@@ -699,7 +702,13 @@ class BinCompressed(BinCompressedPure):
     ) -> List[BinEntryTuple]:
         """Lookup word in dictionary (C++ implementation).
         The C++ implementation handles the cat, lemma, and utg filters;
-        the inflection_filter, if any, is applied here."""
+        the inflection_filter, if any, is applied here.
+        The entries come in a canonical order: by bin_id, then by the
+        position of the inflection in its category's paradigm
+        (resources/mark_order.csv: NFET, ÞFET, ÞGFET, EFET, NFETgr, ...
+        for nouns), then in source order. This also holds for
+        lookup_ksnid() and for the compounds that a compact build
+        restores at lookup time."""
         return [
             (ord_, bin_id, ofl, hluti, bmynd, mark)
             for ord_, bin_id, ofl, hluti, bmynd, mark, _ in self._lookup_entries(

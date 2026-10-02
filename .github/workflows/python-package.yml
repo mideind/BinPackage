@@ -26,7 +26,7 @@ jobs:
           mkdir -p src/islenska/resources
           wget -q -O src/islenska/resources/KRISTINsnid.csv.zip 'https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip'
 
-      # The built data (compressed.bin, the compact variant and the three
+      # The built data (compressed.bin, a compact build, and the three
       # DAWGs) is cached under a hash of everything it depends on: the BÍN
       # source, the addition and word-list files, the packing tools and
       # the libbin DAWG code the compactor runs. It is built here, once,
@@ -38,7 +38,6 @@ jobs:
         with:
           path: |
             src/islenska/resources/compressed.bin
-            src/islenska/resources/compressed-compact.bin
             src/islenska/resources/ordalisti-all.dawg.bin
             src/islenska/resources/ordalisti-prefixes.dawg.bin
             src/islenska/resources/ordalisti-suffixes.dawg.bin
@@ -57,7 +56,6 @@ jobs:
           python tools/dawgbuilder.py
           unzip -q -d src/islenska/resources/ src/islenska/resources/KRISTINsnid.csv.zip
           python tools/binpack.py
-          python tools/binpack.py --compact -o src/islenska/resources/compressed-compact.bin
           ls -l src/islenska/resources/*.bin
 
   build:
@@ -120,7 +118,6 @@ jobs:
       with:
         path: |
           src/islenska/resources/compressed.bin
-          src/islenska/resources/compressed-compact.bin
           src/islenska/resources/ordalisti-all.dawg.bin
           src/islenska/resources/ordalisti-prefixes.dawg.bin
           src/islenska/resources/ordalisti-suffixes.dawg.bin
@@ -150,11 +147,9 @@ jobs:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
       if: failure() # Pick up event if the job fails
 
-  # The compact build (tools/binpack.py --compact) and the C++ library:
-  # the test suite must pass unchanged against the compact file, a sample
-  # parity check must find no difference from the full file, and libbin
-  # must build and pass its smoke test standalone on both files.
-  compact:
+  # The C++ library must build and pass its smoke test standalone,
+  # against the built data.
+  libbin:
     needs: prepare-cache
     runs-on: ubuntu-latest
     steps:
@@ -189,7 +184,6 @@ jobs:
       with:
         path: |
           src/islenska/resources/compressed.bin
-          src/islenska/resources/compressed-compact.bin
           src/islenska/resources/ordalisti-all.dawg.bin
           src/islenska/resources/ordalisti-prefixes.dawg.bin
           src/islenska/resources/ordalisti-suffixes.dawg.bin
@@ -199,41 +193,23 @@ jobs:
       if: steps.cache-bin-data.outputs.cache-hit != 'true'
       run: python tools/dawgbuilder.py
 
-    - name: Build compressed.bin, full and compact
+    - name: Build compressed.bin
       if: steps.cache-bin-data.outputs.cache-hit != 'true'
       run: |
         unzip -q -d src/islenska/resources/ src/islenska/resources/KRISTINsnid.csv.zip
         python tools/binpack.py
-        python tools/binpack.py --compact -o src/islenska/resources/compressed-compact.bin
-        ls -l src/islenska/resources/compressed*.bin
-
-    - name: Test with pytest against the compact file
-      run: python -m pytest
-      env:
-        ISLENSKA_BIN_FILE: src/islenska/resources/compressed-compact.bin
-
-    - name: Parity check (sample)
-      # The check reads the word forms from the BÍN source, which the
-      # build steps above unpack only on a cache miss
-      run: |
-        unzip -q -o -d src/islenska/resources/ src/islenska/resources/KRISTINsnid.csv.zip
-        python tools/parity.py src/islenska/resources/compressed.bin src/islenska/resources/compressed-compact.bin --sample 200000
 
     - name: Build and test libbin
       run: |
         cmake -S libbin -B libbin/build -DCMAKE_BUILD_TYPE=Release
         cmake --build libbin/build -j
         libbin/build/bin_test src/islenska/resources
-        mkdir compact-data
-        cp src/islenska/resources/compressed-compact.bin compact-data/compressed.bin
-        cp src/islenska/resources/ordalisti-*.dawg.bin compact-data/
-        libbin/build/bin_test compact-data
 
     - name: Slack notification
       uses: 8398a7/action-slack@v3
       with:
         status: ${{ job.status }}
-        author_name: Compact build and libbin
+        author_name: libbin
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
       if: failure()

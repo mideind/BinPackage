@@ -19,12 +19,9 @@ declared in `pyproject.toml` and pinned in `uv.lock`. Run dev tools through
 # Sync the environment, including dev dependencies (pytest, pyright)
 uv sync --extra dev
 
-# Build the compressed binary data (requires KRISTINsnid.csv.zip in src/islenska/resources/)
+# Build the compressed binary data, a compact build (see "Compact build" below;
+# requires KRISTINsnid.csv.zip, unzipped, in src/islenska/resources/; ~3 min)
 uv run python tools/binpack.py
-
-# Build a compact variant (see "Compact build" below) and check it against the full file
-uv run python tools/binpack.py --compact -o src/islenska/resources/compressed-compact.bin
-uv run python tools/parity.py src/islenska/resources/compressed.bin src/islenska/resources/compressed-compact.bin --sample 200000
 
 # Build DAWG structures for compound word handling
 uv run python tools/dawgbuilder.py
@@ -114,20 +111,27 @@ ruff check src/islenska
 - The package name is `islenska` on PyPI, not `BinPackage`
 - BÍN data is under CC BY-SA 4.0 license from Stofnun Árna Magnússonar
 - Supports Python 3.10+ on CPython and PyPy
-- Binary data file (`compressed.bin`, format `Greynir 05.00.00`) is ~95MB,
-  mapped to memory at runtime; a compact build is ~48MB
+- Binary data file (`compressed.bin`, format `Greynir 05.00.00`) is ~55MB,
+  mapped to memory at runtime; it is always a compact build
 - Compound word algorithm can be disabled via `Bin(add_compounds=False)`
 
 ## Compact build
 
-`tools/binpack.py --compact` writes a `compressed.bin` without the word forms
-of compounds whose paradigm is exactly prefix + the paradigm of their last
-component, as decided by `tools/compact.py` (rules in its docstring). Each
-dropped lemma keeps a record (subcategory, ksnid string, head lemmas) and
-`libbin/src/dict.cpp` restores its entries on lookup by slicing the word with
-the compounder, so the public API returns identical results, bin_ids
-included. `tools/parity.py FULL COMPACT` proves that; run it after any change
-to the selection rules or to the restoration code. The CI job `compact`
-builds both files, runs the test suite against the compact one and a
-sampled parity check. The test suite runs against a compact file with
-`ISLENSKA_BIN_FILE=path/to/compressed-compact.bin uv run pytest`.
+`tools/binpack.py` writes a `compressed.bin` without the word forms of
+compounds whose paradigm is exactly prefix + the paradigm of their last
+component, as decided by `tools/compact.py` (rules in its docstring), about
+half the size of a file with every form. Each dropped lemma keeps a record
+(subcategory, ksnid string, head lemmas) and `libbin/src/dict.cpp` restores
+its entries on lookup by slicing the word with the compounder, so the public
+API returns the BÍN entries, bin_ids included. There is no full
+(non-compact) build any more; libbin still reads a file without a compact
+section, in which nothing is dropped. `test/test_compact.py` checks known
+dropped compounds against their BÍN rows.
+
+Lookups return the readings of a word form in a canonical order: by bin_id,
+then by the position of the inflection in its category's paradigm
+(`resources/mark_order.csv`), then in source order. `tools/binpack.py`
+stores them in that order (`canonical_entries()`), a restored compound copies
+the order of its head's readings, and `test/test_canonical_order.py` checks
+it. Keep both sides in step when changing either. The CI job `libbin`
+builds the C++ library standalone and runs its smoke test on the data.

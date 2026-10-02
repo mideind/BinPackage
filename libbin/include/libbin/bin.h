@@ -155,7 +155,7 @@ void bin_close(BinDict* dict);
 
 /* Nonzero if this is a compact build, i.e. a file from which the word
    forms of exactly regenerable compounds were left out (tools/binpack.py
-   --compact). All lookups below restore those compounds transparently,
+   always makes one). All lookups below restore those compounds transparently,
    with their original bin_ids and metadata, provided the DAWGs are
    present. */
 int bin_is_compact(const BinDict* dict);
@@ -170,12 +170,18 @@ int bin_contains(const BinDict* dict, const char* word);
 
 /* All entries of a word form. cat and lemma are optional filters (NULL
    for none; cat "no" matches any noun gender); bin_id 0 means no filter.
-   Returns NULL if nothing is found. */
+   Returns NULL if nothing is found. The entries come in a canonical order:
+   by bin_id, then by the position of the inflection in its category's
+   paradigm (NFET, ÞFET, ÞGFET, EFET, NFETgr, ... for nouns; see
+   resources/mark_order.csv), then in source order. The same holds for
+   bin_lookup_raw. */
 BinResult* bin_lookup(const BinDict* dict, const char* word,
                       const char* cat, const char* lemma, uint32_t bin_id);
 /* The raw entries of a word form (NULL if none). */
 BinRawResult* bin_lookup_raw(const BinDict* dict, const char* word);
-/* All entries of a lemma, given its bin_id (NULL if unknown). */
+/* All entries of a lemma, given its bin_id (NULL if unknown): for each
+   word form in the order of bin_lemma_forms, its entries in the canonical
+   order of bin_lookup. */
 BinResult* bin_lookup_id(const BinDict* dict, uint32_t bin_id);
 /* All word forms of a lemma, the lemma itself last (NULL if unknown). */
 BinStrings* bin_lemma_forms(const BinDict* dict, uint32_t bin_id);

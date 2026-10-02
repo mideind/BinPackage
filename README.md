@@ -1,5 +1,5 @@
 ![GitHub](https://img.shields.io/github/license/mideind/BinPackage)
-![Python 3.9+](https://img.shields.io/badge/python-3.9-blue.svg)
+![Python 3.10+](https://img.shields.io/badge/python-3.10-blue.svg)
 ![Release](https://shields.io/github/v/release/mideind/BinPackage?display_name=tag)
 ![PyPI](https://img.shields.io/pypi/v/islenska)
 [![Python package](https://github.com/mideind/BinPackage/actions/workflows/python-package.yml/badge.svg)](https://github.com/mideind/BinPackage/actions/workflows/python-package.yml)
@@ -10,7 +10,7 @@
 
 <img src="img/greynir-logo-large.png" alt="Greynir" width="200" height="200" align="right" style="margin-left:20px; margin-bottom: 20px;">
 
-*BinPackage* is a Python (>= 3.9) package, published by
+*BinPackage* is a Python (>= 3.10) package, published by
 [*Miðeind ehf*](https://mideind.is), that embeds the vocabulary of the
 [*Database of Icelandic Morphology*](https://bin.arnastofnun.is/DMII/)
 ([*Beygingarlýsing íslensks nútímamáls*](https://bin.arnastofnun.is/), *BÍN*)
@@ -1028,7 +1028,7 @@ input word.
 # Implementation
 
 BinPackage is written in [Python 3](https://www.python.org/)
-and requires Python 3.9 or later. It runs on CPython 3.9+ and [PyPy](http://pypy.org/) 3.11.
+and requires Python 3.10 or later. It runs on CPython 3.10+ and [PyPy](http://pypy.org/) 3.11.
 
 The Python code calls a C++ library, `libbin` (in the `libbin/` directory of
 the repository), for lookup of word forms in the compressed binary structure
@@ -1049,7 +1049,7 @@ as `mypy` and `Pylance` / `Pyright`.
 
 # Installation and setup
 
-You must have Python >= 3.9 installed on your machine (CPython 3.9+ or PyPy 3.11).
+You must have Python >= 3.10 installed on your machine (CPython 3.10+ or PyPy 3.11).
 If you are using a Python virtual environment (`virtualenv`), activate it
 first (substituting your environment name for `venv` below):
 

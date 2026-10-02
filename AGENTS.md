@@ -56,7 +56,7 @@ uv run pytest -v
 ### Linting and Type Checking
 ```bash
 # Type-check with pyright
-# (honors pyrightconfig.json: strict mode, target Python 3.9, checks src/test/tools)
+# (honors pyrightconfig.json: strict mode, target Python 3.10, checks src/test/tools)
 uv run pyright
 
 # Lint with ruff (ruff is not a project dependency; install it separately,
@@ -113,7 +113,7 @@ ruff check src/islenska
 
 - The package name is `islenska` on PyPI, not `BinPackage`
 - BÍN data is under CC BY-SA 4.0 license from Stofnun Árna Magnússonar
-- Supports Python 3.9+ on CPython and PyPy
+- Supports Python 3.10+ on CPython and PyPy
 - Binary data file (`compressed.bin`, format `Greynir 05.00.00`) is ~95MB,
   mapped to memory at runtime; a compact build is ~48MB
 - Compound word algorithm can be disabled via `Bin(add_compounds=False)`

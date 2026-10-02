@@ -18,7 +18,7 @@ uv sync --extra dev
 # Run the test suite
 uv run pytest
 
-# Type-check (strict pyright; config in pyrightconfig.json, target Python 3.9)
+# Type-check (strict pyright; config in pyrightconfig.json, target Python 3.10)
 uv run pyright
 ```
 
@@ -92,5 +92,5 @@ source builds, so treat that as a last resort.
 Load `libbin` as a plain shared library through CFFI's ABI mode (`dlopen`)
 and ship it as a `py3-none-<platform>` wheel. Such a wheel works on every PyPy
 version, including future ABI bumps, and on GraalPy, with no rebuilds.
-CPython keeps the faster API-mode `cp39-abi3` wheels, which installers prefer
+CPython keeps the faster API-mode `cp310-abi3` wheels, which installers prefer
 over `py3-none` when both match.

@@ -71,7 +71,7 @@ gh run watch <run-id>          # follow a specific run
 Or visit: https://github.com/mideind/BinPackage/actions/workflows/wheels.yml
 
 The run has four jobs: prepare the compressed BÍN data, build the wheels
-(one `cp39-abi3` wheel per platform plus PyPy), build the sdist, and finally
+(one `cp310-abi3` wheel per platform plus PyPy), build the sdist, and finally
 `Publish to PyPI`. Builds typically take 10–15 minutes. The `publish` job runs
 only after the build jobs succeed.
 
@@ -133,22 +133,22 @@ credentials.
 
 ## Expected wheel artifacts
 
-Expect 8 wheels plus the source distribution. One `cp39-abi3` wheel covers all
-CPython 3.9+ versions; PyPy support is limited to PyPy 3.11 (`pp311`).
+Expect 8 wheels plus the source distribution. One `cp310-abi3` wheel covers all
+CPython 3.10+ versions; PyPy support is limited to PyPy 3.11 (`pp311`).
 (Substitute the version you are releasing for `X.Y.Z` below.)
 
 **Linux (x86_64):**
-- `islenska-X.Y.Z-cp39-abi3-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl`
+- `islenska-X.Y.Z-cp310-abi3-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl`
 - `islenska-X.Y.Z-pp311-pypy311_pp73-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl`
 
 **macOS (x86_64 + arm64):**
-- `islenska-X.Y.Z-cp39-abi3-macosx_10_9_x86_64.whl`
-- `islenska-X.Y.Z-cp39-abi3-macosx_11_0_arm64.whl`
+- `islenska-X.Y.Z-cp310-abi3-macosx_10_13_x86_64.whl`
+- `islenska-X.Y.Z-cp310-abi3-macosx_11_0_arm64.whl`
 - `islenska-X.Y.Z-pp311-pypy311_pp73-macosx_10_15_x86_64.whl`
 - `islenska-X.Y.Z-pp311-pypy311_pp73-macosx_11_0_arm64.whl`
 
 **Windows (AMD64):**
-- `islenska-X.Y.Z-cp39-abi3-win_amd64.whl`
+- `islenska-X.Y.Z-cp310-abi3-win_amd64.whl`
 - `islenska-X.Y.Z-pp311-pypy311_pp73-win_amd64.whl`
 
 **Source:**

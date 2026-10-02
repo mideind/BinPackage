@@ -67,9 +67,9 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         # Test across Python versions to verify abi3 wheel compatibility
-        # CPython: minimum (3.9), intermediate versions, latest stable
+        # CPython: minimum (3.10), intermediate versions, latest stable
         # PyPy: only the version we build wheels for (see wheels.yml)
-        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14', 'pypy-3.11']
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14', 'pypy-3.11']
 
     steps:
     - uses: actions/checkout@v4
@@ -104,15 +104,15 @@ jobs:
 
     - name: Lint with ruff
       run: |
-        if [ "${{ matrix.python-version }}" == "3.9" ]; then uv pip install --system ruff; fi
-        if [ "${{ matrix.python-version }}" == "3.9" ]; then ruff check src/islenska; fi
+        if [ "${{ matrix.python-version }}" == "3.10" ]; then uv pip install --system ruff; fi
+        if [ "${{ matrix.python-version }}" == "3.10" ]; then ruff check src/islenska; fi
 
     - name: Type check with pyright
       run: |
-        if [ "${{ matrix.python-version }}" == "3.9" ]; then uv pip install --system pyright; fi
+        if [ "${{ matrix.python-version }}" == "3.10" ]; then uv pip install --system pyright; fi
         # pyrightconfig.json pins the target Python version and strict mode;
         # --pythonpath points pyright at the interpreter holding the deps
-        if [ "${{ matrix.python-version }}" == "3.9" ]; then pyright --pythonpath "$(which python)"; fi
+        if [ "${{ matrix.python-version }}" == "3.10" ]; then pyright --pythonpath "$(which python)"; fi
 
     - name: Restore built BÍN data
       id: cache-bin-data

@@ -110,13 +110,13 @@ jobs:
         run: python -m cibuildwheel --output-dir wheelhouse
         # Options (https://cibuildwheel.readthedocs.io/en/stable/options/)
         env:
-          # Build abi3 wheel for CPython 3.9+ (one wheel for all versions)
+          # Build abi3 wheel for CPython 3.10+ (one wheel for all versions)
           # Build version-specific wheels for PyPy (which doesn't support abi3)
           # Using PyPy 3.11 (current maintained version)
-          CIBW_BUILD: cp39-* pp311-*
+          CIBW_BUILD: cp310-* pp311-*
           CIBW_SKIP: "*musllinux*"
           CIBW_ENABLE: pypy
-          CIBW_PROJECT_REQUIRES_PYTHON: ">=3.9"
+          CIBW_PROJECT_REQUIRES_PYTHON: ">=3.10"
           CIBW_BEFORE_BUILD_MACOS: python3 -m pip install --upgrade setuptools wheel cffi
           CIBW_ARCHS_MACOS: "x86_64 arm64"
           # libbin is C++17, which needs the libc++ of macOS 10.13; the

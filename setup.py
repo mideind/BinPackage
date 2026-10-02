@@ -14,7 +14,7 @@ from setuptools import setup
 # PyPy doesn't support the stable ABI, so we skip this for PyPy builds
 options: dict[str, str] = {}
 if platform.python_implementation() == "CPython":
-    options["py_limited_api"] = "cp39"  # Requires Python 3.9+
+    options["py_limited_api"] = "cp310"  # Requires Python 3.10+
 
 setup(
     zip_safe=True,

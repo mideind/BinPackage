@@ -68,6 +68,19 @@ Do the data package split first: it is what makes the extra wheels affordable.
   releases take 4.6 GB (mostly wheels for end-of-life Pythons), but deleting
   them is irreversible and would push anyone pinned to them onto source
   builds, so treat that as a last resort.
+- PyPI's size limit is per project, so the data package gets its own 10 GB.
+  Ship it as a wheel only (an sdist would just duplicate the data); with
+  BÍN updates a few times a year that lasts for hundreds of releases. After
+  the split an `islenska` release is ~20-40 MB, so its remaining ~1.3 GB lasts
+  for dozens of releases.
+- Ship only the compact build (`tools/binpack.py --compact`, about half the
+  size, same answers per `tools/parity.py`). Before switching, check what the
+  parity tool does not: `Bin`-level results (including `only_bin=True` and
+  `add_compounds=False`, where a dropped compound must still come back as a
+  genuine BÍN entry), lookup speed on a mixed word list, and whether anyone
+  still needs the full file (`ISLENSKA_BIN_FILE` can point at one).
+- Before the first upload, configure a pending Trusted Publisher for the new
+  project name on PyPI (it does not reserve the name; the first upload does).
 - Design points: how the code locates the data package (with
   `ISLENSKA_BIN_FILE` still taking precedence), pinning the data package to
   the data format (`Greynir 05.00.00`) the code expects, and a two-package

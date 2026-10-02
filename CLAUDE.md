@@ -136,8 +136,9 @@ Do the data package split first: it is what makes the extra wheels affordable.
      the build), and keep the `resources/` fallback for source checkouts.
   4. Release order: islenska-data first, then islenska. Document the two
      packages in `RELEASING.md` and the README (installation).
-  5. Review the licensing text in `islenska-data/README.md` (CC BY-SA 4.0
-     for the data as an adaptation of BÍN; MIT for the code).
+  5. DONE 2026-10-02: the licensing text in `islenska-data/README.md` (CC
+     BY-SA 4.0 for the data as an adaptation of BÍN; MIT for the code) was
+     reviewed and accepted by the maintainer.
 
 **PyPy wheels for the new ABI, and PyPy 3.12.**
 

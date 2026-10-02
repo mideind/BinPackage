@@ -25,6 +25,11 @@ uv run python tools/binpack.py
 
 # Build DAWG structures for compound word handling
 uv run python tools/dawgbuilder.py
+
+# Stage the built data into the islenska-data package and build its wheel
+# (see "Data package" below; not published yet)
+uv run python tools/data_package.py
+uv build --wheel islenska-data -o dist-data
 ```
 
 ### Rebuilding C++ Extensions
@@ -135,3 +140,20 @@ stores them in that order (`canonical_entries()`), a restored compound copies
 the order of its head's readings, and `test/test_canonical_order.py` checks
 it. Keep both sides in step when changing either. The CI job `libbin`
 builds the C++ library standalone and runs its smoke test on the data.
+
+## Data package
+
+The data files (`compressed.bin` and the three DAWGs, `basics.DATA_FILES`)
+can come from a separate pure-Python package, `islenska-data` (import name
+`islenska_data`, in `islenska-data/` at the root of the repository), so that
+the code wheels stay small. `basics.data_dir()` picks the directory:
+`islenska_data`'s if it is installed, holds `compressed.bin` and declares the
+data format that this islenska reads (`islenska_data.FORMAT`), otherwise
+islenska's own `resources/`; `ISLENSKA_BIN_FILE` still overrides
+`compressed.bin`. Its version is `<format major>.<format minor>.<data
+release>` (5.0.x for `Greynir 05.00.00`). `tools/data_package.py` checks the
+built files and copies them into the package; the CI job `data-package`
+builds an islenska wheel without data and the islenska-data wheel, installs
+both into a fresh environment and runs the test suite. As of 2026-10-02 this
+is tentative: islenska wheels still embed the data, islenska does not depend
+on islenska-data, and nothing publishes it.

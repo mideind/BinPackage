@@ -8,11 +8,23 @@ callers that take the first matching reading get the same, natural one
 (singular before plural, indicative before subjunctive) from either build.
 """
 
-from typing import List, Tuple
+from typing import Dict, List, Tuple
+
+from pathlib import Path
 
 from islenska import Bin
 from islenska.basics import MarkOrder
 from islenska.bincompress import BinCompressed
+
+# MarkOrder reads mark_order.csv, a build input that the islenska wheel
+# does not ship; load it from this checkout so that the tests also run
+# against an installed package
+_MARK_ORDER = Path(__file__).parent.parent / "src" / "islenska" / "resources" / "mark_order.csv"
+_order: Dict[str, List[str]] = {}
+for line in _MARK_ORDER.read_text(encoding="utf-8").splitlines():
+    cat, mark = line.split(";")
+    _order.setdefault(cat, []).append(mark)
+MarkOrder._order = {k: tuple(v) for k, v in _order.items()}  # type: ignore[reportPrivateUsage]
 
 WORDS = [
     "kvótakerfi",  # a compound; NFET, ÞFET, ÞGFET and the plural NFFT, ÞFFT

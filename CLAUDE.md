@@ -40,6 +40,12 @@ the selection rules (`tools/compact.py`) or the restoration code
 (`libbin/src/dict.cpp`), rebuild the data and run the test suite
 (`test/test_compact.py`, `test/test_canonical_order.py`).
 
+The data files can also come from the separate package `islenska-data`
+(`islenska-data/` in this repo; see "Data package" in `AGENTS.md`):
+`basics.data_dir()` prefers it when installed with a matching data format.
+Stage and build it with `uv run python tools/data_package.py && uv build
+--wheel islenska-data -o dist-data`. Not published yet.
+
 ## Roadmap (recorded 2026-10-02)
 
 Packaging work agreed but not yet done. Re-check the facts below before
@@ -102,12 +108,30 @@ Do the data package split first: it is what makes the extra wheels affordable.
     miss now tries restoration first). Bin's cache absorbs much of it.
   - Size: compact `compressed.bin` 55 MB (26 MB deflated); with the DAWGs a
     data wheel is ~30 MB.
-- Before the first upload, configure a pending Trusted Publisher for the new
-  project name on PyPI (it does not reserve the name; the first upload does).
-- Design points: how the code locates the data package (with
-  `ISLENSKA_BIN_FILE` still taking precedence), pinning the data package to
-  the data format (`Greynir 05.00.00`) the code expects, and a two-package
-  release process in `RELEASING.md` and `wheels.yml`.
+- Tentative split DONE in the branch `data-package` (stacked on PR #31):
+  the `islenska-data/` subproject (distribution `islenska-data`, import
+  `islenska_data`, version 5.0.0 = data format 05.00 + data release 0,
+  `py3-none-any`, ~30 MB wheel, BÍN license text in its README),
+  `basics.data_dir()`/`data_file()` (islenska-data if installed with a
+  matching `FORMAT` and files, else islenska's own `resources/`;
+  `ISLENSKA_BIN_FILE` still wins for `compressed.bin`),
+  `tools/data_package.py` (checks and stages the built files), and the CI
+  job `data-package` (islenska wheel without data, ~0.8 MB, plus the data
+  wheel in a fresh venv: the whole test suite passes). The name
+  `islenska-data` was free on PyPI on 2026-10-02.
+- Still to do for the switch:
+  1. Configure a pending Trusted Publisher for `islenska-data` on PyPI (it
+     does not reserve the name; the first upload does).
+  2. A release workflow for the data package (e.g. on tags `data-5.0.N`):
+     build the data, stage it, `uv build --wheel islenska-data`, publish
+     the wheel only (no sdist).
+  3. In islenska: depend on `islenska-data ~= 5.0`, stop shipping the data
+     files (`MANIFEST.in` includes, and `wheels.yml` downloading them into
+     the build), and keep the `resources/` fallback for source checkouts.
+  4. Release order: islenska-data first, then islenska. Document the two
+     packages in `RELEASING.md` and the README (installation).
+  5. Review the licensing text in `islenska-data/README.md` (CC BY-SA 4.0
+     for the data as an adaptation of BÍN; MIT for the code).
 
 **PyPy wheels for the new ABI, and PyPy 3.12.**
 

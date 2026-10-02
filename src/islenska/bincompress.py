@@ -63,7 +63,9 @@
 """
 
 from typing import (
+    AbstractSet,
     Any,
+    Dict,
     FrozenSet,
     Iterable,
     Set,
@@ -314,13 +316,16 @@ class BinCompressedPure:
         lemma: Optional[str] = None,
         utg: Optional[int] = None,
         inflection_filter: Optional[InflectionFilter] = None,
-    ) -> Set[BinEntryTuple]:
+    ) -> AbstractSet[BinEntryTuple]:
         """Returns a set of entries, in the requested case, derived
         from the lemmas of the given word form, optionally constrained
         by word category and by the other arguments given. The
         inflection_filter argument, if present, should be a function that
         filters on the beyging field of each candidate BÍN entry.
-        The word form is case-sensitive."""
+        The word form is case-sensitive.
+        The result is a read-only set view that iterates in BÍN data order,
+        so callers that take the first matching entry get the same one in
+        every process (a plain set iterates in hash-seed-dependent order)."""
 
         # Note that singular=True means that we force the result to be
         # singular even if the original word given is plural.
@@ -330,7 +335,8 @@ class BinCompressedPure:
         # However, if all_forms=True, both singular and plural, as well as
         # definite and indefinite forms, are always returned.
 
-        result: Set[BinEntryTuple] = set()
+        # A dict keeps the entries unique and in insertion (BÍN data) order
+        result: Dict[BinEntryTuple, None] = {}
         # Category set
         if cat is None:
             cats = None
@@ -406,16 +412,17 @@ class BinCompressedPure:
                 # forms may be identical to forms of other lemmas
                 # and categories.
                 result.update(
-                    m
-                    for m in self.lookup(
-                        c,
-                        cat=ofl,
-                        lemma=stofn,
-                        utg=bin_id,
-                        inflection_filter=beyging_func,
+                    dict.fromkeys(
+                        self.lookup(
+                            c,
+                            cat=ofl,
+                            lemma=stofn,
+                            utg=bin_id,
+                            inflection_filter=beyging_func,
+                        )
                     )
                 )
-        return result
+        return result.keys()
 
     def lookup_variants(
         self,
@@ -504,35 +511,36 @@ class BinCompressedPure:
         # Return Ksnid entries
         return [t[0] for t in results]
 
-    def raw_nominative(self, word: str) -> Set[BinEntryTuple]:
-        """Returns a set of all nominative forms of the lemmas of the given word form.
+    def raw_nominative(self, word: str) -> AbstractSet[BinEntryTuple]:
+        """Returns a set of all nominative forms of the lemmas of the given word form,
+        as a read-only set view in BÍN data order (see lookup_case).
         Note that the word form is case-sensitive."""
-        result: Set[BinEntryTuple] = set()
+        result: Dict[BinEntryTuple, None] = {}
         for lemma_index, _, _ in self._raw_lookup(word):
             for c in self.lemma_forms(lemma_index):
                 # Make sure we only include each result once
-                result.update(m for m in self.lookup(c) if "NF" in m[5])
-        return result
+                result.update(dict.fromkeys(m for m in self.lookup(c) if "NF" in m[5]))
+        return result.keys()
 
-    def nominative(self, word: str, **options: Any) -> Set[BinEntryTuple]:
+    def nominative(self, word: str, **options: Any) -> AbstractSet[BinEntryTuple]:
         """Returns a set of all nominative forms of the lemmas of the given word form,
         subject to the constraints in **options.
         Note that the word form is case-sensitive."""
         return self.lookup_case(word, "NF", **options)
 
-    def accusative(self, word: str, **options: Any) -> Set[BinEntryTuple]:
+    def accusative(self, word: str, **options: Any) -> AbstractSet[BinEntryTuple]:
         """Returns a set of all accusative forms of the lemmas of the given word form,
         subject to the given constraints on the beyging field.
         Note that the word form is case-sensitive."""
         return self.lookup_case(word, "ÞF", **options)
 
-    def dative(self, word: str, **options: Any) -> Set[BinEntryTuple]:
+    def dative(self, word: str, **options: Any) -> AbstractSet[BinEntryTuple]:
         """Returns a set of all dative forms of the lemmas of the given word form,
         subject to the given constraints on the beyging field.
         Note that the word form is case-sensitive."""
         return self.lookup_case(word, "ÞGF", **options)
 
-    def genitive(self, word: str, **options: Any) -> Set[BinEntryTuple]:
+    def genitive(self, word: str, **options: Any) -> AbstractSet[BinEntryTuple]:
         """Returns a set of all genitive forms of the lemmas of the given word form,
         subject to the given constraints on the beyging field.
         Note that the word form is case-sensitive."""

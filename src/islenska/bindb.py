@@ -39,6 +39,7 @@
 """
 
 from typing import (
+    AbstractSet,
     Mapping,
     Optional,
     Callable,
@@ -872,7 +873,7 @@ class Bin:
 
     def _lookup_case(
         self,
-        case_func: Callable[..., Set[BinEntryTuple]],
+        case_func: Callable[..., AbstractSet[BinEntryTuple]],
         w: str,
         *,
         cat: Optional[str] = None,

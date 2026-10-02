@@ -78,7 +78,7 @@ if IMPLEMENTATION == "PyPy":
 
 ffibuilder.cdef(declarations)  # type: ignore
 
-py_limited_api = "cp39" if IMPLEMENTATION == "CPython" else False
+py_limited_api = "cp310" if IMPLEMENTATION == "CPython" else False
 
 ffibuilder.set_source(  # type: ignore
     "islenska._bin",

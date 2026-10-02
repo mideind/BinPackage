@@ -412,14 +412,13 @@ class BinCompressedPure:
                 # forms may be identical to forms of other lemmas
                 # and categories.
                 result.update(
-                    dict.fromkeys(
-                        self.lookup(
-                            c,
-                            cat=ofl,
-                            lemma=stofn,
-                            utg=bin_id,
-                            inflection_filter=beyging_func,
-                        )
+                    (m, None)
+                    for m in self.lookup(
+                        c,
+                        cat=ofl,
+                        lemma=stofn,
+                        utg=bin_id,
+                        inflection_filter=beyging_func,
                     )
                 )
         return result.keys()
@@ -519,7 +518,7 @@ class BinCompressedPure:
         for lemma_index, _, _ in self._raw_lookup(word):
             for c in self.lemma_forms(lemma_index):
                 # Make sure we only include each result once
-                result.update(dict.fromkeys(m for m in self.lookup(c) if "NF" in m[5]))
+                result.update((m, None) for m in self.lookup(c) if "NF" in m[5])
         return result.keys()
 
     def nominative(self, word: str, **options: Any) -> AbstractSet[BinEntryTuple]:

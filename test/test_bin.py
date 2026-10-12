@@ -30,9 +30,10 @@
 
 """
 
-from typing import Optional, Callable, List
+from typing import Optional, Callable, List, Tuple
 
 from islenska import Bin, BinEntry, BinFilterFunc, Orð
+from islenska.basics import MEANING_MAX, UINT32, mark_to_set
 from islenska.bincompress import BinCompressed
 from islenska.bindb import GreynirBin
 
@@ -1179,6 +1180,41 @@ def test_variants() -> None:
         == b.lookup_variants("lenda", "so", "op2")
         == b.lookup_variants("lenda", "so", "op3")
     )
+
+
+def test_adverb_degree_variants() -> None:
+    """Adverbs carry the degree marks FST, MST and EST"""
+    b = Bin()
+
+    m = b.lookup_variants("vel", "ao", ())
+    assert m[0].bmynd == "vel" and m[0].mark == "FST"
+    assert {"vel", "betur", "best"} <= {mm.bmynd for mm in m}
+
+    m = b.lookup_variants("vel", "ao", "MST")
+    assert m[0].bmynd == "betur" and all(mm.mark == "MST" for mm in m)
+    m = b.lookup_variants("vel", "ao", "EST")
+    assert m[0].bmynd == "best" and all(mm.mark == "EST" for mm in m)
+    m = b.lookup_variants("best", "ao", "FST")
+    assert m[0].bmynd == "vel" and all(mm.mark == "FST" for mm in m)
+    m = b.lookup_variants("oft", "ao", ("est",))
+    assert m[0].bmynd == "oftast" and all(mm.mark == "EST" for mm in m)
+
+
+def test_all_marks_parse() -> None:
+    """Every mark string in the data parses into known features"""
+    bc = BinCompressed()
+    # The meaning count precedes the first meaning string (see tools/binpack.py)
+    (first,) = UINT32.unpack_from(bc._meanings, 0)
+    num_meanings = bc._UINT(first - 4)
+    assert 0 < num_meanings <= MEANING_MAX
+    unknown: List[Tuple[str, str]] = []
+    for ix in range(num_meanings):
+        ofl, mark = bc.meaning(ix)
+        try:
+            mark_to_set(mark)
+        except ValueError:
+            unknown.append((ofl, mark))
+    assert unknown == []
 
 
 def test_sorting() -> None:

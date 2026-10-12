@@ -122,7 +122,10 @@ ALL_BIN_CASES = frozenset(("NF", "ÞF", "ÞGF", "EF"))
 ALL_BIN_NUMBERS = frozenset(("ET", "FT"))
 ALL_BIN_GENDERS = frozenset(("KK", "KVK", "HK"))
 ALL_BIN_PERSONS = frozenset(("1P", "2P", "3P"))
-ALL_BIN_DEGREES = frozenset(("ESB", "EVB", "FSB", "FVB", "MST", "VB", "SB"))
+# FST and EST are adverb degrees; MST is shared by adjectives and adverbs
+ALL_BIN_DEGREES = frozenset(
+    ("ESB", "EVB", "FSB", "FVB", "MST", "VB", "SB", "FST", "EST")
+)
 ALL_BIN_TENSES = frozenset(("ÞT", "NT"))
 ALL_BIN_VOICES = frozenset(("GM", "MM"))
 # We deliberately leave out "LHÞT" as it is quite a different beast than the others

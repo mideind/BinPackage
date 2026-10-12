@@ -156,11 +156,17 @@ class BinCompressedPure:
         # compact section offset; its lookups need the compounder DAWGs
         self._compact_offset: int = compact_offset
         self._forms_offset: int = forms_offset
-        self._mappings: bytes = self._b[mappings_offset:]
-        self._lemmas: bytes = self._b[lemmas_offset:]
-        self._templates: bytes = self._b[templates_offset:]
-        self._meanings: bytes = self._b[meanings_offset:]
-        self._ksnid_strings: bytes = self._b[ksnid_offset:]
+        # Zero-copy views into the memory map. Slicing the mmap object itself
+        # would copy everything from the offset to the end of the file into
+        # private process memory (about 90 MB from the mappings offset),
+        # which no lookup reads: the C++ library works on the mapped pointer.
+        view = memoryview(self._b)
+        self._mappings: memoryview = view[mappings_offset:]
+        self._lemmas: memoryview = view[lemmas_offset:]
+        self._templates: memoryview = view[templates_offset:]
+        self._meanings: memoryview = view[meanings_offset:]
+        self._ksnid_strings: memoryview = view[ksnid_offset:]
+        view.release()
         # Create partial unpacking functions for speed
         self._partial_UINT = functools.partial(UINT32.unpack_from, self._b)
         self._partial_mappings = functools.partial(UINT32.unpack_from, self._mappings)
@@ -188,11 +194,15 @@ class BinCompressedPure:
         if cast(Union[mmap.mmap, None], self._b) is None:
             # Already closed
             return
-        self._mappings = cast(bytes, None)
-        self._lemmas = cast(bytes, None)
-        self._meanings = cast(bytes, None)
-        self._ksnid_strings = cast(bytes, None)
-        self._templates = cast(bytes, None)
+        # Release the views first: an mmap with exported buffers cannot close
+        self._partial_mappings = cast(Any, None)
+        for view in (self._mappings, self._lemmas, self._meanings, self._ksnid_strings, self._templates):
+            view.release()
+        self._mappings = cast(memoryview, None)
+        self._lemmas = cast(memoryview, None)
+        self._meanings = cast(memoryview, None)
+        self._ksnid_strings = cast(memoryview, None)
+        self._templates = cast(memoryview, None)
         self._alphabet_bytes = bytes()
         self._mmap_buffer = cast(bytes, None)
         self._mmap_ptr = 0

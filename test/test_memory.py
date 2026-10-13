@@ -25,9 +25,15 @@
 
 import gc
 import os
-import tracemalloc
+
+import pytest
 
 from islenska.bincompress import BinCompressed
+
+try:
+    import tracemalloc
+except ImportError:  # PyPy has no _tracemalloc; the check on CPython is enough
+    tracemalloc = None
 
 # Opening the dictionary allocates a little (the subcategory list, the
 # alphabet, the DAWG wrappers). A tenth of the data file is far above
@@ -35,7 +41,9 @@ from islenska.bincompress import BinCompressed
 _ALLOWED_FRACTION = 0.1
 
 
+@pytest.mark.skipif(tracemalloc is None, reason="tracemalloc is not available (PyPy)")
 def test_opening_does_not_copy_the_data_file() -> None:
+    assert tracemalloc is not None
     gc.collect()
     tracemalloc.start()
     try:

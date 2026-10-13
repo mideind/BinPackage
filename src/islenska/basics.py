@@ -4,7 +4,7 @@
 
     Basic configuration data
 
-    Copyright © 2025 Miðeind ehf.
+    Copyright © 2026 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     This software is licensed under the MIT License:
@@ -80,33 +80,41 @@ DATA_FILES = (
     "ordalisti-prefixes.dawg.bin",
     "ordalisti-suffixes.dawg.bin",
 )
-# The separate data package (distribution 'islenska-data'). When it is
-# installed, holds the data files and has a matching data format, the data
-# files are taken from it; otherwise from islenska's own resources directory.
+# The data files come from the separate data package (distribution
+# 'islenska-data', a dependency of islenska), unless islenska's own resources
+# directory holds them, as it does in a source checkout where they were built
 DATA_PACKAGE = "islenska_data"
 _RESOURCES_DIR = Path(__file__).parent.resolve() / "resources"
 
 
 def resolve_data_dir(own_dir: Path, data_package: Optional[Any]) -> Path:
-    """Choose the directory of the data files: that of the data package
-    (an imported islenska_data module, or None if it is not installed) if
-    it holds compressed.bin in the data format that this version of
-    islenska reads, otherwise own_dir. Raises RuntimeError if the data
-    package has the wrong format and own_dir has no data either."""
-    if data_package is not None:
-        fmt = getattr(data_package, "FORMAT", None)
-        pkg_dir = Path(data_package.data_dir())
-        if fmt == BIN_COMPRESSOR_VERSION.decode("ascii"):
-            if (pkg_dir / BIN_COMPRESSED_FILE).is_file():
-                return pkg_dir
-        elif not (own_dir / BIN_COMPRESSED_FILE).is_file():
-            raise RuntimeError(
-                f"The installed islenska-data package has data format {fmt!r}, "
-                f"but this version of islenska reads "
-                f"{BIN_COMPRESSOR_VERSION.decode('ascii')!r}: "
-                "install a matching version of islenska-data"
-            )
-    return own_dir
+    """Choose the directory of the data files: own_dir (islenska's own
+    resources directory) if it holds compressed.bin, as in a source
+    checkout with freshly built data; otherwise that of the data package
+    (an imported islenska_data module, or None if it is not installed).
+    Raises RuntimeError if the data package is missing, has another data
+    format than this version of islenska reads, or holds no data files."""
+    if (own_dir / BIN_COMPRESSED_FILE).is_file():
+        return own_dir
+    expected = BIN_COMPRESSOR_VERSION.decode("ascii")
+    if data_package is None:
+        raise RuntimeError(
+            "The data files of islenska were not found: "
+            "install the islenska-data package"
+        )
+    fmt = getattr(data_package, "FORMAT", None)
+    if fmt != expected:
+        raise RuntimeError(
+            f"The installed islenska-data package has data format {fmt!r}, "
+            f"but this version of islenska reads {expected!r}: "
+            "install a matching version of islenska-data"
+        )
+    pkg_dir = Path(data_package.data_dir())
+    if not (pkg_dir / BIN_COMPRESSED_FILE).is_file():
+        raise RuntimeError(
+            f"The islenska-data package in {pkg_dir} holds no data files"
+        )
+    return pkg_dir
 
 
 _data_dir: Optional[Path] = None

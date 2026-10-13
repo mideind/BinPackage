@@ -2,6 +2,13 @@
 
 This guide explains how to release a new version of BinPackage to PyPI.
 
+BinPackage publishes two packages: `islenska` (the code, with a binary wheel
+per platform and Python implementation) and `islenska-data` (the data files,
+one pure wheel), on which `islenska` depends. A code release needs only the
+first; a release of new BÍN data, or of a new data format, needs the second,
+and that one goes first (see
+[Releasing the data package](#releasing-the-data-package-islenska-data)).
+
 Releases are **fully automated** by the `wheels.yml` GitHub Actions workflow:
 pushing a version tag builds the wheels and source distribution and then
 publishes them to PyPI. There is no manual `twine upload` step — see
@@ -70,10 +77,14 @@ gh run watch <run-id>          # follow a specific run
 
 Or visit: https://github.com/mideind/BinPackage/actions/workflows/wheels.yml
 
-The run has four jobs: prepare the compressed BÍN data, build the wheels
-(one `cp310-abi3` wheel per platform plus PyPy), build the sdist, and finally
-`Publish to PyPI`. Builds typically take 10–15 minutes. The `publish` job runs
-only after the build jobs succeed.
+The run has four jobs: build the BÍN data and an islenska-data wheel, build
+the wheels (one `cp310-abi3` wheel per platform plus PyPy), build the sdist,
+and finally `Publish to PyPI`. The wheels and the sdist contain no data
+files (the workflow checks this). Every wheel is smoke-tested by
+cibuildwheel (`test/wheel_smoke.py`) with the islenska-data wheel of the
+same run installed, so the tests do not depend on what is on PyPI. Builds
+typically take 15–20 minutes. The `publish` job runs only after the build
+jobs succeed.
 
 ### 5. Create the GitHub release
 
@@ -133,23 +144,27 @@ credentials.
 
 ## Expected wheel artifacts
 
-Expect 8 wheels plus the source distribution. One `cp310-abi3` wheel covers all
-CPython 3.10+ versions; PyPy support is limited to PyPy 3.11 (`pp311`).
-(Substitute the version you are releasing for `X.Y.Z` below.)
+Expect 20 wheels plus the source distribution. One `cp310-abi3` wheel per
+platform covers all CPython 3.10+ versions. PyPy gets a wheel per ABI:
+PyPy 3.11 as PyPy 7.3 (`pp73`, built with cibuildwheel 4.2.1) and as
+PyPy 8.0 (`pp80`), and PyPy 3.12 (`pp80`); the last two are built with
+cibuildwheel 4.3.1. (Substitute the version for `X.Y.Z`; the exact
+platform tags may differ.)
 
-**Linux (x86_64):**
-- `islenska-X.Y.Z-cp310-abi3-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl`
-- `islenska-X.Y.Z-pp311-pypy311_pp73-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl`
+**Linux (x86_64 and aarch64; `manylinux_2_28` tags):**
+- `islenska-X.Y.Z-cp310-abi3-manylinux_..._{x86_64,aarch64}.whl`
+- `islenska-X.Y.Z-pp311-pypy311_pp73-manylinux_..._{x86_64,aarch64}.whl`
+- `islenska-X.Y.Z-pp311-pypy311_pp80-manylinux_..._{x86_64,aarch64}.whl`
+- `islenska-X.Y.Z-pp312-pypy312_pp80-manylinux_..._{x86_64,aarch64}.whl`
 
 **macOS (x86_64 + arm64):**
-- `islenska-X.Y.Z-cp310-abi3-macosx_10_13_x86_64.whl`
-- `islenska-X.Y.Z-cp310-abi3-macosx_11_0_arm64.whl`
-- `islenska-X.Y.Z-pp311-pypy311_pp73-macosx_10_15_x86_64.whl`
-- `islenska-X.Y.Z-pp311-pypy311_pp73-macosx_11_0_arm64.whl`
+- `islenska-X.Y.Z-cp310-abi3-macosx_10_13_x86_64.whl`,
+  `islenska-X.Y.Z-cp310-abi3-macosx_11_0_arm64.whl`
+- the three PyPy wheels for each of x86_64 and arm64
 
 **Windows (AMD64):**
 - `islenska-X.Y.Z-cp310-abi3-win_amd64.whl`
-- `islenska-X.Y.Z-pp311-pypy311_pp73-win_amd64.whl`
+- the three PyPy wheels
 
 **Source:**
 - `islenska-X.Y.Z.tar.gz`
@@ -185,11 +200,6 @@ Check the GitHub Actions logs for errors. Common issues:
 
 ## Releasing the data package (islenska-data)
 
-> **Not in use yet.** As of 2026-10-02, islenska still ships its own data
-> files and does not depend on islenska-data, and islenska-data has never
-> been uploaded. Its first upload creates the project on PyPI, so do it only
-> as part of the switch described in the roadmap in `CLAUDE.md`.
-
 `islenska-data` (in `islenska-data/`) holds the data files: `compressed.bin`
 and the three DAWGs. It is released only when the data change, from its
 own workflow, `.github/workflows/data-release.yml`, as a single
@@ -217,8 +227,13 @@ own workflow, `.github/workflows/data-release.yml`, as a single
 contains `test` (`data-5.0.1-test1`) or start the workflow by hand from the
 Actions tab: both build and test without publishing.
 
-When islenska depends on islenska-data, release islenska-data first, so that
-the islenska release can be installed as soon as it is published.
+Release islenska-data before an islenska release that needs it, so that
+the islenska release can be installed as soon as it is published. islenska
+requires `islenska-data ~= M.N.0` (`pyproject.toml`), where M.N is the data
+format it reads: a new patch release of islenska-data reaches existing
+islenska installations without an islenska release, while a new data format
+needs both a new islenska-data major or minor version and an islenska
+release that requires it.
 
 ## Version Numbering
 

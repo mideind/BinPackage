@@ -5,7 +5,7 @@
 
     Low-level access module for the compressed BÍN dictionary
 
-    Copyright © 2025 Miðeind ehf.
+    Copyright © 2026 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     This software is licensed under the MIT License:

@@ -4,7 +4,7 @@
 
     CFFI builder for the _bin module
 
-    Copyright © 2025 Miðeind ehf.
+    Copyright © 2026 Miðeind ehf.
     Original Author: Vilhjálmur Þorsteinsson
 
     This software is licensed under the MIT License:

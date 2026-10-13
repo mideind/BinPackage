@@ -2,7 +2,7 @@
 
     BinPackage
 
-    Copyright © 2025 Miðeind ehf.
+    Copyright © 2026 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     This software is licensed under the MIT License:
@@ -37,7 +37,7 @@ from .basics import BinEntry, Ksnid
 from .bindb import Bin, Orð, BinFilterFunc, BinEntryList, BinEntryIterable
 
 __author__ = "Miðeind ehf."
-__copyright__ = "© 2025 Miðeind ehf."
+__copyright__ = "© 2026 Miðeind ehf."
 __version__ = importlib.metadata.version(__name__)
 
 __all__ = (

@@ -6,15 +6,9 @@ prune src/islenska/.mypy_cache
 prune test
 exclude src/islenska/_bin.cpp
 exclude src/islenska/_bin.c
-include src/islenska/resources/ordalisti-all.dawg.bin
-include src/islenska/resources/ordalisti-prefixes.dawg.bin
-include src/islenska/resources/ordalisti-suffixes.dawg.bin
-include src/islenska/resources/compressed.bin
-exclude src/islenska/resources/compressed-*.bin
-exclude src/islenska/resources/*.csv
-exclude src/islenska/resources/*.txt
-exclude src/islenska/resources/KRISTINsnid.*
-exclude src/islenska/resources/.DS_Store
+# The data files are in the islenska-data package; the resources directory
+# holds only build inputs and, in a source checkout, the built data
+prune src/islenska/resources
 exclude src/islenska/.DS_Store
 exclude src/islenska/*.o
 exclude src/islenska/*.so

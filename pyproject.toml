@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "islenska"
-version = "1.5.0"
+version = "2.0.0"
 description = "The vocabulary of modern Icelandic, encapsulated in a Python package"
 authors = [{ name = "Miðeind ehf.", email = "mideind@mideind.is" }]
 maintainers = [{ name = "Miðeind ehf.", email = "mideind@mideind.is" }]
@@ -29,15 +29,18 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: Implementation :: CPython",
-    # PyPy support is limited to PyPy 3.11 — that is the only PyPy wheel
-    # we publish (see CIBW_BUILD in .github/workflows/wheels.yml).
+    # PyPy wheels are published for PyPy 3.11 (PyPy 7.3 and 8.0) and
+    # PyPy 3.12 (see .github/workflows/wheels.yml).
     "Programming Language :: Python :: Implementation :: PyPy",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Utilities",
     "Topic :: Text Processing :: Linguistic",
 ]
 requires-python = ">=3.10"
-dependencies = ["cffi>=1.17.1", "typing_extensions"]
+# islenska-data holds the data files; its major.minor version is the data
+# format of compressed.bin (5.0 for 'Greynir 05.00.00', BIN_COMPRESSOR_VERSION
+# in basics.py), which this version reads, so allow only its patch releases
+dependencies = ["cffi>=1.17.1", "typing_extensions", "islenska-data ~= 5.0.0"]
 
 [project.urls]
 Repository = "https://github.com/mideind/BinPackage"
@@ -47,6 +50,12 @@ Repository = "https://github.com/mideind/BinPackage"
 dev = ["pytest", "pyright"]
 
 # *** Configuration of tools ***
+
+[tool.uv.sources]
+# In this repository, islenska-data is the subproject in islenska-data/; it
+# holds no data unless tools/data_package.py staged some, and the data built
+# into src/islenska/resources take precedence anyway (basics.data_dir())
+islenska-data = { path = "islenska-data", editable = true }
 
 [tool.setuptools]
 include-package-data = true

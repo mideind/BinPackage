@@ -5,7 +5,7 @@
     Tests that opening the compressed dictionary does not copy it
     into process memory
 
-    Copyright © 2025 Miðeind ehf.
+    Copyright © 2026 Miðeind ehf.
 
     This software is licensed under the MIT License (see test_bin.py)
 

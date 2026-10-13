@@ -2,13 +2,12 @@
 
 This file provides guidance to AI coding agents when working with code in this repository.
 
-## Status (2026-10-02)
+## Status (2026-10-13)
 
-Work on islenska 1.6.0 is paused with three open PRs (#30 canonical order of
-lookup results, #31 compact-only `compressed.bin`, #32 the tentative
-`islenska-data` package and its release workflow), to be merged in that
-order. See "Status" and "Roadmap" in `CLAUDE.md` for what is done and what
-comes next.
+islenska 2.0.0 is being prepared: canonical order of lookup results (#30),
+compact-only `compressed.bin` (#31), the `islenska-data` package (#32),
+zero-copy memory map (#34), and the switch to islenska-data as a dependency
+with new PyPy and aarch64 wheels. See "Status" in `CLAUDE.md`.
 
 ## Project Overview
 
@@ -35,7 +34,7 @@ uv run python tools/binpack.py
 uv run python tools/dawgbuilder.py
 
 # Stage the built data into the islenska-data package and build its wheel
-# (see "Data package" below; not published yet)
+# (see "Data package" below)
 uv run python tools/data_package.py
 uv build --wheel islenska-data -o dist-data
 ```
@@ -151,19 +150,25 @@ builds the C++ library standalone and runs its smoke test on the data.
 
 ## Data package
 
-The data files (`compressed.bin` and the three DAWGs, `basics.DATA_FILES`)
-can come from a separate pure-Python package, `islenska-data` (import name
-`islenska_data`, in `islenska-data/` at the root of the repository), so that
-the code wheels stay small. `basics.data_dir()` picks the directory:
-`islenska_data`'s if it is installed, holds `compressed.bin` and declares the
-data format that this islenska reads (`islenska_data.FORMAT`), otherwise
-islenska's own `resources/`; `ISLENSKA_BIN_FILE` still overrides
-`compressed.bin`. Its version is `<format major>.<format minor>.<data
+Since 2.0.0 the data files (`compressed.bin` and the three DAWGs,
+`basics.DATA_FILES`) are published in a separate pure-Python package,
+`islenska-data` (import name `islenska_data`, in `islenska-data/` at the root
+of the repository), on which islenska depends (`islenska-data ~= 5.0.0`), so
+that the code wheels stay small; the islenska wheels and sdist carry no data
+(`MANIFEST.in` prunes `resources/`). `basics.data_dir()` picks the directory:
+islenska's own `resources/` if it holds `compressed.bin` (a source checkout
+with built data), otherwise `islenska_data`'s, which must declare the data
+format that this islenska reads (`islenska_data.FORMAT`) and hold the files,
+or `data_dir()` raises `RuntimeError`; `ISLENSKA_BIN_FILE` still overrides
+`compressed.bin`. In this repository, `[tool.uv.sources]` makes the dev
+environment install the `islenska-data/` subproject (editable, normally
+empty) instead of the PyPI release. Its version is `<format major>.<format minor>.<data
 release>` (5.0.x for `Greynir 05.00.00`). `tools/data_package.py` checks the
 built files and copies them into the package; the CI job `data-package`
 builds an islenska wheel without data and the islenska-data wheel, installs
 both into a fresh environment and runs the test suite. The release workflow
 is `.github/workflows/data-release.yml`, on `data-X.Y.Z` tags (see
-`RELEASING.md`). As of 2026-10-02 this is tentative: islenska wheels still
-embed the data, islenska does not depend on islenska-data, and it has never
-been published.
+`RELEASING.md`). `wheels.yml` builds an islenska-data wheel in the same run
+and installs it before smoke-testing each islenska wheel
+(`test/wheel_smoke.py`), so islenska wheels can be tested before the data
+release is on PyPI.

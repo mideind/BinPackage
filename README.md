@@ -19,15 +19,18 @@ and offers various lookups and queries of the data.
 The database, maintained by
 [*The Árni Magnússon Institute for Icelandic Studies*](https://arnastofnun.is)
 and edited by chief editor *Kristín Bjarnadóttir*, contains over
-6.5 million entries, over 3.1 million unique word forms,
-and about 300,000 distinct lemmas.
+7.4 million entries, over 3.7 million unique word forms,
+and about 356,000 distinct lemmas.
 
 Miðeind has encapsulated the database in an easy-to-install Python package,
 compressing it
-from a 400+ megabyte CSV file into an ~82 megabyte indexed binary structure.
+from a 470 megabyte CSV file into a 55 megabyte indexed binary structure.
 The package maps this structure directly into memory (via `mmap`) for fast lookup.
 An algorithm for handling compound words is an important additional feature
-of the package.
+of the package. It also keeps the binary structure small: the word forms of
+compounds that the algorithm regenerates exactly are left out of it and
+restored on lookup (see [Compact build](#compact-build)). The data come in a
+separate package, `islenska-data`, which `pip` installs along with `islenska`.
 
 With BinPackage, `pip install islenska` is all you need to have almost all
 of the commonly used vocabulary of the modern Icelandic language at your
@@ -138,6 +141,10 @@ optimal compound in the `ord` and `bmynd` fields of the returned
 ```
 
 Lookups that are resolved via the compounding algorithm have a `bin_id` of zero.
+This applies only to compounds that are not in BÍN. Compounds that are in BÍN,
+such as *bókahilla*, are returned as BÍN entries with their own `bin_id` and
+without hyphens, even when the data file leaves out their word forms and the
+algorithm restores them (see [Compact build](#compact-build)).
 Note that the compounding algorithm will occasionally recognize nonexistent
 words, for instance spelling errors, as compounds.
 

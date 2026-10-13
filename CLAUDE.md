@@ -3,13 +3,18 @@
 Guidance for Claude Code in this repository. `AGENTS.md` holds the full project
 overview and architecture notes; the day-to-day essentials are below.
 
-## Status (2026-10-13): where to pick up
+## Status (2026-10-13): 2.0.0 released
 
-**islenska 2.0.0 is merged on `main` and ready to release; nothing is
-published yet.** The next step is the release itself (checklist below). The
-1.6.0 plan became 2.0.0 because of the data split and the new result order.
+**islenska 2.0.0 and islenska-data 5.0.0 were released on 2026-10-13**
+(tags `2.0.0` and `data-5.0.0`, GitHub release 2.0.0). PyPI holds 20
+islenska wheels plus the sdist, and one islenska-data wheel (30 MB). A
+fresh `pip install islenska==2.0.0` pulls in islenska-data and reads the
+data from it. The islenska-data PyPI project now belongs to the Miðeind
+organization. The 1.6.0 plan became 2.0.0 because of the data split and the
+new result order; what changed is in the GitHub release notes and under
+"Roadmap" below.
 
-On `main` (PRs #30-#35, all merged 2026-10-13 with green PR CI):
+What went into 2.0.0 (PRs #30-#35):
 
 - #30 canonical order of a form's readings: by bin_id, then paradigm order
   (`mark_order.csv`), then source order, in binpack and in libbin's compound
@@ -18,6 +23,7 @@ On `main` (PRs #30-#35, all merged 2026-10-13 with green PR CI):
   `tools/parity.py` are gone.
 - #32 the `islenska-data` package (`islenska-data/`) and its release
   workflow `data-release.yml`.
+- #33 `lookup_variants` accepts the adverb degree marks FST/EST.
 - #34 (external, sverrirs) `bincompress.py` takes `memoryview`s of the
   memory map instead of copying ~90 MB per process; its tracemalloc test is
   skipped on PyPy.
@@ -43,53 +49,15 @@ On `main` (PRs #30-#35, all merged 2026-10-13 with green PR CI):
     three workflows (see "Data package" in `AGENTS.md`).
   - Copyright years are 2026.
 
-Verified: a wheel dry run (tag `2.0.0-test2`, since deleted) built all 20
-wheels plus the sdist, 4.9 MB in all. Every wheel passed the smoke test. A
-from-scratch `binpack.py` run is byte-identical to the 2026-10-02 build
-(163,349 lemmas dropped).
+GreynirKbd: mideind/GreynirKbd#5 (branch `binpackage-2.0.0`) moves its
+submodule from 1.4.0 to 2.0.0 and its `data/grammar/compressed.bin` to the
+islenska-data 5.0.0 file. Its replays and error sets are bit-identical to
+1.4.0, and its docs no longer mention `--compact` or `tools/parity.py`.
 
-### Release checklist (next session starts here)
-
-The `pypi` environment has no protection rules: a tag publishes as soon as
-its build passes, and PyPI uploads cannot be undone. Confirm with the user
-before pushing the real tags.
-
-1. Check that the `tests` run on `main` for the merge of #35 is green. It
-   also saves the islenska-data wheel to the Actions cache, so tag runs
-   reuse it: `gh run list --branch main -L 3`.
-2. islenska-data:
-   `git tag -a data-5.0.0 -m "islenska-data 5.0.0" && git push origin data-5.0.0`.
-   `data-release.yml` checks the tag against `islenska-data/pyproject.toml`,
-   tests and publishes. The first upload creates the PyPI project through
-   the pending Trusted Publisher (`mideind/BinPackage`, workflow
-   `data-release.yml`, environment `pypi`), under the account of whoever
-   added that publisher; move it to the Miðeind organization if needed.
-   Check https://pypi.org/project/islenska-data/.
-3. islenska, once islenska-data is on PyPI:
-   `git tag -a 2.0.0 -m "Release version 2.0.0" && git push origin 2.0.0`.
-   `wheels.yml` publishes 20 wheels and the sdist. Then
-   `pip install islenska==2.0.0` in a fresh venv and run one lookup.
-4. `gh release create 2.0.0` with notes covering:
-   - The data now come in the separate `islenska-data` package (~30 MB,
-     installed automatically, downloaded again only when the data change);
-     islenska wheels are 0.1-0.8 MB.
-   - The canonical order (#30) changes some first-match results relative to
-     1.5.0, mostly for the better (singular before plural): e.g.
-     `cast_to_dative("kvótakerfi")` now gives *kvótakerfi*, not *kvótakerfum*.
-   - Compact data (#31): about half the size; compounds are restored on
-     lookup, a little slower uncached (see "Roadmap" below).
-   - New wheels: PyPy 8.0 and PyPy 3.12, and Linux aarch64 (CPython and
-     PyPy); PyPy 7.3 wheels kept.
-   - ~90 MB less private memory per process (#34, thanks to sverrirs).
-   - Also new since 1.5.0: `lookup_variants` accepts the adverb degree
-     marks FST/EST (#33).
-5. Afterwards:
-   - Update the GreynirKbd repo: move its BinPackage submodule past 1.4.0
-     and rebuild its `data/grammar`. Its notes still mention `binpack.py
-     --compact` (now a no-op) and a full-vs-compact parity check (there is
-     no full build any more).
-   - Delete the merged remote branches (`canonical-entry-order`,
-     `compact-only`, `data-package`, `release-2.0`) if GitHub kept them.
+Open: the CI warnings about Node.js 20 actions (`checkout@v4`,
+`setup-python@v5`, `cache@v4`, `upload-artifact@v4`, `download-artifact@v4`)
+and the move of `ubuntu-latest` to Ubuntu 26 from 2026-10-19. Neither
+affected the release.
 
 ### Lessons from 2.0.0
 
@@ -152,7 +120,7 @@ Stage and build it with `uv run python tools/data_package.py && uv build
 Deterministic order of case lookups (PR #28) and Python 3.10+ only, with
 `cp310-abi3` wheels (PR #29). Python 3.9 users stay on 1.4.0.
 
-### 2.0.0 (merged 2026-10-13, to be released): data package, new wheels
+### 2.0.0 (released 2026-10-13): data package, new wheels
 
 Why the split: after 1.5.0 the `islenska` project used about 8.7 GB of
 PyPI's default 10 GB project limit, ~454 MB per release, because every wheel

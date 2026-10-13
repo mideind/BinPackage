@@ -8,9 +8,12 @@ on:
       - '!data-*'
 
 jobs:
-  # First job: Build compressed BÍN data once (platform-independent)
+  # First job: build the BÍN data and the islenska-data wheel once. The
+  # islenska wheels do not contain the data (islenska depends on
+  # islenska-data, which data-release.yml publishes); this data wheel is only
+  # installed to smoke-test each islenska wheel before it is published.
   prepare_data:
-    name: Prepare BÍN compressed data
+    name: Prepare the islenska-data wheel
     runs-on: ubuntu-latest
 
     steps:
@@ -22,55 +25,16 @@ jobs:
         with:
           python-version: '3.11'
 
-      # The BÍN source and the built data are cached with the same keys as
-      # in the tests workflow (python-package.yml), so a release normally
-      # finds both already built.
-      - name: Restore cached KRISTINsnid.csv.zip
-        id: cache-kristin
-        uses: actions/cache@v4
-        with:
-          path: src/islenska/resources/KRISTINsnid.csv.zip
-          key: kristin-csv-zip-v1
+      # The same cached wheel as in the tests workflow (python-package.yml),
+      # so a release normally finds it already built
+      - name: Provide the islenska-data wheel
+        uses: ./.github/actions/islenska-data
 
-      - name: Download KRISTINsnid.csv.zip
-        if: steps.cache-kristin.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p src/islenska/resources
-          curl -s -o src/islenska/resources/KRISTINsnid.csv.zip 'https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip'
-
-      - name: Restore built BÍN data
-        id: cache-bin-data
-        uses: actions/cache@v4
-        with:
-          path: |
-            src/islenska/resources/compressed.bin
-            src/islenska/resources/ordalisti-all.dawg.bin
-            src/islenska/resources/ordalisti-prefixes.dawg.bin
-            src/islenska/resources/ordalisti-suffixes.dawg.bin
-          key: bin-data-v1-${{ hashFiles('src/islenska/resources/KRISTINsnid.csv.zip', 'src/islenska/resources/*.csv', 'src/islenska/resources/*.txt', 'src/islenska/basics.py', 'src/islenska/dawgdictionary.py', 'src/islenska/config/*.conf', 'tools/binpack.py', 'tools/compact.py', 'tools/dawgbuilder.py', 'libbin/src/*', 'libbin/include/libbin/bin.h') }}
-
-      - name: Build the BÍN data
-        if: steps.cache-bin-data.outputs.cache-hit != 'true'
-        run: |
-          pip3 install -e .
-          unzip -q -d src/islenska/resources/ src/islenska/resources/KRISTINsnid.csv.zip
-          # The DAWGs first: binpack's compound selection (tools/compact.py)
-          # runs the compounder, which needs them
-          echo "Running dawgbuilder..."
-          python3 tools/dawgbuilder.py
-          echo "Running binpack..."
-          python3 tools/binpack.py
-
-      - name: List the data files
-        run: ls -lh src/islenska/resources/*.bin src/islenska/resources/*.dawg.* 2>/dev/null || true
-
-      - name: Upload compressed data artifacts
+      - name: Upload the islenska-data wheel
         uses: actions/upload-artifact@v4
         with:
-          name: compressed-bin-data
-          path: |
-            src/islenska/resources/compressed.bin
-            src/islenska/resources/*.dawg.*
+          name: islenska-data-wheel
+          path: dist-data/*.whl
           retention-days: 1
 
   # Second job: Build wheels on each platform (depends on prepare_data)
@@ -80,7 +44,31 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, macos-14, ubuntu-latest]
+        # ubuntu-24.04-arm builds the Linux aarch64 wheels
+        os: [windows-latest, macos-14, ubuntu-latest, ubuntu-24.04-arm]
+
+    env:
+      # Build abi3 wheel for CPython 3.10+ (one wheel for all versions)
+      # and version-specific wheels for PyPy (which doesn't support abi3)
+      CIBW_SKIP: "*musllinux*"
+      CIBW_ENABLE: pypy
+      CIBW_PROJECT_REQUIRES_PYTHON: ">=3.10"
+      CIBW_BEFORE_BUILD_MACOS: python3 -m pip install --upgrade setuptools wheel cffi
+      CIBW_ARCHS_MACOS: "x86_64 arm64"
+      # libbin is C++17, which needs the libc++ of macOS 10.13; the
+      # extension is built with that target (bin_build.py) and the
+      # wheel repair step (delocate) must expect the same one
+      MACOSX_DEPLOYMENT_TARGET: "10.13"
+      CIBW_ARCHS_WINDOWS: "AMD64"
+      CIBW_BEFORE_BUILD_WINDOWS: python -m pip install "setuptools<72"
+      # x86_64 on ubuntu-latest, aarch64 on ubuntu-24.04-arm
+      CIBW_ARCHS_LINUX: "native"
+      CIBW_BUILD_FRONTEND: "build"
+      # Smoke-test every wheel before it is published: install the
+      # islenska-data wheel of this run first (it need not be on PyPI yet),
+      # then the wheel, and look up a stored word and a restored compound
+      CIBW_BEFORE_TEST: python -m pip install --no-index --find-links {project}/dist-data islenska-data
+      CIBW_TEST_COMMAND: python {project}/test/wheel_smoke.py
 
     steps:
       - uses: actions/checkout@v4
@@ -91,54 +79,53 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Download compressed data artifacts
+      - name: Download the islenska-data wheel
         uses: actions/download-artifact@v4
         with:
-          name: compressed-bin-data
-          path: src/islenska/resources/
-
-      - name: Verify downloaded artifacts
-        run: |
-          echo "Downloaded compressed data files:"
-          ls -lh src/islenska/resources/*.bin src/islenska/resources/*.dawg.* 2>/dev/null || true
-        shell: bash
+          name: islenska-data-wheel
+          path: dist-data/
 
       - name: Install cibuildwheel
-        run: |
-          python -m pip install --upgrade wheel pip cibuildwheel
-          python -m pip install "setuptools<72"
+        run: python -m pip install --upgrade pipx
 
-      - name: Build wheels
-        run: python -m cibuildwheel --output-dir wheelhouse
-        # Options (https://cibuildwheel.readthedocs.io/en/stable/options/)
+      # cibuildwheel 4.3 builds PyPy 3.11 as PyPy 8.0 (ABI pp80) and adds
+      # PyPy 3.12 (pp80 too)
+      - name: Build wheels (CPython abi3, PyPy 8.0)
+        run: pipx run --spec cibuildwheel==4.3.1 cibuildwheel --output-dir wheelhouse
         env:
-          # Build abi3 wheel for CPython 3.10+ (one wheel for all versions)
-          # Build version-specific wheels for PyPy (which doesn't support abi3)
-          # Using PyPy 3.11 (current maintained version)
-          CIBW_BUILD: cp310-* pp311-*
-          CIBW_SKIP: "*musllinux*"
-          CIBW_ENABLE: pypy
-          CIBW_PROJECT_REQUIRES_PYTHON: ">=3.10"
-          CIBW_BEFORE_BUILD_MACOS: python3 -m pip install --upgrade setuptools wheel cffi
-          CIBW_ARCHS_MACOS: "x86_64 arm64"
-          # libbin is C++17, which needs the libc++ of macOS 10.13; the
-          # extension is built with that target (bin_build.py) and the
-          # wheel repair step (delocate) must expect the same one
-          MACOSX_DEPLOYMENT_TARGET: "10.13"
-          CIBW_ARCHS_WINDOWS: "AMD64"
-          CIBW_BEFORE_BUILD_WINDOWS: python -m pip install "setuptools<72"
-          CIBW_ARCHS_LINUX: "x86_64"
-          CIBW_BUILD_FRONTEND: "build"
+          CIBW_BUILD: cp310-* pp311-* pp312-*
+
+      # cibuildwheel 4.2 builds PyPy 3.11 as PyPy 7.3 (ABI pp73). pip picks
+      # the newest islenska even if it has to build it from source, so
+      # keep these wheels for the users of PyPy 7.3.
+      - name: Build wheels (PyPy 7.3)
+        run: pipx run --spec cibuildwheel==4.2.1 cibuildwheel --output-dir wheelhouse
+        env:
+          CIBW_BUILD: pp311-*
+
+      - name: Check that no wheel contains data files
+        shell: bash
+        run: |
+          ls -lh wheelhouse
+          python - <<'PY'
+          import glob, sys, zipfile
+          bad = [
+              (w, n) for w in glob.glob("wheelhouse/*.whl")
+              for n in zipfile.ZipFile(w).namelist() if n.endswith(".bin")
+          ]
+          for w, n in bad:
+              print(f"{w} contains {n}")
+          sys.exit(1 if bad else 0)
+          PY
 
       - uses: actions/upload-artifact@v4
         with:
           name: dist-${{ matrix.os }}
           path: ./wheelhouse/*.whl
 
-  # Third job: Build source distribution
+  # Third job: Build source distribution (without data files, see MANIFEST.in)
   build_sdist:
     name: Build source distribution
-    needs: prepare_data
     runs-on: ubuntu-latest
 
     steps:
@@ -150,16 +137,13 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Download compressed data artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: compressed-bin-data
-          path: src/islenska/resources/
-
       - name: Build sdist
         run: |
           python -m pip install build
           python -m build --sdist
+          if tar tzf dist/*.tar.gz | grep -q '\.bin$'; then
+            echo "The sdist contains data files"; exit 1
+          fi
 
       - uses: actions/upload-artifact@v4
         with:

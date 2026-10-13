@@ -116,10 +116,11 @@ wheels = [
 
 [[package]]
 name = "islenska"
-version = "1.5.0"
+version = "2.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "cffi" },
+    { name = "islenska-data" },
     { name = "typing-extensions" },
 ]
 
@@ -132,11 +133,17 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "cffi", specifier = ">=1.17.1" },
+    { name = "islenska-data", editable = "islenska-data" },
     { name = "pyright", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "typing-extensions" },
 ]
 provides-extras = ["dev"]
+
+[[package]]
+name = "islenska-data"
+version = "5.0.0"
+source = { editable = "islenska-data" }
 
 [[package]]
 name = "nodeenv"

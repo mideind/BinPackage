@@ -5,7 +5,7 @@
 
     BÍN packing/compression program
 
-    Copyright © 2025 Miðeind ehf.
+    Copyright © 2026 Miðeind ehf.
     Original author: Vilhjálmur Þorsteinsson
 
     This software is licensed under the MIT License:
@@ -1401,6 +1401,11 @@ def main() -> int:
 
     keep: Set[int] = compact.read_keep_list(args.keep) if args.keep else set()
     dropped = compact.select(b, procs=args.procs, keep=keep)
+    if not dropped:
+        # BÍN has hundreds of thousands of regenerable compounds: none
+        # means that the compounder did not work
+        print("Error: no compounds were selected for dropping", file=sys.stderr)
+        return 1
     if args.report:
         compact.write_report(b, dropped, args.report)
     b.apply_dropped(dropped)

@@ -259,6 +259,11 @@ def select(
     Lemmas in the keep set are never dropped."""
     global _b, _lemma_ofl, _by_lemma, _owners, _form_index, _paradigms
     global _min_greynir, _dropped, _dropped_by_lemma
+    # Load the compounder's DAWGs here, so that a missing one fails the
+    # build instead of being taken by _candidates() for a word without splits
+    Wordbase.dawg()
+    Wordbase.dawg_prefixes()
+    Wordbase.dawg_suffixes()
     _b = b
     keep = keep or set()
     t0 = time.time()

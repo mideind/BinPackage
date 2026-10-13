@@ -3,7 +3,7 @@
 
     find_bad_suffixes.py
 
-    Copyright © 2025 Miðeind ehf.
+    Copyright © 2026 Miðeind ehf.
 
     This software is licensed under the MIT License.
 

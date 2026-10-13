@@ -1062,7 +1062,7 @@ input word.
 # Implementation
 
 BinPackage is written in [Python 3](https://www.python.org/)
-and requires Python 3.10 or later. It runs on CPython 3.10+ and [PyPy](http://pypy.org/) 3.11.
+and requires Python 3.10 or later. It runs on CPython 3.10+ and [PyPy](http://pypy.org/) 3.11 and 3.12.
 
 The Python code calls a C++ library, `libbin` (in the `libbin/` directory of
 the repository), for lookup of word forms in the compressed binary structure
@@ -1083,7 +1083,7 @@ as `mypy` and `Pylance` / `Pyright`.
 
 # Installation and setup
 
-You must have Python >= 3.10 installed on your machine (CPython 3.10+ or PyPy 3.11).
+You must have Python >= 3.10 installed on your machine (CPython 3.10+, or PyPy 3.11 or 3.12).
 If you are using a Python virtual environment (`virtualenv`), activate it
 first (substituting your environment name for `venv` below):
 
@@ -1104,6 +1104,10 @@ where the package is called `islenska`:
 pip install islenska
 ```
 
+This also installs `islenska-data`, a separate package that holds the
+compressed BÍN data (about 30 MB). It is released only when the data
+change, so upgrading `islenska` does not download the data again.
+
 Now, you are ready to `import islenska` or `from islenska import Bin`
 in your Python code.
 
@@ -1116,8 +1120,9 @@ do as follows:
 # Clone the GitHub repository
 git clone https://github.com/mideind/BinPackage
 cd BinPackage
-# Install the package in editable mode
-pip install -e .  # Note the dot!
+# Install the package in editable mode, with the dev tools
+# (the islenska-data subproject in islenska-data/ comes along, empty)
+uv sync --extra dev
 cd src/islenska/resources
 # Fetch the newest BÍN data (KRISTINsnid.csv.zip)
 # (We remind you that the BÍN data is under the CC BY-SA 4.0 license; see below.)
@@ -1126,20 +1131,24 @@ wget -O KRISTINsnid.csv.zip https://bin.arnastofnun.is/django/api/nidurhal/?file
 unzip -q KRISTINsnid.csv.zip
 rm KRISTINsnid.csv.*
 cd ../../..
-# Run the compressor to generate src/islenska/resources/compressed.bin
-python tools/binpack.py
 # Run the DAWG builder for the prefix and suffix files
-python tools/dawgbuilder.py
+# (first: the compressor needs the DAWGs)
+uv run python tools/dawgbuilder.py
+# Run the compressor to generate src/islenska/resources/compressed.bin
+uv run python tools/binpack.py
 # Now you're ready to go
 ```
 
 This will clone the GitHub repository into the BinPackage directory
-and install the package into your Python environment from the source files.
+and install the package into a virtual environment from the source files,
+using [uv](https://docs.astral.sh/uv/).
 Then, the newest BÍN data is fetched via `wget`
-from *Stofnun Árna Magnússonar* and compressed into a binary file.
-Finally, the Directed Acyclic Word Graph builder is run to
-create DAWGs for word prefixes and suffixes, used by the compound word
-algorithm.
+from *Stofnun Árna Magnússonar*, the Directed Acyclic Word Graph builder is
+run to create DAWGs for word prefixes and suffixes, used by the compound
+word algorithm, and the BÍN data is compressed into a binary file.
+In a source checkout, the data files built into `src/islenska/resources`
+are used; an installed `islenska` reads them from the `islenska-data`
+package.
 
 ## File details
 
@@ -1189,6 +1198,12 @@ so lookups of such words are somewhat slower (tens of microseconds per
 uncached lookup). Earlier versions of `islenska` (up to 1.5) shipped a file
 with every word form.
 
+Since version 2.0, the data files (`compressed.bin` and the three DAWGs) are
+published as a package of their own, `islenska-data`, on which `islenska`
+depends. Its major and minor version follow the data format of
+`compressed.bin` (5.0 for the current format), and each version of
+`islenska` accepts only `islenska-data` releases in the format it reads.
+
 # Copyright and licensing
 
 BinPackage embeds the vocabulary of the
@@ -1221,7 +1236,7 @@ as described in the documentation above.
 
 ----
 
-BinPackage is Copyright © 2025 [Miðeind ehf.](https://mideind.is)
+BinPackage is Copyright © 2026 [Miðeind ehf.](https://mideind.is)
 The original author of this software is *Vilhjálmur Þorsteinsson*.
 
 <img src="img/MideindLogoVert400.png" alt="Miðeind ehf."

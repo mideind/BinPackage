@@ -3,41 +3,40 @@
 Guidance for Claude Code in this repository. `AGENTS.md` holds the full project
 overview and architecture notes; the day-to-day essentials are below.
 
-## Status (2026-10-02): where to pick up
+## Status (2026-10-13): where to pick up
 
-Paused mid-way through the 1.6.0 packaging work. Details in "Roadmap" below.
+The 1.6.0 plan became **islenska 2.0.0** (major: the data split and the new
+result order). Details in "Roadmap" below.
 
 - **Released:** islenska 1.5.0 on PyPI (2026-10-02): deterministic order of
   case lookups (PR #28), Python 3.10+ only (PR #29).
-- **Open PRs, CI green, merge in this order** (each builds on the previous,
-  so its diff includes the earlier ones until they are merged):
-  1. #30 `canonical-entry-order`: lookups return a form's readings by
-     bin_id, then paradigm order (`mark_order.csv`), then source order.
-     Changes some first-match results relative to 1.5.0 (nouns cast to the
-     singular more often): mention in the 1.6.0 release notes.
-  2. #31 `compact-only`: `compressed.bin` is always a compact build; the
-     full build and `tools/parity.py` are gone; `wheels.yml` builds the
-     DAWGs before `compressed.bin`.
-  3. #32 `data-package`: tentative `islenska-data` package (data files
-     only), `basics.data_dir()` (prefers it when installed), CI job
-     `data-package`, release workflow `data-release.yml` (dry run passed;
-     `wheels.yml` ignores `data-*` tags), `RELEASING.md` section. Nothing
-     published; islenska still embeds the data.
+- **Merged for 2.0.0:** #30 canonical order of a form's readings (by bin_id,
+  then paradigm order from `mark_order.csv`, then source order; changes some
+  first-match results relative to 1.5.0, nouns cast to the singular more
+  often: say so in the release notes), #31 compact-only `compressed.bin` (no
+  full build or `tools/parity.py`), #32 the `islenska-data` package and
+  `data-release.yml`, #34 zero-copy memory map (`bincompress.py` takes
+  `memoryview`s of the map; ~90 MB less private memory per process).
+- **The 2.0.0 PR** (branch `release-2.0`): islenska depends on
+  `islenska-data ~= 5.0.0` (`~= 5.0` would also accept a 5.1 data format,
+  which the exact format check rejects); wheels and sdist carry no data;
+  `data_dir()` prefers islenska's own `resources/` when it holds
+  `compressed.bin` (a source checkout), else islenska-data, else
+  `RuntimeError`; `[tool.uv.sources]` points the dev environment at the
+  `islenska-data/` subproject. `wheels.yml` builds PyPy 8.0 (`pp80`) and
+  PyPy 3.12 wheels with cibuildwheel 4.3.1, keeps `pp73` with 4.2.1, adds
+  Linux aarch64 (`ubuntu-24.04-arm`), and smoke-tests every wheel
+  (`test/wheel_smoke.py`) with the run's own islenska-data wheel.
 - **PyPI:** a pending Trusted Publisher exists for `islenska-data`
   (`mideind/BinPackage`, workflow `data-release.yml`, environment `pypi`).
   It does not reserve the name. The data package's licensing text is
   accepted.
-- **Next, for 1.6.0:**
-  1. islenska depends on `islenska-data ~= 5.0` and stops shipping the data
-     files (`MANIFEST.in`, `wheels.yml`); keep the `resources/` fallback.
-  2. Release islenska-data (tag `data-5.0.0`, creates the PyPI project),
-     then islenska 1.6.0.
-  3. PyPy wheels for `pp80` (PyPy 8.0) and `pp312`, keeping `pp73`: wait
-     for a cibuildwheel release after 4.2.1 (still the latest on
-     2026-10-02); Linux aarch64 wheels.
-  4. GreynirKbd: move its BinPackage submodule past 1.4.0 and rebuild its
-     data; its notes still refer to `binpack.py --compact` (now a no-op)
-     and to a full-vs-compact parity check (no full build any more).
+- **Release order:** tag `data-5.0.0` (publishes islenska-data, creates the
+  PyPI project), then `2.0.0` (islenska). A `2.0.0-test1` tag dry-runs the
+  wheel build without publishing.
+- **After 2.0.0:** GreynirKbd: move its BinPackage submodule past 1.4.0 and
+  rebuild its data; its notes still refer to `binpack.py --compact` (now a
+  no-op) and to a full-vs-compact parity check (no full build any more).
 
 ## Tooling
 
@@ -78,9 +77,10 @@ the selection rules (`tools/compact.py`) or the restoration code
 
 The data files can also come from the separate package `islenska-data`
 (`islenska-data/` in this repo; see "Data package" in `AGENTS.md`):
-`basics.data_dir()` prefers it when installed with a matching data format.
+islenska depends on it since 2.0.0; `basics.data_dir()` uses it unless
+`src/islenska/resources/` holds a built `compressed.bin`.
 Stage and build it with `uv run python tools/data_package.py && uv build
---wheel islenska-data -o dist-data`. Not published yet.
+--wheel islenska-data -o dist-data`.
 
 ## Roadmap (recorded 2026-10-02)
 
@@ -93,7 +93,7 @@ Deterministic order of case lookups (PR #28) and Python 3.10+ only, with
 `cp310-abi3` wheels (PR #29). Python 3.9 users stay on 1.4.0. The wheel set is
 unchanged otherwise, so PyPy wheels are still `pp73` only.
 
-### 1.6.0: data package, modern PyPy wheels
+### 2.0.0 (planned as 1.6.0): data package, modern PyPy wheels
 
 Do the data package split first: it is what makes the extra wheels affordable.
 

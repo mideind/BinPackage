@@ -10,53 +10,21 @@ on:
     branches: [ "main" ]
 
 jobs:
+  # Provides the islenska-data wheel (the built BÍN data) for the jobs
+  # below: restored from the cache, or built and cached here, once, when
+  # its inputs have changed (see .github/actions/islenska-data). The jobs
+  # restore it the same way, and build it themselves only if the restore
+  # misses (GitHub's cache is eventually consistent).
   prepare-cache:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Cache KRISTINsnid.csv.zip
-        id: cache-kristin
-        uses: actions/cache@v4
-        with:
-          path: src/islenska/resources/KRISTINsnid.csv.zip
-          key: kristin-csv-zip-v1
-      - name: Download KRISTINsnid.csv.zip
-        if: steps.cache-kristin.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p src/islenska/resources
-          wget -q -O src/islenska/resources/KRISTINsnid.csv.zip 'https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip'
-
-      # The built data (compressed.bin, a compact build, and the three
-      # DAWGs) is cached under a hash of everything it depends on: the BÍN
-      # source, the addition and word-list files, the packing tools and
-      # the libbin DAWG code the compactor runs. It is built here, once,
-      # only when that hash has no cache entry yet; the jobs below restore
-      # it, and rebuild themselves only if the restore misses.
-      - name: Restore built BÍN data
-        id: cache-bin-data
-        uses: actions/cache@v4
-        with:
-          path: |
-            src/islenska/resources/compressed.bin
-            src/islenska/resources/ordalisti-all.dawg.bin
-            src/islenska/resources/ordalisti-prefixes.dawg.bin
-            src/islenska/resources/ordalisti-suffixes.dawg.bin
-          key: bin-data-v1-${{ hashFiles('src/islenska/resources/KRISTINsnid.csv.zip', 'src/islenska/resources/*.csv', 'src/islenska/resources/*.txt', 'src/islenska/basics.py', 'src/islenska/dawgdictionary.py', 'src/islenska/config/*.conf', 'tools/binpack.py', 'tools/compact.py', 'tools/dawgbuilder.py', 'libbin/src/*', 'libbin/include/libbin/bin.h') }}
       - name: Set up Python
-        if: steps.cache-bin-data.outputs.cache-hit != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Build the BÍN data
-        if: steps.cache-bin-data.outputs.cache-hit != 'true'
-        run: |
-          python -m pip install uv
-          uv pip install --system --upgrade wheel setuptools cffi
-          uv pip install --system -e .
-          python tools/dawgbuilder.py
-          unzip -q -d src/islenska/resources/ src/islenska/resources/KRISTINsnid.csv.zip
-          python tools/binpack.py
-          ls -l src/islenska/resources/*.bin
+      - name: Provide the islenska-data wheel
+        uses: ./.github/actions/islenska-data
 
   build:
     needs: prepare-cache
@@ -66,8 +34,8 @@ jobs:
         os: [ubuntu-latest]
         # Test across Python versions to verify abi3 wheel compatibility
         # CPython: minimum (3.10), intermediate versions, latest stable
-        # PyPy: only the version we build wheels for (see wheels.yml)
-        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14', 'pypy-3.11']
+        # PyPy: the versions we build wheels for (see wheels.yml)
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14', 'pypy-3.11', 'pypy-3.12']
 
     steps:
     - uses: actions/checkout@v4
@@ -75,24 +43,6 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-
-    - name: Restore cached KRISTINsnid.csv.zip
-      id: cache-kristin
-      uses: actions/cache@v4
-      with:
-        path: src/islenska/resources/KRISTINsnid.csv.zip
-        key: kristin-csv-zip-v1
-
-    # The prepare-cache job warms the cache, but GitHub's cache service is
-    # eventually consistent: on the very first run (cold cache) the entry it
-    # just saved is not always queryable when this restore runs, so the cache
-    # can miss here even though prepare-cache succeeded. Download as a fallback
-    # so a miss is never fatal; this job then saves the cache for later jobs.
-    - name: Download KRISTINsnid.csv.zip
-      if: steps.cache-kristin.outputs.cache-hit != 'true'
-      run: |
-        mkdir -p src/islenska/resources
-        wget -q -O src/islenska/resources/KRISTINsnid.csv.zip 'https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip'
 
     - name: Install BinPackage
       run: |
@@ -112,27 +62,10 @@ jobs:
         # --pythonpath points pyright at the interpreter holding the deps
         if [ "${{ matrix.python-version }}" == "3.10" ]; then pyright --pythonpath "$(which python)"; fi
 
-    - name: Restore built BÍN data
-      id: cache-bin-data
-      uses: actions/cache@v4
+    - name: Provide the BÍN data
+      uses: ./.github/actions/islenska-data
       with:
-        path: |
-          src/islenska/resources/compressed.bin
-          src/islenska/resources/ordalisti-all.dawg.bin
-          src/islenska/resources/ordalisti-prefixes.dawg.bin
-          src/islenska/resources/ordalisti-suffixes.dawg.bin
-        key: bin-data-v1-${{ hashFiles('src/islenska/resources/KRISTINsnid.csv.zip', 'src/islenska/resources/*.csv', 'src/islenska/resources/*.txt', 'src/islenska/basics.py', 'src/islenska/dawgdictionary.py', 'src/islenska/config/*.conf', 'tools/binpack.py', 'tools/compact.py', 'tools/dawgbuilder.py', 'libbin/src/*', 'libbin/include/libbin/bin.h') }}
-
-    - name: Build *.dawg.bin
-      if: steps.cache-bin-data.outputs.cache-hit != 'true'
-      run: |
-        python tools/dawgbuilder.py
-
-    - name: Build compressed.bin
-      if: steps.cache-bin-data.outputs.cache-hit != 'true'
-      run: |
-        unzip -q -d src/islenska/resources/ src/islenska/resources/KRISTINsnid.csv.zip
-        python tools/binpack.py
+        extract: 'true'
 
     - name: Test with pytest
       run: |
@@ -159,45 +92,10 @@ jobs:
       with:
         python-version: '3.13'
 
-    - name: Restore cached KRISTINsnid.csv.zip
-      id: cache-kristin
-      uses: actions/cache@v4
+    - name: Provide the BÍN data
+      uses: ./.github/actions/islenska-data
       with:
-        path: src/islenska/resources/KRISTINsnid.csv.zip
-        key: kristin-csv-zip-v1
-
-    - name: Download KRISTINsnid.csv.zip
-      if: steps.cache-kristin.outputs.cache-hit != 'true'
-      run: |
-        mkdir -p src/islenska/resources
-        wget -q -O src/islenska/resources/KRISTINsnid.csv.zip 'https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip'
-
-    - name: Install BinPackage
-      run: |
-        python -m pip install uv
-        uv pip install --system --upgrade wheel setuptools pytest cffi
-        uv pip install --system -e .
-
-    - name: Restore built BÍN data
-      id: cache-bin-data
-      uses: actions/cache@v4
-      with:
-        path: |
-          src/islenska/resources/compressed.bin
-          src/islenska/resources/ordalisti-all.dawg.bin
-          src/islenska/resources/ordalisti-prefixes.dawg.bin
-          src/islenska/resources/ordalisti-suffixes.dawg.bin
-        key: bin-data-v1-${{ hashFiles('src/islenska/resources/KRISTINsnid.csv.zip', 'src/islenska/resources/*.csv', 'src/islenska/resources/*.txt', 'src/islenska/basics.py', 'src/islenska/dawgdictionary.py', 'src/islenska/config/*.conf', 'tools/binpack.py', 'tools/compact.py', 'tools/dawgbuilder.py', 'libbin/src/*', 'libbin/include/libbin/bin.h') }}
-
-    - name: Build *.dawg.bin
-      if: steps.cache-bin-data.outputs.cache-hit != 'true'
-      run: python tools/dawgbuilder.py
-
-    - name: Build compressed.bin
-      if: steps.cache-bin-data.outputs.cache-hit != 'true'
-      run: |
-        unzip -q -d src/islenska/resources/ src/islenska/resources/KRISTINsnid.csv.zip
-        python tools/binpack.py
+        extract: 'true'
 
     - name: Build and test libbin
       run: |
@@ -215,8 +113,9 @@ jobs:
       if: failure()
 
   # The split into islenska (code) and islenska-data (data files): build an
-  # islenska wheel without the data files and the islenska-data wheel,
-  # install both into a fresh environment, and run the test suite there.
+  # islenska wheel, which has no data files, install it with the
+  # islenska-data wheel into a fresh environment, and run the test suite
+  # there.
   # The islenska-data wheel is kept as an artifact; nothing is published.
   data-package:
     needs: prepare-cache
@@ -228,54 +127,14 @@ jobs:
       with:
         python-version: '3.13'
 
-    - name: Restore cached KRISTINsnid.csv.zip
-      id: cache-kristin
-      uses: actions/cache@v4
-      with:
-        path: src/islenska/resources/KRISTINsnid.csv.zip
-        key: kristin-csv-zip-v1
+    - name: Provide the islenska-data wheel
+      uses: ./.github/actions/islenska-data
 
-    - name: Download KRISTINsnid.csv.zip
-      if: steps.cache-kristin.outputs.cache-hit != 'true'
-      run: |
-        mkdir -p src/islenska/resources
-        wget -q -O src/islenska/resources/KRISTINsnid.csv.zip 'https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip'
-
-    - name: Install BinPackage
-      run: |
-        python -m pip install uv
-        uv pip install --system --upgrade wheel setuptools pytest cffi
-        uv pip install --system -e .
-
-    - name: Restore built BÍN data
-      id: cache-bin-data
-      uses: actions/cache@v4
-      with:
-        path: |
-          src/islenska/resources/compressed.bin
-          src/islenska/resources/ordalisti-all.dawg.bin
-          src/islenska/resources/ordalisti-prefixes.dawg.bin
-          src/islenska/resources/ordalisti-suffixes.dawg.bin
-        key: bin-data-v1-${{ hashFiles('src/islenska/resources/KRISTINsnid.csv.zip', 'src/islenska/resources/*.csv', 'src/islenska/resources/*.txt', 'src/islenska/basics.py', 'src/islenska/dawgdictionary.py', 'src/islenska/config/*.conf', 'tools/binpack.py', 'tools/compact.py', 'tools/dawgbuilder.py', 'libbin/src/*', 'libbin/include/libbin/bin.h') }}
-
-    - name: Build *.dawg.bin
-      if: steps.cache-bin-data.outputs.cache-hit != 'true'
-      run: python tools/dawgbuilder.py
-
-    - name: Build compressed.bin
-      if: steps.cache-bin-data.outputs.cache-hit != 'true'
-      run: |
-        unzip -q -d src/islenska/resources/ src/islenska/resources/KRISTINsnid.csv.zip
-        python tools/binpack.py
-
-    - name: Build the islenska-data wheel
-      run: |
-        python tools/data_package.py
-        uv build --wheel islenska-data -o dist-data
+    - name: Install uv
+      run: python -m pip install uv
 
     - name: Build an islenska wheel without the data files
       run: |
-        rm -f src/islenska/resources/*.bin src/islenska/*.so
         uv build --wheel -o dist-code
         ls -l dist-data dist-code
         if unzip -l dist-code/*.whl | grep -q '\.bin$'; then

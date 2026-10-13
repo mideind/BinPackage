@@ -42,7 +42,6 @@ jobs:
         with:
           path: |
             src/islenska/resources/compressed.bin
-            src/islenska/resources/compressed-compact.bin
             src/islenska/resources/ordalisti-all.dawg.bin
             src/islenska/resources/ordalisti-prefixes.dawg.bin
             src/islenska/resources/ordalisti-suffixes.dawg.bin
@@ -53,11 +52,12 @@ jobs:
         run: |
           pip3 install -e .
           unzip -q -d src/islenska/resources/ src/islenska/resources/KRISTINsnid.csv.zip
-          echo "Running binpack..."
-          python3 tools/binpack.py
-          python3 tools/binpack.py --compact -o src/islenska/resources/compressed-compact.bin
+          # The DAWGs first: binpack's compound selection (tools/compact.py)
+          # runs the compounder, which needs them
           echo "Running dawgbuilder..."
           python3 tools/dawgbuilder.py
+          echo "Running binpack..."
+          python3 tools/binpack.py
 
       - name: List the data files
         run: ls -lh src/islenska/resources/*.bin src/islenska/resources/*.dawg.* 2>/dev/null || true

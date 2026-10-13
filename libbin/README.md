@@ -21,8 +21,9 @@ consumers such as GreynirKbd.
 
 The library reads the files that BinPackage builds and ships:
 
-- `compressed.bin` (format `Greynir 05.00.00`), built by `tools/binpack.py`,
-  either in full or with `--compact`.
+- `compressed.bin` (format `Greynir 05.00.00`), built by `tools/binpack.py`
+  as a compact build (files without a compact section, in which no lemma is
+  dropped, are read too).
 - `ordalisti-all.dawg.bin`, `ordalisti-prefixes.dawg.bin`,
   `ordalisti-suffixes.dawg.bin`, built by `tools/dawgbuilder.py`.
 

@@ -95,7 +95,8 @@
         strings ('hluti' field in BÍN). Domains are strings such as
         'föð', 'móð', 'örn', etc.
 
-        compact section (compact builds only, see --compact and tools/compact.py):
+        compact section (see tools/compact.py; libbin also reads files
+        without one, in which no lemma is dropped):
         the bin_ids of the lemmas whose word forms were left out of the
         mapping and forms sections because the compounder regenerates them
         exactly, sorted by lemma string. Such a lemma's record in the lemmas
@@ -1374,38 +1375,36 @@ def main() -> int:
         default=os.path.join(_path, "resources", BIN_COMPRESSED_FILE),
         help="output file (default: src/islenska/resources/compressed.bin)",
     )
-    parser.add_argument(
-        "--compact", action="store_true",
-        help="build a compact file that leaves out the word forms of "
-             "compounds that the compounder regenerates exactly (see tools/compact.py)",
-    )
+    # The file is always compact: it leaves out the word forms of compounds
+    # that the compounder regenerates exactly (see tools/compact.py).
+    # --compact is accepted, and ignored, for older build instructions.
+    parser.add_argument("--compact", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument(
         "--keep", metavar="FILE",
-        help="with --compact: file of bin_ids (one per line) that must never be dropped",
+        help="file of bin_ids (one per line) whose lemmas must never be dropped",
     )
     parser.add_argument(
         "--report", metavar="FILE",
-        help="with --compact: write a tab-separated listing of the dropped lemmas",
+        help="write a tab-separated listing of the dropped lemmas",
     )
     parser.add_argument(
         "--procs", type=int, default=max(1, min(8, os.cpu_count() or 1)),
-        help="with --compact: number of worker processes for the selection",
+        help="number of worker processes for the selection of dropped lemmas",
     )
     args = parser.parse_args()
     print("Welcome to the BinPackage compressed vocabulary file generator")
     b = BinCompressor()
     b.read([os.path.join(_path, "resources", fname) for fname in SOURCE_FILES])
     b.print_stats()
-    if args.compact:
-        sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
-        import compact  # type: ignore[import-not-found]
+    sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+    import compact  # type: ignore[import-not-found]
 
-        keep: Set[int] = compact.read_keep_list(args.keep) if args.keep else set()
-        dropped = compact.select(b, procs=args.procs, keep=keep)
-        if args.report:
-            compact.write_report(b, dropped, args.report)
-        b.apply_dropped(dropped)
-        b.print_stats()
+    keep: Set[int] = compact.read_keep_list(args.keep) if args.keep else set()
+    dropped = compact.select(b, procs=args.procs, keep=keep)
+    if args.report:
+        compact.write_report(b, dropped, args.report)
+    b.apply_dropped(dropped)
+    b.print_stats()
     b.write_binary(args.output)
     print("Done; the compressed vocabulary was written to {0}".format(args.output))
     return 0

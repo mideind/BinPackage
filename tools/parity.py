@@ -30,7 +30,8 @@
         SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
     This program checks that a compact compressed.bin (tools/binpack.py
-    --compact) answers every query exactly as the full file does. It is
+    --compact) answers every query exactly as the full file does, results
+    in the same (canonical) order included. It is
     the independent check of the compactor's model of the runtime
     (tools/compact.py): the compactor decides what to drop, this program
     proves that nothing was lost.
@@ -149,8 +150,8 @@ def _check_forms(forms: List[str]) -> List[Diff]:
     for form in forms:
         fa = _full.lookup_ksnid(form)
         ids = [k.bin_id for k in fa]
-        a = sorted(ksnid_key(k) for k in fa)
-        b = sorted(ksnid_key(k) for k in _compact.lookup_ksnid(form))
+        a = [ksnid_key(k) for k in fa]
+        b = [ksnid_key(k) for k in _compact.lookup_ksnid(form)]
         if a != b:
             diffs.append((form, "lookup_ksnid", repr(a), repr(b), ids))
         ca = _full.contains(form)
@@ -160,9 +161,9 @@ def _check_forms(forms: List[str]) -> List[Diff]:
         for w in (form, form.capitalize()):
             wa, ma = _full_bin.lookup(w)
             wb, mb = _compact_bin.lookup(w)
-            if wa != wb or sorted(ma) != sorted(mb):
+            if wa != wb or ma != mb:
                 diffs.append(
-                    (w, "Bin.lookup", repr((wa, sorted(ma))), repr((wb, sorted(mb))),
+                    (w, "Bin.lookup", repr((wa, ma)), repr((wb, mb)),
                      ids + [m.bin_id for m in ma])
                 )
     return diffs
@@ -172,12 +173,12 @@ def _check_ids(ids: List[int]) -> List[Diff]:
     assert _full is not None and _compact is not None
     diffs: List[Diff] = []
     for bin_id in ids:
-        a = sorted(ksnid_key(k) for k in _full.lookup_id(bin_id))
-        b = sorted(ksnid_key(k) for k in _compact.lookup_id(bin_id))
+        a = [ksnid_key(k) for k in _full.lookup_id(bin_id)]
+        b = [ksnid_key(k) for k in _compact.lookup_id(bin_id)]
         if a != b:
             diffs.append((str(bin_id), "lookup_id", repr(a), repr(b), [bin_id]))
-        fa = sorted(_full.lemma_forms(bin_id))
-        fb = sorted(_compact.lemma_forms(bin_id))
+        fa = _full.lemma_forms(bin_id)
+        fb = _compact.lemma_forms(bin_id)
         if fa != fb:
             diffs.append((str(bin_id), "lemma_forms", repr(fa), repr(fb), [bin_id]))
     return diffs

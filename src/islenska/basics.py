@@ -83,18 +83,20 @@ DATA_FILES = (
 # The data files come from the separate data package (distribution
 # 'islenska-data', a dependency of islenska), unless islenska's own resources
 # directory holds them, as it does in a source checkout where they were built
+# (or are being built: tools/binpack.py needs the DAWGs before compressed.bin
+# exists)
 DATA_PACKAGE = "islenska_data"
 _RESOURCES_DIR = Path(__file__).parent.resolve() / "resources"
 
 
 def resolve_data_dir(own_dir: Path, data_package: Optional[Any]) -> Path:
     """Choose the directory of the data files: own_dir (islenska's own
-    resources directory) if it holds compressed.bin, as in a source
-    checkout with freshly built data; otherwise that of the data package
-    (an imported islenska_data module, or None if it is not installed).
+    resources directory) if it holds any of them, as in a source checkout
+    with freshly built data; otherwise that of the data package (an
+    imported islenska_data module, or None if it is not installed).
     Raises RuntimeError if the data package is missing, has another data
     format than this version of islenska reads, or holds no data files."""
-    if (own_dir / BIN_COMPRESSED_FILE).is_file():
+    if any((own_dir / name).is_file() for name in DATA_FILES):
         return own_dir
     expected = BIN_COMPRESSOR_VERSION.decode("ascii")
     if data_package is None:

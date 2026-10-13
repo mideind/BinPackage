@@ -590,8 +590,8 @@ This function returns grammatical variants (particular inflectional forms)
 of a given word. For instance,
 it can return a noun in a different case, plural instead of singular,
 and/or with or without an attached definite article (*greinir*). It can return
-adjectives in different degrees (*frumstig*, *miðstig*, *efsta stig*), verbs
-in different persons or moods, etc.
+adjectives and adverbs in different degrees (*frumstig*, *miðstig*, *efsta stig*),
+verbs in different persons or moods, etc.
 
 Here is a simple example, converting the masculine noun *heftaranum* from dative
 to nominative case (`NF`):
@@ -683,6 +683,16 @@ Note the explicit `"NF"` and `"ET"` tags in the `ESB` example: without
 them, `lookup_variants()` may return e.g. an accusative or plural form
 first, since the input *frábær* is itself ambiguous between several
 cases and numbers. Adding the case/number tags pins the result.
+
+Adverbs have degrees too, tagged `FST` (*frumstig*), `MST` (*miðstig*)
+and `EST` (*efsta stig*):
+
+```python
+>>> b.lookup_variants("vel", "ao", "MST")[0].bmynd
+'betur'
+>>> b.lookup_variants("vel", "ao", "EST")[0].bmynd
+'best'
+```
 
 Finally, for some cool Python code for converting any adjective to
 the superlative degree (*efsta stig*):

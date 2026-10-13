@@ -2,6 +2,14 @@
 
 This file provides guidance to AI coding agents when working with code in this repository.
 
+## Status (2026-10-02)
+
+Work on islenska 1.6.0 is paused with three open PRs (#30 canonical order of
+lookup results, #31 compact-only `compressed.bin`, #32 the tentative
+`islenska-data` package and its release workflow), to be merged in that
+order. See "Status" and "Roadmap" in `CLAUDE.md` for what is done and what
+comes next.
+
 ## Project Overview
 
 BinPackage is a Python package that encapsulates the Database of Icelandic Morphology (BÍN)

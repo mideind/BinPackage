@@ -34,6 +34,7 @@
 """
 
 from typing import (
+    Any,
     Iterable,
     Iterator,
     List,
@@ -71,6 +72,62 @@ BIN_COMPRESSED_FILE = "compressed.bin"
 # Environment variable that overrides the location of the compressed file,
 # e.g. to point at a file built elsewhere with tools/binpack.py
 BIN_FILE_ENV = "ISLENSKA_BIN_FILE"
+
+# The data files: compressed.bin and the DAWGs of the compound word algorithm
+DATA_FILES = (
+    BIN_COMPRESSED_FILE,
+    "ordalisti-all.dawg.bin",
+    "ordalisti-prefixes.dawg.bin",
+    "ordalisti-suffixes.dawg.bin",
+)
+# The separate data package (distribution 'islenska-data'). When it is
+# installed, holds the data files and has a matching data format, the data
+# files are taken from it; otherwise from islenska's own resources directory.
+DATA_PACKAGE = "islenska_data"
+_RESOURCES_DIR = Path(__file__).parent.resolve() / "resources"
+
+
+def resolve_data_dir(own_dir: Path, data_package: Optional[Any]) -> Path:
+    """Choose the directory of the data files: that of the data package
+    (an imported islenska_data module, or None if it is not installed) if
+    it holds compressed.bin in the data format that this version of
+    islenska reads, otherwise own_dir. Raises RuntimeError if the data
+    package has the wrong format and own_dir has no data either."""
+    if data_package is not None:
+        fmt = getattr(data_package, "FORMAT", None)
+        pkg_dir = Path(data_package.data_dir())
+        if fmt == BIN_COMPRESSOR_VERSION.decode("ascii"):
+            if (pkg_dir / BIN_COMPRESSED_FILE).is_file():
+                return pkg_dir
+        elif not (own_dir / BIN_COMPRESSED_FILE).is_file():
+            raise RuntimeError(
+                f"The installed islenska-data package has data format {fmt!r}, "
+                f"but this version of islenska reads "
+                f"{BIN_COMPRESSOR_VERSION.decode('ascii')!r}: "
+                "install a matching version of islenska-data"
+            )
+    return own_dir
+
+
+_data_dir: Optional[Path] = None
+
+
+def data_dir() -> Path:
+    """Return the directory that the data files are read from
+    (see resolve_data_dir())"""
+    global _data_dir
+    if _data_dir is None:
+        try:
+            import islenska_data  # type: ignore[import-not-found]
+        except ImportError:
+            islenska_data = None
+        _data_dir = resolve_data_dir(_RESOURCES_DIR, islenska_data)
+    return _data_dir
+
+
+def data_file(name: str) -> str:
+    """Return the path of a data file (one of DATA_FILES)"""
+    return str(data_dir() / name)
 
 # Flag bits in the first 32-bit word of a lemma record
 # (see tools/binpack.py, BinCompressor.write_binary())

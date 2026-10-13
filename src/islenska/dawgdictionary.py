@@ -40,12 +40,11 @@
 """
 
 from typing import Callable, Iterator, List, Optional, Set, IO, Any, cast
-import os
 import re
 import threading
 import mmap
 
-import importlib.resources as importlib_resources
+from .basics import data_file
 
 # CFFI bindings to the C++ implementation (libbin)
 from ._bin import lib as lib_unknown, ffi as ffi_unknown  # type: ignore
@@ -55,8 +54,6 @@ from ._bin import lib as lib_unknown, ffi as ffi_unknown  # type: ignore
 bin_cffi = cast(Any, lib_unknown)
 ffi = cast(Any, ffi_unknown)
 
-
-_PATH = os.path.dirname(__file__) or "."
 
 # The Unicode SOFT HYPHEN (U+00AD): an invisible character that marks a
 # permitted line-break position, rendered as a hyphen only if the break is
@@ -158,16 +155,8 @@ class Wordbase:
 
     @staticmethod
     def _load_resource(resource: str) -> Dawg:
-        """Load a Dawg from a file resource."""
-        if __package__:
-            ref = importlib_resources.files("islenska") / "resources" / f"{resource}.dawg.bin"
-            with importlib_resources.as_file(ref) as path:
-                pname = str(path)
-        else:
-            pname = os.path.abspath(
-                os.path.join(_PATH, "resources", resource + ".dawg.bin")
-            )
-        return Dawg(pname)
+        """Load a Dawg from a data file (see basics.data_dir())"""
+        return Dawg(data_file(f"{resource}.dawg.bin"))
 
     @classmethod
     def dawg(cls) -> Dawg:

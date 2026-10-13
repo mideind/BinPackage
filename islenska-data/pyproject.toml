@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "islenska-data"
+# major.minor follow the data format of compressed.bin ('Greynir 05.00.00');
+# the patch number goes up with each release of new BÍN data. islenska
+# requires a matching major.minor (islenska-data ~= 5.0).
+version = "5.0.0"
+description = "The vocabulary data of the islenska package: the Database of Icelandic Morphology (BÍN), compressed"
+authors = [{ name = "Miðeind ehf.", email = "mideind@mideind.is" }]
+maintainers = [{ name = "Miðeind ehf.", email = "mideind@mideind.is" }]
+readme = { file = "README.md", content-type = "text/markdown" }
+license = { text = "CC BY-SA 4.0 (the BÍN data); MIT (the package code)" }
+keywords = ["nlp", "icelandic", "language", "vocabulary", "dictionary", "data"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: Icelandic",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Text Processing :: Linguistic",
+]
+requires-python = ">=3.10"
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/mideind/BinPackage"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+islenska_data = ["*.bin", "py.typed"]

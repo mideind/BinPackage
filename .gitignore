@@ -103,3 +103,8 @@ $RECYCLE.BIN/
 *.msp
 
 
+
+# Data files staged into the islenska-data package (tools/data_package.py),
+# and its built wheels
+islenska-data/src/islenska_data/*.bin
+dist-data/

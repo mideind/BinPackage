@@ -80,7 +80,6 @@ import os
 import struct
 import functools
 import mmap
-import importlib.resources as importlib_resources
 
 # Import the CFFI wrapper for the bin.cpp C++ module (see also build_bin.py)
 # pylint: disable=no-name-in-module
@@ -100,6 +99,7 @@ from .basics import (
     BIN_COMPRESSOR_VERSION,
     BIN_COMPRESSED_FILE,
     BIN_FILE_ENV,
+    data_file,
     UINT32,
     SUBCAT_BITS,
 )
@@ -115,20 +115,16 @@ class BinCompressedPure:
     Note: Do not instantiate this class directly. Use BinCompressed instead.
     """
 
-    # Note: the resource path below should NOT use os.path.join()
-    ref = importlib_resources.files("islenska") / "resources" / BIN_COMPRESSED_FILE
-    with importlib_resources.as_file(ref) as path:
-        _FNAME = str(path)
-
     def __init__(self, fname: Optional[str] = None) -> None:
         """We use a memory map, provided by the mmap module, to
         directly map the compressed file into memory without
         having to read it into a byte buffer. This also allows
         the same memory map to be shared between processes.
-        The file is the one packaged with islenska unless a path
-        is given here or in the ISLENSKA_BIN_FILE environment variable."""
+        The file is the one in the islenska-data package, if installed, or
+        else the one packaged with islenska (see basics.data_dir()), unless
+        a path is given here or in the ISLENSKA_BIN_FILE environment variable."""
         if fname is None:
-            fname = os.environ.get(BIN_FILE_ENV) or self._FNAME
+            fname = os.environ.get(BIN_FILE_ENV) or data_file(BIN_COMPRESSED_FILE)
         self._fname = fname
         with open(fname, "rb") as stream:
             self._b = mmap.mmap(stream.fileno(), 0, access=mmap.ACCESS_READ)

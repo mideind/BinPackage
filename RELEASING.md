@@ -183,6 +183,43 @@ Check the GitHub Actions logs for errors. Common issues:
 3. Monitor PyPI download stats
 4. Watch for user-reported issues
 
+## Releasing the data package (islenska-data)
+
+> **Not in use yet.** As of 2026-10-02, islenska still ships its own data
+> files and does not depend on islenska-data, and islenska-data has never
+> been uploaded. Its first upload creates the project on PyPI, so do it only
+> as part of the switch described in the roadmap in `CLAUDE.md`.
+
+`islenska-data` (in `islenska-data/`) holds the data files: `compressed.bin`
+and the three DAWGs. It is released only when the data change, from its
+own workflow, `.github/workflows/data-release.yml`, as a single
+`py3-none-any` wheel (no sdist).
+
+1. Bump `version` in `islenska-data/pyproject.toml`. The major and minor
+   numbers follow the data format (`Greynir 05.00.00` is 5.0); bump the
+   patch number for new BÍN data in the same format. A new data format
+   needs a matching islenska release and a new major or minor version here.
+2. Commit, then tag and push `data-X.Y.Z` (the tag must match the version,
+   or the workflow stops):
+
+   ```bash
+   git tag -a data-5.0.1 -m "islenska-data 5.0.1"
+   git push origin data-5.0.1
+   ```
+
+3. The workflow builds the data (or restores it from the cache), stages it
+   with `tools/data_package.py`, builds the wheel, runs the test suite with
+   an islenska wheel that has no data files of its own, and publishes the
+   wheel through the `pypi` environment. PyPI's Trusted Publisher for
+   islenska-data names `data-release.yml` and `pypi`; keep both.
+
+`data-*` tags do not trigger `wheels.yml`. For a dry run, push a tag that
+contains `test` (`data-5.0.1-test1`) or start the workflow by hand from the
+Actions tab: both build and test without publishing.
+
+When islenska depends on islenska-data, release islenska-data first, so that
+the islenska release can be installed as soon as it is published.
+
 ## Version Numbering
 
 Follow semantic versioning (semver):

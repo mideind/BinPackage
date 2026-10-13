@@ -1,0 +1,135 @@
+name: data-release
+
+# Builds the islenska-data package (the data files of islenska) and
+# publishes its wheel to PyPI.
+#
+# - Pushing a tag data-X.Y.Z, where X.Y.Z is the version in
+#   islenska-data/pyproject.toml, builds, tests and publishes.
+# - A tag that contains 'test' (data-5.0.0-test1), or a manual run
+#   (Actions > data-release > Run workflow), builds and tests only.
+#
+# The PyPI Trusted Publisher of islenska-data names this file
+# (data-release.yml) and the environment 'pypi': keep both.
+# Data tags are excluded from wheels.yml, which publishes islenska.
+
+on:
+  push:
+    tags:
+      - 'data-*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build and test the islenska-data wheel
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Check the tag against the package version
+        if: startsWith(github.ref, 'refs/tags/data-') && !contains(github.ref, 'test')
+        run: |
+          version=$(python -c "import tomllib; print(tomllib.load(open('islenska-data/pyproject.toml', 'rb'))['project']['version'])")
+          if [ "data-$version" != "${GITHUB_REF_NAME}" ]; then
+            echo "The tag ${GITHUB_REF_NAME} does not match islenska-data version $version"
+            exit 1
+          fi
+
+      # The BÍN source and the built data are cached with the same keys as
+      # in the other workflows, so a release normally finds both built.
+      - name: Restore cached KRISTINsnid.csv.zip
+        id: cache-kristin
+        uses: actions/cache@v4
+        with:
+          path: src/islenska/resources/KRISTINsnid.csv.zip
+          key: kristin-csv-zip-v1
+
+      - name: Download KRISTINsnid.csv.zip
+        if: steps.cache-kristin.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p src/islenska/resources
+          curl -s -o src/islenska/resources/KRISTINsnid.csv.zip 'https://bin.arnastofnun.is/django/api/nidurhal/?file=KRISTINsnid.csv.zip'
+
+      - name: Install BinPackage
+        run: |
+          python -m pip install uv
+          uv pip install --system --upgrade wheel setuptools cffi
+          uv pip install --system -e .
+
+      - name: Restore built BÍN data
+        id: cache-bin-data
+        uses: actions/cache@v4
+        with:
+          path: |
+            src/islenska/resources/compressed.bin
+            src/islenska/resources/ordalisti-all.dawg.bin
+            src/islenska/resources/ordalisti-prefixes.dawg.bin
+            src/islenska/resources/ordalisti-suffixes.dawg.bin
+          key: bin-data-v1-${{ hashFiles('src/islenska/resources/KRISTINsnid.csv.zip', 'src/islenska/resources/*.csv', 'src/islenska/resources/*.txt', 'src/islenska/basics.py', 'src/islenska/dawgdictionary.py', 'src/islenska/config/*.conf', 'tools/binpack.py', 'tools/compact.py', 'tools/dawgbuilder.py', 'libbin/src/*', 'libbin/include/libbin/bin.h') }}
+
+      - name: Build the BÍN data
+        if: steps.cache-bin-data.outputs.cache-hit != 'true'
+        run: |
+          unzip -q -d src/islenska/resources/ src/islenska/resources/KRISTINsnid.csv.zip
+          # The DAWGs first: binpack's compound selection needs them
+          python tools/dawgbuilder.py
+          python tools/binpack.py
+
+      - name: Build the islenska-data wheel
+        run: |
+          python tools/data_package.py
+          uv build --wheel islenska-data -o dist-data
+
+      # The same check as the data-package job of the tests workflow: an
+      # islenska wheel without data files, with this data wheel, must pass
+      # the test suite
+      - name: Test the wheel with islenska
+        run: |
+          rm -f src/islenska/resources/*.bin src/islenska/*.so
+          uv build --wheel -o dist-code
+          uv venv /tmp/split
+          uv pip install --python /tmp/split/bin/python dist-data/*.whl dist-code/*.whl pytest
+          /tmp/split/bin/python -c "import islenska_data; from islenska.basics import data_dir; assert data_dir() == islenska_data.data_dir(), data_dir()"
+          /tmp/split/bin/python -m pytest -p no:cacheprovider test
+
+      - name: List the wheel
+        run: |
+          ls -l dist-data
+          unzip -l dist-data/*.whl
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: islenska-data-dist
+          path: dist-data/*.whl
+          retention-days: 7
+
+  publish:
+    name: Publish islenska-data to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    # Only for a data tag without 'test', never for a manual run
+    if: startsWith(github.ref, 'refs/tags/data-') && !contains(github.ref, 'test')
+    environment:
+      name: pypi
+      url: https://pypi.org/project/islenska-data/
+    permissions:
+      id-token: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: islenska-data-dist
+          path: dist-data/
+
+      - name: List the distribution
+        run: ls -l dist-data/
+
+      # The wheel only: an sdist would just be a second copy of the data
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist-data/

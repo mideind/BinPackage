@@ -30,7 +30,7 @@ runs:
   steps:
     - name: Restore cached KRISTINsnid.csv.zip
       id: kristin
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v6
       with:
         path: src/islenska/resources/KRISTINsnid.csv.zip
         key: kristin-csv-zip-v1
@@ -44,7 +44,7 @@ runs:
 
     - name: Save KRISTINsnid.csv.zip
       if: steps.kristin.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v6
       continue-on-error: true  # another job may have saved it meanwhile
       with:
         path: src/islenska/resources/KRISTINsnid.csv.zip
@@ -58,7 +58,7 @@ runs:
 
     - name: Restore the cached islenska-data wheel
       id: restore
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v6
       with:
         path: dist-data
         key: ${{ steps.key.outputs.key }}
@@ -86,7 +86,7 @@ runs:
 
     - name: Save the islenska-data wheel
       if: steps.restore.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v6
       continue-on-error: true  # another job may have saved it meanwhile
       with:
         path: dist-data

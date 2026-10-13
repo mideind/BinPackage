@@ -217,8 +217,10 @@ own workflow, `.github/workflows/data-release.yml`, as a single
    git push origin data-5.0.1
    ```
 
-3. The workflow builds the data (or restores it from the cache), stages it
-   with `tools/data_package.py`, builds the wheel, runs the test suite with
+3. The workflow restores the islenska-data wheel from the Actions cache (the
+   one the tests on `main` built from the same inputs; on a miss it builds
+   the data, stages them with `tools/data_package.py` and builds the wheel;
+   see `.github/actions/islenska-data`), runs the test suite with
    an islenska wheel that has no data files of its own, and publishes the
    wheel through the `pypi` environment. PyPI's Trusted Publisher for
    islenska-data names `data-release.yml` and `pypi`; keep both.

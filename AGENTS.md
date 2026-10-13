@@ -164,11 +164,20 @@ or `data_dir()` raises `RuntimeError`; `ISLENSKA_BIN_FILE` still overrides
 environment install the `islenska-data/` subproject (editable, normally
 empty) instead of the PyPI release. Its version is `<format major>.<format minor>.<data
 release>` (5.0.x for `Greynir 05.00.00`). `tools/data_package.py` checks the
-built files and copies them into the package; the CI job `data-package`
-builds an islenska wheel without data and the islenska-data wheel, installs
-both into a fresh environment and runs the test suite. The release workflow
-is `.github/workflows/data-release.yml`, on `data-X.Y.Z` tags (see
-`RELEASING.md`). `wheels.yml` builds an islenska-data wheel in the same run
-and installs it before smoke-testing each islenska wheel
-(`test/wheel_smoke.py`), so islenska wheels can be tested before the data
-release is on PyPI.
+built files and copies them into the package.
+
+In CI the data exist only as the islenska-data wheel, provided by the
+composite action `.github/actions/islenska-data`: it restores the wheel from
+the Actions cache, keyed on a hash of every input of the data (BÍN source,
+word lists, `basics.py`, the packing tools, libbin, the islenska-data
+files), and on a miss builds it (dawgbuilder, binpack, `data_package.py`)
+and saves it, so it is built once per set of inputs and reused by every
+later job and run (tag and PR runs can restore what main saved). With
+`extract: 'true'` it unpacks the data files into `src/islenska/resources`
+for jobs that test the checkout (`build`, `libbin`). The `data-package`
+job installs an islenska wheel with the data wheel into a fresh
+environment and runs the test suite; `wheels.yml` installs the data wheel
+before smoke-testing each islenska wheel (`test/wheel_smoke.py`), so islenska
+wheels can be tested before the data release is on PyPI; and the release
+workflow `.github/workflows/data-release.yml` (on `data-X.Y.Z` tags, see
+`RELEASING.md`) publishes the same cached wheel.

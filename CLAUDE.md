@@ -5,38 +5,101 @@ overview and architecture notes; the day-to-day essentials are below.
 
 ## Status (2026-10-13): where to pick up
 
-The 1.6.0 plan became **islenska 2.0.0** (major: the data split and the new
-result order). Details in "Roadmap" below.
+**islenska 2.0.0 is merged on `main` and ready to release; nothing is
+published yet.** The next step is the release itself (checklist below). The
+1.6.0 plan became 2.0.0 because of the data split and the new result order.
 
-- **Released:** islenska 1.5.0 on PyPI (2026-10-02): deterministic order of
-  case lookups (PR #28), Python 3.10+ only (PR #29).
-- **Merged for 2.0.0:** #30 canonical order of a form's readings (by bin_id,
-  then paradigm order from `mark_order.csv`, then source order; changes some
-  first-match results relative to 1.5.0, nouns cast to the singular more
-  often: say so in the release notes), #31 compact-only `compressed.bin` (no
-  full build or `tools/parity.py`), #32 the `islenska-data` package and
-  `data-release.yml`, #34 zero-copy memory map (`bincompress.py` takes
-  `memoryview`s of the map; ~90 MB less private memory per process).
-- **The 2.0.0 PR** (branch `release-2.0`): islenska depends on
-  `islenska-data ~= 5.0.0` (`~= 5.0` would also accept a 5.1 data format,
-  which the exact format check rejects); wheels and sdist carry no data;
-  `data_dir()` prefers islenska's own `resources/` when it holds
-  `compressed.bin` (a source checkout), else islenska-data, else
-  `RuntimeError`; `[tool.uv.sources]` points the dev environment at the
-  `islenska-data/` subproject. `wheels.yml` builds PyPy 8.0 (`pp80`) and
-  PyPy 3.12 wheels with cibuildwheel 4.3.1, keeps `pp73` with 4.2.1, adds
-  Linux aarch64 (`ubuntu-24.04-arm`), and smoke-tests every wheel
-  (`test/wheel_smoke.py`) with the run's own islenska-data wheel.
-- **PyPI:** a pending Trusted Publisher exists for `islenska-data`
-  (`mideind/BinPackage`, workflow `data-release.yml`, environment `pypi`).
-  It does not reserve the name. The data package's licensing text is
-  accepted.
-- **Release order:** tag `data-5.0.0` (publishes islenska-data, creates the
-  PyPI project), then `2.0.0` (islenska). A `2.0.0-test1` tag dry-runs the
-  wheel build without publishing.
-- **After 2.0.0:** GreynirKbd: move its BinPackage submodule past 1.4.0 and
-  rebuild its data; its notes still refer to `binpack.py --compact` (now a
-  no-op) and to a full-vs-compact parity check (no full build any more).
+On `main` (PRs #30-#35, all merged 2026-10-13 with green PR CI):
+
+- #30 canonical order of a form's readings: by bin_id, then paradigm order
+  (`mark_order.csv`), then source order, in binpack and in libbin's compound
+  restoration.
+- #31 `compressed.bin` is always a compact build; the full build and
+  `tools/parity.py` are gone.
+- #32 the `islenska-data` package (`islenska-data/`) and its release
+  workflow `data-release.yml`.
+- #34 (external, sverrirs) `bincompress.py` takes `memoryview`s of the
+  memory map instead of copying ~90 MB per process; its tracemalloc test is
+  skipped on PyPy.
+- #35 the switch:
+  - islenska 2.0.0 depends on `islenska-data ~= 5.0.0`, not `~= 5.0`: that
+    would accept a 5.1 data format, which the exact format check rejects.
+  - The islenska wheels and sdist carry no data: `MANIFEST.in` prunes
+    `resources/`.
+  - `basics.data_dir()`: islenska's own `resources/` if it holds any data
+    file (a source checkout; binpack needs the DAWGs there before
+    `compressed.bin` exists), else islenska-data, else `RuntimeError`.
+  - `[tool.uv.sources]` installs the local `islenska-data/` subproject
+    (editable, normally empty) in the dev environment.
+  - `wheels.yml`:
+    - cibuildwheel 4.3.1 builds PyPy 8.0 (`pp80`) and 3.12; 4.2.1 still
+      builds `pp73`.
+    - Linux aarch64 wheels on `ubuntu-24.04-arm`.
+    - `test/wheel_smoke.py` runs for every wheel with the run's own data
+      wheel.
+    - No `.bin` is allowed in any wheel or the sdist.
+  - CI builds the islenska-data wheel once per set of inputs and caches it,
+    through the composite action `.github/actions/islenska-data`, used by all
+    three workflows (see "Data package" in `AGENTS.md`).
+  - Copyright years are 2026.
+
+Verified: a wheel dry run (tag `2.0.0-test2`, since deleted) built all 20
+wheels plus the sdist, 4.9 MB in all. Every wheel passed the smoke test. A
+from-scratch `binpack.py` run is byte-identical to the 2026-10-02 build
+(163,349 lemmas dropped).
+
+### Release checklist (next session starts here)
+
+The `pypi` environment has no protection rules: a tag publishes as soon as
+its build passes, and PyPI uploads cannot be undone. Confirm with the user
+before pushing the real tags.
+
+1. Check that the `tests` run on `main` for the merge of #35 is green. It
+   also saves the islenska-data wheel to the Actions cache, so tag runs
+   reuse it: `gh run list --branch main -L 3`.
+2. islenska-data:
+   `git tag -a data-5.0.0 -m "islenska-data 5.0.0" && git push origin data-5.0.0`.
+   `data-release.yml` checks the tag against `islenska-data/pyproject.toml`,
+   tests and publishes. The first upload creates the PyPI project through
+   the pending Trusted Publisher (`mideind/BinPackage`, workflow
+   `data-release.yml`, environment `pypi`), under the account of whoever
+   added that publisher; move it to the Miðeind organization if needed.
+   Check https://pypi.org/project/islenska-data/.
+3. islenska, once islenska-data is on PyPI:
+   `git tag -a 2.0.0 -m "Release version 2.0.0" && git push origin 2.0.0`.
+   `wheels.yml` publishes 20 wheels and the sdist. Then
+   `pip install islenska==2.0.0` in a fresh venv and run one lookup.
+4. `gh release create 2.0.0` with notes covering:
+   - The data now come in the separate `islenska-data` package (~30 MB,
+     installed automatically, downloaded again only when the data change);
+     islenska wheels are 0.1-0.8 MB.
+   - The canonical order (#30) changes some first-match results relative to
+     1.5.0, mostly for the better (singular before plural): e.g.
+     `cast_to_dative("kvótakerfi")` now gives *kvótakerfi*, not *kvótakerfum*.
+   - Compact data (#31): about half the size; compounds are restored on
+     lookup, a little slower uncached (see "Roadmap" below).
+   - New wheels: PyPy 8.0 and PyPy 3.12, and Linux aarch64 (CPython and
+     PyPy); PyPy 7.3 wheels kept.
+   - ~90 MB less private memory per process (#34, thanks to sverrirs).
+   - Also new since 1.5.0: `lookup_variants` accepts the adverb degree
+     marks FST/EST (#33).
+5. Afterwards:
+   - Update the GreynirKbd repo: move its BinPackage submodule past 1.4.0
+     and rebuild its `data/grammar`. Its notes still mention `binpack.py
+     --compact` (now a no-op) and a full-vs-compact parity check (there is
+     no full build any more).
+   - Delete the merged remote branches (`canonical-entry-order`,
+     `compact-only`, `data-package`, `release-2.0`) if GitHub kept them.
+
+### Lessons from 2.0.0
+
+- `tools/compact.py`'s `_candidates()` swallows every exception as "no
+  splits". A broken compounder therefore used to yield a silent full build.
+  `compact.select()` now loads the DAWGs up front, and binpack exits if
+  nothing is dropped; keep both guards.
+- Test data-location changes with a from-scratch build: remove
+  `src/islenska/resources/compressed.bin` and run `tools/binpack.py`. The
+  local file being present hid the bug above until CI ran.
 
 ## Tooling
 
@@ -75,131 +138,60 @@ the selection rules (`tools/compact.py`) or the restoration code
 (`libbin/src/dict.cpp`), rebuild the data and run the test suite
 (`test/test_compact.py`, `test/test_canonical_order.py`).
 
-The data files can also come from the separate package `islenska-data`
-(`islenska-data/` in this repo; see "Data package" in `AGENTS.md`):
-islenska depends on it since 2.0.0; `basics.data_dir()` uses it unless
-`src/islenska/resources/` holds a built `compressed.bin`.
+Installed islenska reads its data from the separate package `islenska-data`
+(`islenska-data/` in this repo; see "Data package" in `AGENTS.md`), a
+dependency since 2.0.0; `basics.data_dir()` uses islenska's own
+`src/islenska/resources/` instead when it holds any data file.
 Stage and build it with `uv run python tools/data_package.py && uv build
 --wheel islenska-data -o dist-data`.
 
-## Roadmap (recorded 2026-10-02)
-
-Packaging work agreed but not yet done. Re-check the facts below before
-acting on them; the PyPy and cibuildwheel landscape was moving quickly.
+## Roadmap
 
 ### 1.5.0 (released 2026-10-02)
 
 Deterministic order of case lookups (PR #28) and Python 3.10+ only, with
-`cp310-abi3` wheels (PR #29). Python 3.9 users stay on 1.4.0. The wheel set is
-unchanged otherwise, so PyPy wheels are still `pp73` only.
+`cp310-abi3` wheels (PR #29). Python 3.9 users stay on 1.4.0.
 
-### 2.0.0 (planned as 1.6.0): data package, modern PyPy wheels
+### 2.0.0 (merged 2026-10-13, to be released): data package, new wheels
 
-Do the data package split first: it is what makes the extra wheels affordable.
+Why the split: after 1.5.0 the `islenska` project used about 8.7 GB of
+PyPI's default 10 GB project limit, ~454 MB per release, because every wheel
+and the sdist carried the ~50 MB `compressed.bin`. The PyPy wheels would
+have made that ~860 MB. The data package has its own 10 GB and is released
+only when the data change, as a wheel only (an sdist would just duplicate
+the data). The 2.0.0 islenska wheels total 4.9 MB. Do not delete old
+releases to save space: 1.0.2-1.0.4 take 4.6 GB, but deleting them is
+irreversible and would push anyone pinned to them onto source builds.
 
-**Split the BÍN data into its own package.**
+islenska-data versions are `<format major>.<format minor>.<data release>`:
+5.0.x for `Greynir 05.00.00`. New BÍN data in the same format means a new
+patch release of islenska-data and no islenska release. A new format needs a
+new islenska-data minor or major version and an islenska release that
+requires it. The process is in `RELEASING.md`.
 
-- Publish `compressed.bin` (and the DAWG files) as a separate pure
-  `py3-none-any` package, released only when the BÍN data changes, and make
-  `islenska` depend on it. The binary wheels (and the `islenska` sdist) then
-  shrink to ~1-2 MB each.
-- Why: the `islenska` project uses about 8.7 GB of PyPI's default 10 GB
-  project limit after 1.5.0. Each release so far is ~454 MB, because every
-  wheel and the sdist carries the same ~50 MB `compressed.bin`; adding the PyPy
-  wheels below without the split would make it ~860 MB per release. The split
-  removes the storage problem for good and makes every additional wheel nearly
-  free. If 1.6.0 must add wheels before the split is ready, first request a
-  limit increase (`pypi/support`, "Project Limit Request"). The 1.0.2–1.0.4
-  releases take 4.6 GB (mostly wheels for end-of-life Pythons), but deleting
-  them is irreversible and would push anyone pinned to them onto source
-  builds, so treat that as a last resort.
-- PyPI's size limit is per project, so the data package gets its own 10 GB.
-  Ship it as a wheel only (an sdist would just duplicate the data); with
-  BÍN updates a few times a year that lasts for hundreds of releases. After
-  the split an `islenska` release is ~20-40 MB, so its remaining ~1.3 GB lasts
-  for dozens of releases.
-- Ship only the compact build: DONE in the branch `compact-only` (stacked
-  on PR #30). `tools/binpack.py` always builds compact (`--compact` is a
-  hidden no-op for GreynirKbd's build notes), `tools/parity.py` and the full
-  build are gone, CI's `compact` job is now a plain `libbin` job, and
-  `test/test_compact.py` checks dropped compounds against known BÍN rows.
-  About half the size of a full build. Before the switch it was verified
-  (2026-10-02) against the full build with a throwaway Bin-level comparison
-  (11.9 k words incl. forms of dropped compounds, Greynir additions and
-  made-up compounds; every public lookup method; `Bin` default,
-  `only_bin=True`, `add_compounds=False`, `add_compound_hyphens=False`, and
-  `GreynirBin`; 1.37 M comparisons):
-  - Content is identical, dropped compounds included (they come back as
-    genuine BÍN entries with their own bin_ids even with compounding off).
-  - Order was not: binpack stored a form's readings in Python set order and
-    restored compounds copied their head's order, so first-match callers
-    differed (`cast_to_dative("kvótakerfi")` gave *kvótakerfum*). Fixed by
-    the canonical order (PR #30): by bin_id, then
-    paradigm order (`mark_order.csv`), then source order, in binpack and in
-    libbin's restoration; after it, 0 differences in order too. This changes
-    the order (and so some first-match results) relative to 1.5.0, mostly
-    for the better (singular before plural): say so in the release notes.
-  - Speed, uncached `Bin.lookup` per word: random forms 14 -> 21 µs, forms
-    of dropped compounds 12 -> 24 µs, made-up compounds 44 -> 61 µs (a trie
-    miss now tries restoration first). Bin's cache absorbs much of it.
-  - Size: compact `compressed.bin` 55 MB (26 MB deflated); with the DAWGs a
-    data wheel is ~30 MB.
-- Tentative split DONE in the branch `data-package` (stacked on PR #31):
-  the `islenska-data/` subproject (distribution `islenska-data`, import
-  `islenska_data`, version 5.0.0 = data format 05.00 + data release 0,
-  `py3-none-any`, ~30 MB wheel, BÍN license text in its README),
-  `basics.data_dir()`/`data_file()` (islenska-data if installed with a
-  matching `FORMAT` and files, else islenska's own `resources/`;
-  `ISLENSKA_BIN_FILE` still wins for `compressed.bin`),
-  `tools/data_package.py` (checks and stages the built files), and the CI
-  job `data-package` (islenska wheel without data, ~0.8 MB, plus the data
-  wheel in a fresh venv: the whole test suite passes). The name
-  `islenska-data` was free on PyPI on 2026-10-02.
-- Still to do for the switch:
-  1. DONE 2026-10-02: pending Trusted Publisher for `islenska-data` on PyPI
-     (owner `mideind`, repository `BinPackage`, workflow `data-release.yml`,
-     environment `pypi`). It does not reserve the name; the first upload
-     creates the project, under the account of whoever added the pending
-     publisher (move it to the Miðeind organization afterwards if needed).
-  2. DONE in PR #32: `.github/workflows/data-release.yml` (the name and the
-     environment `pypi` must match the publisher). A tag `data-X.Y.Z` that
-     matches `islenska-data/pyproject.toml` builds, tests (islenska wheel
-     without data + the data wheel) and publishes the wheel only; a tag
-     containing `test`, or a manual run, builds and tests only. `wheels.yml`
-     ignores `data-*` tags. Process in `RELEASING.md`.
-  3. In islenska: depend on `islenska-data ~= 5.0`, stop shipping the data
-     files (`MANIFEST.in` includes, and `wheels.yml` downloading them into
-     the build), and keep the `resources/` fallback for source checkouts.
-  4. Release order: islenska-data first, then islenska. Document the two
-     packages in `RELEASING.md` and the README (installation).
-  5. DONE 2026-10-02: the licensing text in `islenska-data/README.md` (CC
-     BY-SA 4.0 for the data as an adaptation of BÍN; MIT for the code) was
-     reviewed and accepted by the maintainer.
+Compact-only data, as verified on 2026-10-02 against the then-existing full
+build with a Bin-level comparison: 11.9 k words, every public lookup method,
+`Bin` with default and non-default options, and `GreynirBin`; 1.37 M
+comparisons.
 
-**PyPy wheels for the new ABI, and PyPy 3.12.**
+- Content is identical, dropped compounds included: they come back as
+  genuine BÍN entries with their own bin_ids, even with compounding off.
+- The order is identical after the canonical order (#30). Before it,
+  `cast_to_dative("kvótakerfi")` gave *kvótakerfum*.
+- Uncached `Bin.lookup` per word: random forms 14 -> 21 µs, forms of
+  dropped compounds 12 -> 24 µs, made-up compounds 44 -> 61 µs (a trie miss
+  now tries restoration first). Bin's cache absorbs much of this.
+- `compressed.bin` is 55 MB (26 MB deflated); the data wheel is ~30 MB.
+- Still open: whether anyone needs a full file. Nobody has asked;
+  `ISLENSKA_BIN_FILE` can point at one built by an older checkout.
 
-- PyPy 8.0.0 (September 2026) changed the ABI tag from `pp73` to `pp80`.
-  Our PyPy wheels (up to 1.5.0) are `pypy311_pp73` only, so PyPy 8.0 users
-  build from the sdist (C++17 compiler needed). PyPy 8.0 is the last 3.11
-  release; PyPy 3.12 (also `pp80`, beta in 8.0) is the line going forward.
-- Ship `pp311` for both ABIs plus `pp312`: pip installs the newest version even
-  if that means building from source, so dropping `pp73` would move the
-  breakage to PyPy 7.3 users.
-- cibuildwheel 4.2.1 can only build `pp73`. `pp80` for `pp311` plus a new
-  `pp312` landed on cibuildwheel `main` on 2026-09-30 (commit `088b48b`), with
-  no release yet. Use 4.3.0 or later once released (or pin a `main` commit)
-  with `enable: pypy`, and add a second cibuildwheel 4.2.1 step that builds
-  only `pp311-*` to keep the `pp73` wheels.
-- Add a `CIBW_TEST_COMMAND` smoke test (import plus one lookup) so that every
-  wheel is exercised before upload, and add `pypy-3.12` to the test matrix in
-  `python-package.yml`.
-- PyPy's abi3 support (`cp312-abi3`) is incomplete in 8.0 and does not suit
-  a CFFI extension anyway (PyPy loads CFFI modules natively, not via its
-  C-API emulation), so wheels per PyPy ABI remain the route.
-
-**Linux aarch64 wheels** (CPython and PyPy), on GitHub's native ARM runners.
-CPython and PyPy users on ARM Linux build from source today. Cheap once the
-data package exists.
+PyPy: PyPy 8.0 (September 2026) changed the ABI tag from `pp73` to `pp80`,
+and PyPy 3.12 (beta in 8.0) is the line going forward. Both ABIs of
+`pp311` ship, because pip installs the newest version even if it has to
+build from source; dropping `pp73` would move that breakage to PyPy 7.3
+users. Retire the cibuildwheel 4.2.1 step (pp73) once PyPy 7.3 is no longer
+worth supporting. PyPy's abi3 support is incomplete in 8.0 and does not suit
+a CFFI extension anyway, so PyPy keeps one wheel per ABI.
 
 ### Possible later step: one wheel for every non-CPython interpreter
 

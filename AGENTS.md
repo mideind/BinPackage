@@ -4,10 +4,11 @@ This file provides guidance to AI coding agents when working with code in this r
 
 ## Status (2026-10-13)
 
-islenska 2.0.0 is being prepared: canonical order of lookup results (#30),
-compact-only `compressed.bin` (#31), the `islenska-data` package (#32),
-zero-copy memory map (#34), and the switch to islenska-data as a dependency
-with new PyPy and aarch64 wheels. See "Status" in `CLAUDE.md`.
+islenska 2.0.0 is merged on `main` (PRs #30-#35: canonical order of lookup
+results, compact-only `compressed.bin`, the `islenska-data` package as a
+dependency, zero-copy memory map, PyPy 8.0/3.12 and aarch64 wheels) and
+awaits release: `data-5.0.0` first, then `2.0.0`. See "Status" and its
+release checklist in `CLAUDE.md`.
 
 ## Project Overview
 

@@ -49,10 +49,16 @@ What went into 2.0.0 (PRs #30-#35):
     three workflows (see "Data package" in `AGENTS.md`).
   - Copyright years are 2026.
 
-GreynirKbd: mideind/GreynirKbd#5 (branch `binpackage-2.0.0`) moves its
-submodule from 1.4.0 to 2.0.0 and its `data/grammar/compressed.bin` to the
+GreynirKbd: mideind/GreynirKbd#5, merged 2026-10-13, moved its submodule
+from 1.4.0 to 2.0.0 and its `data/grammar/compressed.bin` to the
 islenska-data 5.0.0 file. Its replays and error sets are bit-identical to
 1.4.0, and its docs no longer mention `--compact` or `tools/parity.py`.
+
+Tested locally after the release, installed from PyPI into fresh venvs:
+PyPy 3.12 (8.0.0) gets the `pp312-pypy312_pp80` wheel (42 passed, the
+tracemalloc test skipped), and CPython 3.15.0 gets the `cp310-abi3` wheel
+(43 passed, no deprecation warnings). 3.15 is in the CI matrix and the
+classifiers since 2026-10-13.
 
 Open: the CI warnings about Node.js 20 actions (`checkout@v4`,
 `setup-python@v5`, `cache@v4`, `upload-artifact@v4`, `download-artifact@v4`)

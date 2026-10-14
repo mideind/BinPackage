@@ -21,7 +21,7 @@ on:
 jobs:
   build:
     name: Build and test the islenska-data wheel
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - uses: actions/checkout@v7
@@ -73,7 +73,7 @@ jobs:
   publish:
     name: Publish islenska-data to PyPI
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     # Only for a data tag without 'test', never for a manual run
     if: startsWith(github.ref, 'refs/tags/data-') && !contains(github.ref, 'test')
     environment:

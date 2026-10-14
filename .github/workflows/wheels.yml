@@ -14,7 +14,7 @@ jobs:
   # installed to smoke-test each islenska wheel before it is published.
   prepare_data:
     name: Prepare the islenska-data wheel
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - uses: actions/checkout@v7
@@ -44,8 +44,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # ubuntu-24.04-arm builds the Linux aarch64 wheels
-        os: [windows-latest, macos-14, ubuntu-latest, ubuntu-24.04-arm]
+        # ubuntu-26.04-arm builds the Linux aarch64 wheels
+        os: [windows-latest, macos-14, ubuntu-26.04, ubuntu-26.04-arm]
 
     env:
       # Build abi3 wheel for CPython 3.10+ (one wheel for all versions)
@@ -61,7 +61,7 @@ jobs:
       MACOSX_DEPLOYMENT_TARGET: "10.13"
       CIBW_ARCHS_WINDOWS: "AMD64"
       CIBW_BEFORE_BUILD_WINDOWS: python -m pip install "setuptools<72"
-      # x86_64 on ubuntu-latest, aarch64 on ubuntu-24.04-arm
+      # x86_64 on ubuntu-26.04, aarch64 on ubuntu-26.04-arm
       CIBW_ARCHS_LINUX: "native"
       CIBW_BUILD_FRONTEND: "build"
       # Smoke-test every wheel before it is published: install the
@@ -126,7 +126,7 @@ jobs:
   # Third job: Build source distribution (without data files, see MANIFEST.in)
   build_sdist:
     name: Build source distribution
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - uses: actions/checkout@v7
@@ -154,7 +154,7 @@ jobs:
   publish:
     name: Publish to PyPI
     needs: [build_wheels, build_sdist]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     # Only publish on version tags (e.g., 1.2.3)
     if: startsWith(github.ref, 'refs/tags/') && !contains(github.ref, 'test') && !startsWith(github.ref, 'refs/tags/data-')
     environment:

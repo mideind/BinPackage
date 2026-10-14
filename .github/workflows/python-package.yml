@@ -16,7 +16,7 @@ jobs:
   # restore it the same way, and build it themselves only if the restore
   # misses (GitHub's cache is eventually consistent).
   prepare-cache:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
       - name: Set up Python
@@ -31,7 +31,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-26.04]
         # Test across Python versions to verify abi3 wheel compatibility
         # CPython: minimum (3.10), intermediate versions, latest stable
         # PyPy: the versions we build wheels for (see wheels.yml)
@@ -84,7 +84,7 @@ jobs:
   # against the built data.
   libbin:
     needs: prepare-cache
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - uses: actions/checkout@v7
     - name: Set up Python
@@ -119,7 +119,7 @@ jobs:
   # The islenska-data wheel is kept as an artifact; nothing is published.
   data-package:
     needs: prepare-cache
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - uses: actions/checkout@v7
     - name: Set up Python

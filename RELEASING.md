@@ -111,10 +111,11 @@ action. The job:
 - requests an OIDC token (`permissions: id-token: write`) that PyPI exchanges
   for a short-lived upload token — no API token or password is stored;
 - deploys through the `pypi` GitHub environment
-  (`https://pypi.org/project/islenska/`). The environment currently has no
-  protection rules, so the upload proceeds as soon as the build jobs pass. Add
-  a required reviewer to that environment in the repository settings if you
-  want a manual approval gate before publishing.
+  (`https://pypi.org/project/islenska/`). Since 2026-10-14 that environment
+  accepts only tags matching `*.*.*` or `data-*.*.*`, so no branch can
+  deploy to it. It has no required reviewer, so the upload proceeds as soon
+  as the build jobs pass. Add one in the repository settings if you want a
+  manual approval gate before publishing.
 
 ## Dry runs (without publishing)
 
@@ -183,6 +184,8 @@ Check the GitHub Actions logs for errors. Common issues:
 - Confirm the tag is a version tag and does not contain `test`.
 - Confirm the `pypi` Trusted Publisher is still configured on PyPI for this
   repository and the `wheels.yml` workflow.
+- Confirm the tag matches one of the `pypi` environment's deployment tag
+  patterns (`*.*.*`, `data-*.*.*`); GitHub refuses the deployment otherwise.
 - A version already present on PyPI cannot be re-uploaded; bump the version and
   tag again.
 

@@ -40,7 +40,8 @@ What went into 2.0.0 (PRs #30-#35):
   - `wheels.yml`:
     - cibuildwheel 4.3.1 builds PyPy 8.0 (`pp80`) and 3.12; 4.2.1 still
       builds `pp73`.
-    - Linux aarch64 wheels on `ubuntu-24.04-arm`.
+    - Linux aarch64 wheels on `ubuntu-24.04-arm` (`ubuntu-26.04-arm` since
+      #38).
     - `test/wheel_smoke.py` runs for every wheel with the run's own data
       wheel.
     - No `.bin` is allowed in any wheel or the sdist.
@@ -60,10 +61,11 @@ tracemalloc test skipped), and CPython 3.15.0 gets the `cp310-abi3` wheel
 (43 passed, no deprecation warnings). 3.15 is in the CI matrix and the
 classifiers since 2026-10-13.
 
-Open: the CI warnings about Node.js 20 actions (`checkout@v4`,
-`setup-python@v5`, `cache@v4`, `upload-artifact@v4`, `download-artifact@v4`)
-and the move of `ubuntu-latest` to Ubuntu 26 from 2026-10-19. Neither
-affected the release.
+CI after the release (#38): every action is on its Node.js 24 version, the
+Slack failure notifications go through `slackapi/slack-github-action`, and
+every Linux job runs on an explicit `ubuntu-26.04` (`ubuntu-26.04-arm` for
+aarch64) instead of `ubuntu-latest`, which moves to Ubuntu 26 from
+2026-10-19. Windows and macOS keep `windows-latest` and `macos-14`.
 
 ### Lessons from 2.0.0
 

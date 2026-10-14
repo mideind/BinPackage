@@ -16,11 +16,11 @@ jobs:
   # restore it the same way, and build it themselves only if the restore
   # misses (GitHub's cache is eventually consistent).
   prepare-cache:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.13'
       - name: Provide the islenska-data wheel
@@ -31,16 +31,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-26.04]
         # Test across Python versions to verify abi3 wheel compatibility
         # CPython: minimum (3.10), intermediate versions, latest stable
         # PyPy: the versions we build wheels for (see wheels.yml)
         python-version: ['3.10', '3.11', '3.12', '3.13', '3.14', '3.15', 'pypy-3.11', 'pypy-3.12']
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -72,23 +72,23 @@ jobs:
         python -m pytest
 
     - name: Slack notification
-      uses: 8398a7/action-slack@v3
+      uses: slackapi/slack-github-action@v4
       with:
-        status: ${{ job.status }}
-        author_name: Integration Testing (Python ${{ matrix.python-version }})
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+        webhook-type: incoming-webhook
+        payload: |
+          text: "BinPackage: Integration Testing (Python ${{ matrix.python-version }}) failed on ${{ github.ref_name }} (${{ github.sha }}). ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
       if: failure() # Pick up event if the job fails
 
   # The C++ library must build and pass its smoke test standalone,
   # against the built data.
   libbin:
     needs: prepare-cache
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: '3.13'
 
@@ -104,12 +104,12 @@ jobs:
         libbin/build/bin_test src/islenska/resources
 
     - name: Slack notification
-      uses: 8398a7/action-slack@v3
+      uses: slackapi/slack-github-action@v4
       with:
-        status: ${{ job.status }}
-        author_name: libbin
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+        webhook-type: incoming-webhook
+        payload: |
+          text: "BinPackage: libbin failed on ${{ github.ref_name }} (${{ github.sha }}). ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
       if: failure()
 
   # The split into islenska (code) and islenska-data (data files): build an
@@ -119,11 +119,11 @@ jobs:
   # The islenska-data wheel is kept as an artifact; nothing is published.
   data-package:
     needs: prepare-cache
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: '3.13'
 
@@ -148,17 +148,17 @@ jobs:
         /tmp/split/bin/python -c "import islenska_data; from islenska.basics import data_dir; assert data_dir() == islenska_data.data_dir(), data_dir()"
         /tmp/split/bin/python -m pytest -p no:cacheprovider test
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: islenska-data-wheel
         path: dist-data/*.whl
         retention-days: 7
 
     - name: Slack notification
-      uses: 8398a7/action-slack@v3
+      uses: slackapi/slack-github-action@v4
       with:
-        status: ${{ job.status }}
-        author_name: islenska-data package
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+        webhook-type: incoming-webhook
+        payload: |
+          text: "BinPackage: islenska-data package failed on ${{ github.ref_name }} (${{ github.sha }}). ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
       if: failure()

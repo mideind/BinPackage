@@ -21,12 +21,12 @@ on:
 jobs:
   build:
     name: Build and test the islenska-data wheel
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.13'
 
@@ -64,7 +64,7 @@ jobs:
           ls -l dist-data
           unzip -l dist-data/*.whl
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: islenska-data-dist
           path: dist-data/*.whl
@@ -73,7 +73,7 @@ jobs:
   publish:
     name: Publish islenska-data to PyPI
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     # Only for a data tag without 'test', never for a manual run
     if: startsWith(github.ref, 'refs/tags/data-') && !contains(github.ref, 'test')
     environment:
@@ -83,7 +83,7 @@ jobs:
       id-token: write
 
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: islenska-data-dist
           path: dist-data/

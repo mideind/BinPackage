@@ -80,6 +80,7 @@ OPS: list[tuple[str, Callable[[Bin, str], Any]]] = [
     ("lookup_raw_nominative", lambda b, w: b.lookup_raw_nominative(w)),
     ("cast_to_dative", lambda b, w: b.cast_to_dative(w)),
 ]
+OPS_BY_NAME = dict(OPS)
 
 
 def _run_all(bins: list[Bin], words: list[str]) -> dict[tuple[int, str, str], Any]:
@@ -107,7 +108,7 @@ def test_parallel_lookups_match_serial(monkeypatch: pytest.MonkeyPatch) -> None:
         return [
             (i, name, w)
             for i, name, w in keys
-            if dict(OPS)[name](bins[i], w) != expected[(i, name, w)]
+            if OPS_BY_NAME[name](bins[i], w) != expected[(i, name, w)]
         ]
 
     with ThreadPoolExecutor(THREADS) as pool:

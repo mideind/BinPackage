@@ -55,6 +55,7 @@ from typing import (
 from typing_extensions import Protocol
 
 import re
+import threading
 from functools import lru_cache
 from pathlib import Path
 
@@ -139,7 +140,8 @@ class CaseFunc(Protocol):
 # Size of LRU caches for word lookups
 CACHE_SIZE = 512
 # Generation size of the cache of word form lookups: it holds between this
-# and twice this many word forms (see GenerationalCache)
+# and twice this many word forms (see GenerationalCache), each with its
+# Ksnid list and up to two tuples of BinEntry objects made from it
 CACHE_SIZE_MEANINGS = 4096
 
 # The set of word subcategories (hluti) for person names
@@ -191,10 +193,15 @@ class Bin:
     # Cache of word form lookups, shared by all instances and threads
     _ksnid_cache: GenerationalCache[str, _CachedLookup] = GenerationalCache(CACHE_SIZE_MEANINGS)
 
+    # Serializes the one-time setup of class-level state in __init__,
+    # so that threads creating their first instances at once open BÍN once
+    _init_lock = threading.Lock()
+
     def __init__(self, **options: bool) -> None:
         """Initialize BIN database wrapper instance"""
-        if self._bc is None:
-            self.__class__._bc = BinCompressed()
+        with Bin._init_lock:
+            if self._bc is None:
+                self.__class__._bc = BinCompressed()
         Settings.read(str(Path("config", "BinPackage.conf")))
         # Set option flags
         self._add_negation = options.pop("add_negation", True)
@@ -1205,11 +1212,12 @@ class GreynirBin(Bin):
 
     def __init__(self) -> None:
         super().__init__()
-        if GreynirBin.bin_errata is None:
-            config_file = str(Path("config", "BinErrata.conf"))
-            Settings.read(config_file, force=True)
-            GreynirBin.bin_deletions = BinDeletions.SET
-            GreynirBin.bin_errata = BinErrata.DICT
+        with Bin._init_lock:
+            if GreynirBin.bin_errata is None:
+                config_file = str(Path("config", "BinErrata.conf"))
+                Settings.read(config_file, force=True)
+                GreynirBin.bin_deletions = BinDeletions.SET
+                GreynirBin.bin_errata = BinErrata.DICT
 
     def _filter_meanings(self, mtlist: Iterable[BinEntryTuple]) -> BinEntryList:
         """Override the default straight-through translation of

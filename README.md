@@ -1070,6 +1070,9 @@ input word.
 
 BinPackage is written in [Python 3](https://www.python.org/)
 and requires Python 3.10 or later. It runs on CPython 3.10+ and [PyPy](http://pypy.org/) 3.11 and 3.12.
+It also runs on free-threaded CPython (3.14t and 3.15t) without turning the GIL
+back on, and `Bin` instances can be shared between threads: lookups then run
+in parallel.
 
 The Python code calls a C++ library, `libbin` (in the `libbin/` directory of
 the repository), for lookup of word forms in the compressed binary structure
@@ -1090,7 +1093,8 @@ as `mypy` and `Pylance` / `Pyright`.
 
 # Installation and setup
 
-You must have Python >= 3.10 installed on your machine (CPython 3.10+, or PyPy 3.11 or 3.12).
+You must have Python >= 3.10 installed on your machine (CPython 3.10+, including
+free-threaded 3.14t and 3.15t, or PyPy 3.11 or 3.12).
 If you are using a Python virtual environment (`virtualenv`), activate it
 first (substituting your environment name for `venv` below):
 

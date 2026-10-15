@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "cffi>=1.17.1", "wheel>=0.38.0"]
+requires = ["setuptools>=61.0", "cffi>=2.0.0", "wheel>=0.38.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -30,6 +30,8 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3.15",
     "Programming Language :: Python :: Implementation :: CPython",
+    # Free-threaded wheels are published for CPython 3.14t and 3.15t
+    "Programming Language :: Python :: Free Threading :: 3 - Stable",
     # PyPy wheels are published for PyPy 3.11 (PyPy 7.3 and 8.0) and
     # PyPy 3.12 (see .github/workflows/wheels.yml).
     "Programming Language :: Python :: Implementation :: PyPy",
@@ -40,8 +42,9 @@ classifiers = [
 requires-python = ">=3.10"
 # islenska-data holds the data files; its major.minor version is the data
 # format of compressed.bin (5.0 for 'Greynir 05.00.00', BIN_COMPRESSOR_VERSION
-# in basics.py), which this version reads, so allow only its patch releases
-dependencies = ["cffi>=1.17.1", "typing_extensions", "islenska-data ~= 5.0.0"]
+# in basics.py), which this version reads, so allow only its patch releases.
+# cffi 2.0 is the first that runs free-threaded Python without the GIL.
+dependencies = ["cffi>=2.0.0", "typing_extensions", "islenska-data ~= 5.0.0"]
 
 [project.urls]
 Repository = "https://github.com/mideind/BinPackage"

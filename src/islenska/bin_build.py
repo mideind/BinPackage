@@ -42,6 +42,7 @@ from typing import cast, Any
 
 import os
 import platform
+import sysconfig
 
 import cffi  # type: ignore
 
@@ -50,6 +51,7 @@ ffibuilder = cast(Any, cffi).FFI()
 WINDOWS = platform.system() == "Windows"
 MACOS = platform.system() == "Darwin"
 IMPLEMENTATION = platform.python_implementation()
+FREE_THREADED = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
 
 # The repository root, i.e. the parent of src/
 _here = os.path.dirname(os.path.abspath(__file__))
@@ -67,6 +69,13 @@ if WINDOWS:
     extra_compile_args = ["/std:c++17", "/Zc:offsetof-"]
 else:
     extra_compile_args = ["-std=c++17"]
+    # Some distributions (e.g. Gentoo) record no optimization level for
+    # extension builds, which leaves libbin at -O0, several times slower
+    _flags = " ".join(
+        (sysconfig.get_config_var("CFLAGS") or "", os.environ.get("CFLAGS", ""), os.environ.get("CXXFLAGS", ""))
+    )
+    if not any(f.startswith("-O") for f in _flags.split()):
+        extra_compile_args.append("-O2")
 
 extra_link_args = []
 if MACOS:
@@ -78,7 +87,8 @@ if IMPLEMENTATION == "PyPy":
 
 ffibuilder.cdef(declarations)  # type: ignore
 
-py_limited_api = "cp310" if IMPLEMENTATION == "CPython" else False
+# Neither PyPy nor free-threaded CPython supports the stable ABI
+py_limited_api = "cp310" if IMPLEMENTATION == "CPython" and not FREE_THREADED else False
 
 ffibuilder.set_source(  # type: ignore
     "islenska._bin",

@@ -78,9 +78,10 @@ gh run watch <run-id>          # follow a specific run
 Or visit: https://github.com/mideind/BinPackage/actions/workflows/wheels.yml
 
 The run has four jobs: build the BÍN data and an islenska-data wheel, build
-the wheels (one `cp310-abi3` wheel per platform plus PyPy), build the sdist,
-and finally `Publish to PyPI`. The wheels and the sdist contain no data
-files (the workflow checks this). Every wheel is smoke-tested by
+the wheels (one `cp310-abi3` wheel per platform plus free-threaded CPython and
+PyPy), build the sdist, and finally `Publish to PyPI`. The wheels and the
+sdist contain no data files, and every expected wheel is there (the workflow
+checks both). Every wheel is smoke-tested by
 cibuildwheel (`test/wheel_smoke.py`) with the islenska-data wheel of the
 same run installed, so the tests do not depend on what is on PyPI. Builds
 typically take 15–20 minutes. The `publish` job runs only after the build
@@ -145,8 +146,10 @@ credentials.
 
 ## Expected wheel artifacts
 
-Expect 20 wheels plus the source distribution. One `cp310-abi3` wheel per
-platform covers all CPython 3.10+ versions. PyPy gets a wheel per ABI:
+Expect 30 wheels plus the source distribution. One `cp310-abi3` wheel per
+platform covers all CPython 3.10+ versions with the GIL. Free-threaded
+CPython has no stable ABI, so 3.14t and 3.15t get a wheel each
+(`cp314-cp314t`, `cp315-cp315t`). PyPy gets a wheel per ABI:
 PyPy 3.11 as PyPy 7.3 (`pp73`, built with cibuildwheel 4.2.1) and as
 PyPy 8.0 (`pp80`), and PyPy 3.12 (`pp80`); the last two are built with
 cibuildwheel 4.3.1. (Substitute the version for `X.Y.Z`; the exact
@@ -154,6 +157,8 @@ platform tags may differ.)
 
 **Linux (x86_64 and aarch64; `manylinux_2_28` tags):**
 - `islenska-X.Y.Z-cp310-abi3-manylinux_..._{x86_64,aarch64}.whl`
+- `islenska-X.Y.Z-cp314-cp314t-manylinux_..._{x86_64,aarch64}.whl`
+- `islenska-X.Y.Z-cp315-cp315t-manylinux_..._{x86_64,aarch64}.whl`
 - `islenska-X.Y.Z-pp311-pypy311_pp73-manylinux_..._{x86_64,aarch64}.whl`
 - `islenska-X.Y.Z-pp311-pypy311_pp80-manylinux_..._{x86_64,aarch64}.whl`
 - `islenska-X.Y.Z-pp312-pypy312_pp80-manylinux_..._{x86_64,aarch64}.whl`
@@ -161,11 +166,11 @@ platform tags may differ.)
 **macOS (x86_64 + arm64):**
 - `islenska-X.Y.Z-cp310-abi3-macosx_10_13_x86_64.whl`,
   `islenska-X.Y.Z-cp310-abi3-macosx_11_0_arm64.whl`
-- the three PyPy wheels for each of x86_64 and arm64
+- the two free-threaded and three PyPy wheels for each of x86_64 and arm64
 
 **Windows (AMD64):**
 - `islenska-X.Y.Z-cp310-abi3-win_amd64.whl`
-- the three PyPy wheels
+- the two free-threaded and three PyPy wheels
 
 **Source:**
 - `islenska-X.Y.Z.tar.gz`

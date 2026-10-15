@@ -34,8 +34,8 @@ jobs:
         os: [ubuntu-26.04]
         # Test across Python versions to verify abi3 wheel compatibility
         # CPython: minimum (3.10), intermediate versions, latest stable
-        # PyPy: the versions we build wheels for (see wheels.yml)
-        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14', '3.15', 'pypy-3.11', 'pypy-3.12']
+        # Free-threaded CPython and PyPy: the versions we build wheels for (see wheels.yml)
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14', '3.15', '3.14t', '3.15t', 'pypy-3.11', 'pypy-3.12']
 
     steps:
     - uses: actions/checkout@v7
@@ -70,6 +70,13 @@ jobs:
     - name: Test with pytest
       run: |
         python -m pytest
+
+    # Free-threaded builds: run every test in several threads at once
+    - name: Test with pytest in parallel threads
+      if: endsWith(matrix.python-version, 't')
+      run: |
+        uv pip install --system pytest-run-parallel
+        python -m pytest --parallel-threads=8
 
     - name: Slack notification
       uses: slackapi/slack-github-action@v4

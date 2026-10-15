@@ -119,6 +119,32 @@ jobs:
           sys.exit(1 if bad else 0)
           PY
 
+      # cibuildwheel fails only if a build selector matches nothing at all,
+      # so check that every expected wheel was built for every architecture
+      - name: Check that every expected wheel was built
+        shell: bash
+        run: |
+          python - <<'PY'
+          import collections, glob, os, sys
+          expected = {
+              "cp310-abi3", "cp314-cp314t", "cp315-cp315t",
+              "pp311-pypy311_pp73", "pp311-pypy311_pp80", "pp312-pypy312_pp80",
+          }
+          archs = {"Linux": 1, "macOS": 2, "Windows": 1}[os.environ["RUNNER_OS"]]
+          found = collections.defaultdict(set)
+          for w in glob.glob("wheelhouse/*.whl"):
+              _, _, py, abi, plat = os.path.basename(w)[: -len(".whl")].split("-")
+              arch = next(a for a in ("x86_64", "aarch64", "arm64", "amd64") if plat.endswith(a))
+              found[arch].add(f"{py}-{abi}")
+          ok = len(found) == archs
+          for arch, tags in sorted(found.items()):
+              if tags != expected:
+                  ok = False
+                  print(f"{arch}: missing {sorted(expected - tags)}, unexpected {sorted(tags - expected)}")
+          print(f"{sum(map(len, found.values()))} wheels for {sorted(found)}")
+          sys.exit(0 if ok else 1)
+          PY
+
       - uses: actions/upload-artifact@v7
         with:
           name: dist-${{ matrix.os }}

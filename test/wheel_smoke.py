@@ -12,6 +12,9 @@
 
 """
 
+import sys
+import sysconfig
+
 import islenska_data
 
 from islenska import Bin
@@ -25,4 +28,7 @@ assert [(x.ord, x.mark) for x in m] == [("hestur", "NFFTgr")], m
 # A compound that the compact data leave out and libbin restores on lookup
 _, m = b.lookup("bókahillum")
 assert [(x.ord, x.bin_id, x.mark) for x in m] == [("bókahilla", 154009, "ÞGFFT")], m
+# On free-threaded Python the extension must not turn the GIL back on
+if sysconfig.get_config_var("Py_GIL_DISABLED"):
+    assert not sys._is_gil_enabled()  # type: ignore[attr-defined]
 print("islenska wheel smoke test passed")

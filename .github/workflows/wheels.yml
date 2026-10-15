@@ -49,7 +49,8 @@ jobs:
 
     env:
       # Build abi3 wheel for CPython 3.10+ (one wheel for all versions)
-      # and version-specific wheels for PyPy (which doesn't support abi3)
+      # and version-specific wheels for free-threaded CPython and PyPy
+      # (neither supports abi3)
       CIBW_SKIP: "*musllinux*"
       CIBW_ENABLE: pypy
       CIBW_PROJECT_REQUIRES_PYTHON: ">=3.10"
@@ -90,10 +91,10 @@ jobs:
 
       # cibuildwheel 4.3 builds PyPy 3.11 as PyPy 8.0 (ABI pp80) and adds
       # PyPy 3.12 (pp80 too)
-      - name: Build wheels (CPython abi3, PyPy 8.0)
+      - name: Build wheels (CPython abi3 and free-threaded, PyPy 8.0)
         run: pipx run --spec cibuildwheel==4.3.1 cibuildwheel --output-dir wheelhouse
         env:
-          CIBW_BUILD: cp310-* pp311-* pp312-*
+          CIBW_BUILD: cp310-* cp314t-* cp315t-* pp311-* pp312-*
 
       # cibuildwheel 4.2 builds PyPy 3.11 as PyPy 7.3 (ABI pp73). pip picks
       # the newest islenska even if it has to build it from source, so

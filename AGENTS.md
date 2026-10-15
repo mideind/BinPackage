@@ -86,7 +86,9 @@ ruff check src/islenska
 
 2. **Main API** (`src/islenska/bindb.py`)
    - `Bin` class provides high-level interface for word lookups
-   - Implements caching with LFU strategy
+   - Caches word form lookups in a `GenerationalCache` (`basics.py`), shared
+     by all instances and threads without a lock; a cache hit copies the
+     finished `BinEntry` tuples, which are built on first use
    - Handles compound word algorithm
 
 3. **Compound Word Algorithm** (`src/islenska/dawgdictionary.py`)

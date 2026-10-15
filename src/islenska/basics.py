@@ -46,7 +46,6 @@ from typing import (
     Generic,
     Dict,
     Callable,
-    Counter,
     Tuple,
     Optional,
     Union,
@@ -55,11 +54,8 @@ from typing import (
 import re
 import struct
 from pathlib import Path
-from heapq import nsmallest
-from operator import itemgetter
 
 import importlib.resources as importlib_resources
-import threading
 
 
 INT32 = struct.Struct("<i")
@@ -174,8 +170,6 @@ COMMON_KIX_1 = 1
 
 # Special Ksnid string used for synthetic word forms, having 'birting'='G'
 KSNID_GREYNIR = "1;;;;G;1;;;"
-
-LFU_DEFAULT = 512
 
 # Type variables for keys and values
 _K = TypeVar("_K")
@@ -549,39 +543,36 @@ class Ksnid:
         return BinEntry(self.ord, self.bin_id, self.ofl, self.hluti, self.bmynd, self.mark)
 
 
-class LFU_Cache(Generic[_K, _V]):
-    """Least-frequently-used (LFU) cache for word lookups.
-    Based on a pattern by Raymond Hettinger
-    """
+class GenerationalCache(Generic[_K, _V]):
+    """Cache for word lookups, approximately least-recently-used, that threads can share
+    without a lock. It holds a new and an old generation of up to `size` keys each: a key
+    found only in the old generation is copied to the new one, and when the new generation
+    is full it replaces the old one, so keys unused for a whole generation drop out.
+    Concurrent lookups may at worst compute a key twice or drop a generation early."""
 
-    def __init__(self, maxsize: int = LFU_DEFAULT) -> None:
-        # Mapping of keys to results
-        self.cache: Dict[_K, _V] = {}
-        # Times each key has been accessed
-        self.use_count: Counter[_K] = Counter()
-        self.maxsize = maxsize
-        self.hits = self.misses = 0
-        # The cache may be accessed in parallel by multiple threads
-        self.lock = threading.Lock()
+    def __init__(self, size: int) -> None:
+        if size < 1:
+            raise ValueError(f"Cache generation size must be positive, not {size}")
+        self._size = size
+        self._new: Dict[_K, _V] = {}
+        self._old: Dict[_K, _V] = {}
 
     def lookup(self, key: _K, func: Callable[[_K], _V]) -> _V:
-        """Lookup a key in the cache, calling func(key)
-        to obtain the data if not already there"""
-        with self.lock:
-            self.use_count[key] += 1
-            # Get cache entry or compute if not found
-            try:
-                result = self.cache[key]
-                self.hits += 1
-            except KeyError:
-                result = func(key)
-                self.cache[key] = result
-                self.misses += 1
-                # Purge the 10% least frequently used cache entries
-                if len(self.cache) > self.maxsize:
-                    for key, _ in nsmallest(self.maxsize // 10, self.use_count.items(), key=itemgetter(1)):
-                        del self.cache[key], self.use_count[key]
-            return result
+        """Return the cached value for key, calling func(key) if it is not cached"""
+        new = self._new
+        try:
+            return new[key]
+        except KeyError:
+            pass
+        try:
+            result = self._old[key]
+        except KeyError:
+            result = func(key)
+        if len(new) >= self._size:
+            self._old = new
+            self._new = new = {}
+        new[key] = result
+        return result
 
 
 class ConfigError(Exception):

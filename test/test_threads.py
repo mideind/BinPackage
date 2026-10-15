@@ -14,8 +14,8 @@ from typing import Any, Callable
 import pytest
 
 from islenska import Bin
-from islenska.basics import LFU_Cache
-from islenska.bindb import GreynirBin, KsnidList
+from islenska.basics import GenerationalCache
+from islenska.bindb import GreynirBin
 
 THREADS = 8
 
@@ -95,9 +95,9 @@ def test_parallel_lookups_match_serial(monkeypatch: pytest.MonkeyPatch) -> None:
     bins = [Bin(), Bin(add_compounds=False), GreynirBin()]
     expected = _run_all(bins, ALL_WORDS)
 
-    # Start with empty caches small enough that the threads also evict entries
-    monkeypatch.setattr(Bin, "_ksnid_cache", LFU_Cache[str, KsnidList](maxsize=64))
-    monkeypatch.setattr(GreynirBin, "_ksnid_cache", LFU_Cache[str, KsnidList](maxsize=64))
+    # Start with empty caches small enough that the threads also replace generations
+    monkeypatch.setattr(Bin, "_ksnid_cache", GenerationalCache[str, Any](32))
+    monkeypatch.setattr(GreynirBin, "_ksnid_cache", GenerationalCache[str, Any](32))
     barrier = threading.Barrier(THREADS)
 
     def work(seed: int) -> list[tuple[int, str, str]]:

@@ -62,7 +62,7 @@ from .basics import (
     InflectionFilter,
     BinEntry,
     Ksnid,
-    LFU_Cache,
+    GenerationalCache,
     BinEntryTuple,
     make_bin_entry,
 )
@@ -99,6 +99,20 @@ KsnidList = List[Ksnid]
 KsnidIterable = Iterable[Ksnid]
 
 
+class _CachedLookup:
+    """The cached lookup of a word form: its Ksnid entries and, made on first
+    use, its BinEntry entries without and with suffix-only entries (birting 'S').
+    The BinEntry tuples are immutable, so a cache hit only copies a list.
+    Threads may race to make the same tuple; either result is correct."""
+
+    __slots__ = ("ksnid", "entries", "compound_entries")
+
+    def __init__(self, ksnid: KsnidList) -> None:
+        self.ksnid = ksnid
+        self.entries: Optional[Tuple[BinEntry, ...]] = None
+        self.compound_entries: Optional[Tuple[BinEntry, ...]] = None
+
+
 class LookupFunc(Protocol[_T]):
     def __call__(self, key: str, compound: bool = False) -> List[_T]:
         ...
@@ -122,10 +136,10 @@ class CaseFunc(Protocol):
         ...
 
 
-# Size of LRU/LFU caches for word lookups
+# Size of LRU caches for word lookups
 CACHE_SIZE = 512
-# Cache size for most common lookup function
-# (entries matching a particular word form)
+# Generation size of the cache of word form lookups: it holds between this
+# and twice this many word forms (see GenerationalCache)
 CACHE_SIZE_MEANINGS = 4096
 
 # The set of word subcategories (hluti) for person names
@@ -174,8 +188,8 @@ class Bin:
     # Singleton instance of the compressed, memory-mapped BÍN
     _bc: Optional[BinCompressed] = None
 
-    # Singleton LFU cache for word lookup
-    _ksnid_cache: LFU_Cache[str, KsnidList] = LFU_Cache(maxsize=CACHE_SIZE_MEANINGS)
+    # Cache of word form lookups, shared by all instances and threads
+    _ksnid_cache: GenerationalCache[str, _CachedLookup] = GenerationalCache(CACHE_SIZE_MEANINGS)
 
     def __init__(self, **options: bool) -> None:
         """Initialize BIN database wrapper instance"""
@@ -290,10 +304,14 @@ class Bin:
         # Otherwise, map the query results to a BinEntry tuple
         return self._filter_ksnid(mtlist) if mtlist else []
 
+    def _cached_lookup(self, w: str) -> _CachedLookup:
+        """Look up a word form for the cache"""
+        return _CachedLookup(self._ksnid_lookup(w))
+
     def _ksnid_cache_lookup(self, key: str, compound: bool = False) -> KsnidList:
         """Attempt to lookup a word in the cache, calling
         self.ksnid_lookup() on a cache miss"""
-        klist = self._ksnid_cache.lookup(key, self._ksnid_lookup)
+        klist = self._ksnid_cache.lookup(key, self._cached_lookup).ksnid
         # If we're looking for compound suffixes (compound=True), we
         # allow items where birting == 'S' (coming from ord.suffix.csv)
         return [k for k in klist if compound or k.birting != "S"]
@@ -310,9 +328,16 @@ class Bin:
     def _meanings_cache_lookup(self, key: str, compound: bool = False) -> BinEntryList:
         """Attempt to lookup a word in the cache,
         returning a list of BinEntry instances"""
-        klist = self._ksnid_cache_lookup(key, compound=compound)
-        # Convert the cached ksnid list to a list of BinEntry (SHsnid) tuples
-        return [k.to_bin_entry() for k in klist]
+        cached = self._ksnid_cache.lookup(key, self._cached_lookup)
+        entries = cached.compound_entries if compound else cached.entries
+        if entries is None:
+            # Suffix-only entries (birting 'S') only count as compound suffixes
+            entries = tuple([k.to_bin_entry() for k in cached.ksnid if compound or k.birting != "S"])
+            if compound:
+                cached.compound_entries = entries
+            else:
+                cached.entries = entries
+        return list(entries)
 
     def _compound_meanings(
         self,
@@ -1171,7 +1196,7 @@ class GreynirBin(Bin):
 
     # Maintain a separate cache from the Bin class,
     # in case both classes are used concurrently
-    _ksnid_cache: LFU_Cache[str, KsnidList] = LFU_Cache(maxsize=CACHE_SIZE_MEANINGS)
+    _ksnid_cache: GenerationalCache[str, _CachedLookup] = GenerationalCache(CACHE_SIZE_MEANINGS)
 
     # A dictionary of BÍN errata, loaded from BinErrata.conf
     bin_errata: Optional[Dict[Tuple[str, str], str]] = None

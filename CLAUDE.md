@@ -3,7 +3,52 @@
 Guidance for Claude Code in this repository. `AGENTS.md` holds the full project
 overview and architecture notes; the day-to-day essentials are below.
 
-## Status (2026-10-13): 2.0.0 released
+## Status (2026-10-15): 2.1.0 released
+
+**islenska 2.1.0 was released on 2026-10-15** (tag `2.1.0`, GitHub release
+2.1.0): free-threaded CPython. PyPI holds 30 islenska wheels plus the sdist.
+The data are unchanged: 2.1.0 uses islenska-data 5.0.0, as 2.0.0 does. It is
+2.1.0 and not 2.0.1 because it adds a feature, raises the cffi floor and
+removes `LFU_Cache` (the semver rule in `RELEASING.md`).
+
+What went into 2.1.0 (PR #39 by HaukurPall plus three review commits,
+merged with a merge commit):
+
+- Free-threaded CPython has no abi3, so `setup.py` and `bin_build.py` build
+  a regular extension when `Py_GIL_DISABLED` is set. cffi `>=2.0.0` (build
+  and runtime): the first cffi that runs without the GIL.
+- `wheels.yml` builds `cp314t` and `cp315t`; `test/wheel_smoke.py` asserts
+  that the GIL stays off. A step checks that all six wheel types exist for
+  every architecture, because cibuildwheel passes when a build selector
+  matches nothing.
+- `python-package.yml` tests 3.14t and 3.15t, a second time with
+  `pytest-run-parallel --parallel-threads=8` (tests that use `monkeypatch`
+  run serially there).
+- `GenerationalCache` (`basics.py`) replaces `LFU_Cache`: two generations of
+  up to 4096 word forms, shared by all threads and read without a lock. A
+  race at worst computes a key twice or drops a generation early. Each entry
+  is a `_CachedLookup` (`bindb.py`) holding the Ksnid list and, made on first
+  use, the BinEntry tuples without and with suffix-only (birting 'S') entries.
+- `Bin._init_lock` serializes the one-time class setup in `Bin.__init__`
+  (`_bc`) and `GreynirBin.__init__` (BinErrata.conf).
+- The mmap buffers are released with `ffi.release`, which fixed a
+  `BufferError` at shutdown on free-threaded builds.
+- `bin_build.py` adds `-O2` when neither the interpreter's CFLAGS nor the
+  CFLAGS/CXXFLAGS environment variables hold an `-O` flag (Gentoo's Python
+  records none, which left libbin at `-O0`, 4× slower).
+- New tests: `test/test_cache.py`, `test/test_threads.py`.
+
+Measured in #39 (`Bin.lookup` on real text, thousands of lookups/s): GIL
+build, 1 thread, 204 → 313; 3.14t, 8 threads, 155 → 1008 (8 processes on
+the GIL build reach 890).
+
+Verified: the dry run `2.0.1-test1` built all 30 wheels (the tag was deleted
+afterwards), then the release run passed. A fresh `pip install
+islenska==2.1.0` on CPython 3.14 (GIL) pulls in islenska-data 5.0.0 and
+works. The free-threaded wheels are tested only by the CI smoke tests; 3.14t
+is not installed on this box.
+
+### 2.0.0 (released 2026-10-13)
 
 **islenska 2.0.0 and islenska-data 5.0.0 were released on 2026-10-13**
 (tags `2.0.0` and `data-5.0.0`, GitHub release 2.0.0). PyPI holds 20
@@ -168,6 +213,14 @@ build from source; dropping `pp73` would move that breakage to PyPy 7.3
 users. Retire the cibuildwheel 4.2.1 step (pp73) once PyPy 7.3 is no longer
 worth supporting. PyPy's abi3 support is incomplete in 8.0 and does not suit
 a CFFI extension anyway, so PyPy keeps one wheel per ABI.
+
+### 2.1.0 (released 2026-10-15): free-threaded Python
+
+`cp314t` and `cp315t` wheels and a word cache that threads share without a
+lock (PR #39); see "Status" above. Free-threaded CPython has no stable ABI,
+so each new version needs a wheel of its own: for 3.16t, add `cp316t-*` to
+`CIBW_BUILD` and `cp316-cp316t` to the expected set of the wheel check in
+`wheels.yml`, and `3.16t` to the matrix in `python-package.yml`.
 
 ### Possible later step: one wheel for every non-CPython interpreter
 

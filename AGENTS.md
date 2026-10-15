@@ -2,12 +2,15 @@
 
 This file provides guidance to AI coding agents when working with code in this repository.
 
-## Status (2026-10-13)
+## Status (2026-10-15)
 
-islenska 2.0.0 and islenska-data 5.0.0 were released on 2026-10-13 (PRs
-#30-#35: canonical order of lookup results, compact-only `compressed.bin`,
-the `islenska-data` package as a dependency, zero-copy memory map, PyPy
-8.0/3.12 and aarch64 wheels). See "Status" in `CLAUDE.md`.
+islenska 2.1.0 was released on 2026-10-15 (PR #39: free-threaded CPython
+3.14t/3.15t wheels, a word cache shared by threads without a lock, cffi 2.0
+required). It uses islenska-data 5.0.0, as 2.0.0 does. islenska 2.0.0 and
+islenska-data 5.0.0 were released on 2026-10-13 (PRs #30-#35: canonical
+order of lookup results, compact-only `compressed.bin`, the `islenska-data`
+package as a dependency, zero-copy memory map, PyPy 8.0/3.12 and aarch64
+wheels). See "Status" in `CLAUDE.md`.
 
 ## Project Overview
 

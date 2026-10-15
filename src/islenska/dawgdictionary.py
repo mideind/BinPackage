@@ -75,6 +75,7 @@ class Dawg:
         self._handle: Any = None
         self._mmap: Optional[mmap.mmap] = None
         self._stream: Optional[IO[bytes]] = None
+        self._buffer: Any = None
         self._stream = open(fname, "rb")
         self._mmap = mmap.mmap(self._stream.fileno(), 0, access=mmap.ACCESS_READ)
         # Keep a reference to the buffer object that pins the memory map
@@ -89,7 +90,12 @@ class Dawg:
         if self._handle:
             bin_cffi.bin_dawg_close(self._handle)
             self._handle = None
-        self._buffer = None
+        # Release explicitly: the cyclic GC of free-threaded builds keeps
+        # the buffer object alive while finalizers run, and an mmap with
+        # exported buffers cannot close
+        if self._buffer is not None:
+            ffi.release(self._buffer)
+            self._buffer = None
         if self._mmap:
             self._mmap.close()
             self._mmap = None

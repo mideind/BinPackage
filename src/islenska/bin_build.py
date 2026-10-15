@@ -42,6 +42,7 @@ from typing import cast, Any
 
 import os
 import platform
+import sysconfig
 
 import cffi  # type: ignore
 
@@ -50,6 +51,7 @@ ffibuilder = cast(Any, cffi).FFI()
 WINDOWS = platform.system() == "Windows"
 MACOS = platform.system() == "Darwin"
 IMPLEMENTATION = platform.python_implementation()
+FREE_THREADED = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
 
 # The repository root, i.e. the parent of src/
 _here = os.path.dirname(os.path.abspath(__file__))
@@ -78,7 +80,8 @@ if IMPLEMENTATION == "PyPy":
 
 ffibuilder.cdef(declarations)  # type: ignore
 
-py_limited_api = "cp310" if IMPLEMENTATION == "CPython" else False
+# Neither PyPy nor free-threaded CPython supports the stable ABI
+py_limited_api = "cp310" if IMPLEMENTATION == "CPython" and not FREE_THREADED else False
 
 ffibuilder.set_source(  # type: ignore
     "islenska._bin",

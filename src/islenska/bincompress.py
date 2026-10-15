@@ -200,6 +200,7 @@ class BinCompressedPure:
         self._ksnid_strings = cast(memoryview, None)
         self._templates = cast(memoryview, None)
         self._alphabet_bytes = bytes()
+        ffi.release(self._mmap_buffer)
         self._mmap_buffer = cast(bytes, None)
         self._mmap_ptr = 0
         if not self._b.closed:

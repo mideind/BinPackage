@@ -6,6 +6,7 @@ islenska-data package, which must have the data format that this version of
 islenska reads.
 """
 
+import gc
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -14,7 +15,9 @@ import pytest
 from islenska.basics import (
     BIN_COMPRESSED_FILE,
     BIN_COMPRESSOR_VERSION,
+    BIN_FILE_ENV,
     DATA_FILES,
+    _data_version,
     data_dir,
     data_file,
     resolve_data_dir,
@@ -72,16 +75,42 @@ def test_missing_data_is_an_error(tmp_path: Path) -> None:
     pkg = _dir_with_data(tmp_path / "pkg")
     empty = tmp_path / "empty"
     empty.mkdir()
-    # No data package
-    with pytest.raises(RuntimeError, match="install the islenska-data package"):
+    # No data package; the message names the versions to install
+    with pytest.raises(RuntimeError, match="install the islenska-data package") as e:
         resolve_data_dir(own, None)
+    assert f"islenska-data~={_data_version(FORMAT)}" in str(e.value)
     # A data package in another format
     with pytest.raises(RuntimeError, match="data format 'Greynir 06.00.00'"):
         resolve_data_dir(own, _package(pkg, "Greynir 06.00.00"))
-    # A data package without files (an editable install with nothing staged)
-    with pytest.raises(RuntimeError, match="holds no data files"):
+    # A data package without files (an editable install with nothing staged):
+    # the message says how to get the data
+    with pytest.raises(RuntimeError, match="holds no data files") as e:
         resolve_data_dir(own, _package(empty))
+    assert "uv sync" in str(e.value)
+    assert "tools/binpack.py" in str(e.value)
+
+
+@pytest.mark.parametrize(
+    "data_format, version",
+    [("Greynir 05.00.00", "5.0.0"), ("Greynir 12.03.00", "12.3.0"), ("garbled", "<version>")],
+)
+def test_data_version(data_format: str, version: str) -> None:
+    assert _data_version(data_format) == version
 
 
 def test_data_dir_is_cached() -> None:
     assert data_dir() is data_dir()
+
+
+@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
+def test_failed_open_reports_only_its_own_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # A BinCompressed whose data file can't be opened raises that error, and
+    # its __del__ adds no AttributeError on the half-initialized object
+    from islenska.bincompress import BinCompressed
+
+    monkeypatch.setenv(BIN_FILE_ENV, str(tmp_path / "missing.bin"))
+    with pytest.raises(FileNotFoundError):
+        BinCompressed()
+    gc.collect()

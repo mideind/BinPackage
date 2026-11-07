@@ -80,8 +80,10 @@ What went into 2.0.0 (PRs #30-#35):
   - `basics.data_dir()`: islenska's own `resources/` if it holds any data
     file (a source checkout; binpack needs the DAWGs there before
     `compressed.bin` exists), else islenska-data, else `RuntimeError`.
-  - `[tool.uv.sources]` installs the local `islenska-data/` subproject
-    (editable, normally empty) in the dev environment.
+  - The dev environment gets islenska-data from PyPI. Until 2026-11, a
+    `[tool.uv.sources]` entry installed the local, empty `islenska-data/`
+    subproject instead, so a fresh `uv sync && uv run pytest` failed; CI
+    now installs the subproject explicitly (`-e . -e ./islenska-data`).
   - `wheels.yml`:
     - cibuildwheel 4.3.1 builds PyPy 8.0 (`pp80`) and 3.12; 4.2.1 still
       builds `pp73`.
@@ -162,7 +164,10 @@ the selection rules (`tools/compact.py`) or the restoration code
 Installed islenska reads its data from the separate package `islenska-data`
 (`islenska-data/` in this repo; see "Data package" in `AGENTS.md`), a
 dependency since 2.0.0; `basics.data_dir()` uses islenska's own
-`src/islenska/resources/` instead when it holds any data file.
+`src/islenska/resources/` instead when it holds any data file. `uv sync`
+installs the released islenska-data from PyPI, so a fresh checkout runs its
+tests without building data; never point `[tool.uv.sources]` at the local
+`islenska-data/` subproject (it's empty, see "Data package" in `AGENTS.md`).
 Stage and build it with `uv run python tools/data_package.py && uv build
 --wheel islenska-data -o dist-data`.
 

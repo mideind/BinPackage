@@ -55,11 +55,14 @@ dev = ["pytest", "pyright"]
 
 # *** Configuration of tools ***
 
-[tool.uv.sources]
-# In this repository, islenska-data is the subproject in islenska-data/; it
-# holds no data unless tools/data_package.py staged some, and the data built
-# into src/islenska/resources take precedence anyway (basics.data_dir())
-islenska-data = { path = "islenska-data", editable = true }
+# There is deliberately no [tool.uv.sources] entry for islenska-data: uv sync
+# installs the released data package from PyPI, so that a fresh checkout works
+# and its tests run without building the data first. The islenska-data/
+# subproject holds no data until tools/data_package.py stages some, and data
+# built into src/islenska/resources take precedence over the installed package
+# anyway (basics.data_dir()). To install the local subproject instead (to build
+# a data format that isn't released yet, as CI does), name it explicitly:
+#   uv pip install -e . -e ./islenska-data
 
 [tool.setuptools]
 include-package-data = true

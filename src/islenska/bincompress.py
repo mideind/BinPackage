@@ -577,9 +577,11 @@ class BinCompressed(BinCompressedPure):
 
     def __init__(self, fname: Optional[str] = None) -> None:
         """Initialize base class and add C++ handle for optimized methods."""
+        # Before anything that can raise, so that __del__ works on a
+        # half-initialized object (e.g. when the data files are missing)
+        self._cpp_handle: Any = None
         # Initialize base class (creates mmap, sets up all Python infrastructure)
         super().__init__(fname)
-        self._cpp_handle: Any = None
         # Avoid a circular import at module load time
         from .dawgdictionary import Wordbase
 

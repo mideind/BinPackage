@@ -245,6 +245,14 @@ islenska installations without an islenska release, while a new data format
 needs both a new islenska-data major or minor version and an islenska
 release that requires it.
 
+While islenska's requirement names a data format that isn't on PyPI yet,
+`uv lock` and `uv sync` can't resolve it, because the dev environment takes
+islenska-data from PyPI. CI is not affected: it installs the local
+subproject explicitly (`uv pip install -e . -e ./islenska-data`), which
+satisfies the requirement whatever its version, and locally you can do the
+same in a venv. Releasing the data first, as above, ends this; then run
+`uv lock` to pin the new release.
+
 ## Version Numbering
 
 Follow semantic versioning (semver):

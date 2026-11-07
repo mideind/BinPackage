@@ -1131,9 +1131,17 @@ do as follows:
 # Clone the GitHub repository
 git clone https://github.com/mideind/BinPackage
 cd BinPackage
-# Install the package in editable mode, with the dev tools
-# (the islenska-data subproject in islenska-data/ comes along, empty)
+# Install the package in editable mode, with the dev tools and the
+# released BÍN data (the islenska-data package from PyPI)
 uv sync --extra dev
+# Run the tests
+uv run pytest
+```
+
+That is all you need to work on the code. To build the data yourself,
+for instance from the newest BÍN release, continue as follows:
+
+```bash
 cd src/islenska/resources
 # Fetch the newest BÍN data (KRISTINsnid.csv.zip)
 # (We remind you that the BÍN data is under the CC BY-SA 4.0 license; see below.)
@@ -1150,16 +1158,16 @@ uv run python tools/binpack.py
 # Now you're ready to go
 ```
 
-This will clone the GitHub repository into the BinPackage directory
-and install the package into a virtual environment from the source files,
-using [uv](https://docs.astral.sh/uv/).
-Then, the newest BÍN data is fetched via `wget`
+The first part clones the GitHub repository into the BinPackage directory
+and installs the package into a virtual environment from the source files,
+using [uv](https://docs.astral.sh/uv/), together with the released data.
+In the second part, the newest BÍN data is fetched via `wget`
 from *Stofnun Árna Magnússonar*, the Directed Acyclic Word Graph builder is
 run to create DAWGs for word prefixes and suffixes, used by the compound
 word algorithm, and the BÍN data is compressed into a binary file.
-In a source checkout, the data files built into `src/islenska/resources`
-are used; an installed `islenska` reads them from the `islenska-data`
-package.
+Data files built into `src/islenska/resources` take precedence over
+the installed `islenska-data` package; delete them to go back to the
+released data.
 
 ## File details
 

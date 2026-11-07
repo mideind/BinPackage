@@ -48,7 +48,10 @@ jobs:
       run: |
         python -m pip install uv
         uv pip install --system --upgrade wheel setuptools pytest types-setuptools packaging
-        uv pip install --system -e .
+        # The local islenska-data subproject (empty; the data come from the
+        # islenska-data action below), named explicitly so that it satisfies
+        # islenska's dependency even for a data format not yet on PyPI
+        uv pip install --system -e . -e ./islenska-data
 
     - name: Lint with ruff
       run: |

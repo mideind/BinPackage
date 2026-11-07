@@ -98,7 +98,8 @@ def resolve_data_dir(own_dir: Path, data_package: Optional[Any]) -> Path:
     if data_package is None:
         raise RuntimeError(
             "The data files of islenska were not found: "
-            "install the islenska-data package"
+            "install the islenska-data package "
+            f"(pip install 'islenska-data~={_data_version(expected)}')"
         )
     fmt = getattr(data_package, "FORMAT", None)
     if fmt != expected:
@@ -110,9 +111,27 @@ def resolve_data_dir(own_dir: Path, data_package: Optional[Any]) -> Path:
     pkg_dir = Path(data_package.data_dir())
     if not (pkg_dir / BIN_COMPRESSED_FILE).is_file():
         raise RuntimeError(
-            f"The islenska-data package in {pkg_dir} holds no data files"
+            f"The islenska-data package in {pkg_dir} holds no data files. "
+            "An empty islenska-data is the islenska-data/ subproject of a "
+            "BinPackage source checkout, which holds no data until they are "
+            "staged into it. "
+            "Install the released data from PyPI instead (uv sync does so; "
+            "or: uv pip install --reinstall "
+            f"'islenska-data~={_data_version(expected)}'), or build the data "
+            "into src/islenska/resources with tools/dawgbuilder.py and "
+            "tools/binpack.py (see README.md)"
         )
     return pkg_dir
+
+
+def _data_version(data_format: str) -> str:
+    """The islenska-data versions that hold a data format, as a version for
+    a '~=' requirement: 'Greynir 05.00.00' -> '5.0.0'"""
+    try:
+        major, minor = data_format.split()[-1].split(".")[:2]
+        return f"{int(major)}.{int(minor)}.0"
+    except ValueError:
+        return "<version>"
 
 
 _data_dir: Optional[Path] = None

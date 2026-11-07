@@ -133,7 +133,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "cffi", specifier = ">=2.0.0" },
-    { name = "islenska-data", editable = "islenska-data" },
+    { name = "islenska-data", specifier = "~=5.0.0" },
     { name = "pyright", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "typing-extensions" },
@@ -143,7 +143,10 @@ provides-extras = ["dev"]
 [[package]]
 name = "islenska-data"
 version = "5.0.0"
-source = { editable = "islenska-data" }
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5b/23/9c85ab69cdd0424ea5cfdd3551fac9c483bb7d8eed0ce2c41c366abbf91c/islenska_data-5.0.0-py3-none-any.whl", hash = "sha256:89f3d1b7cfa13efb9f717ca419d4b8b696b69c31b7c8df898ab6ed1352e7105f", size = 30114471, upload-time = "2026-10-13T20:00:21.648Z" },
+]
 
 [[package]]
 name = "nodeenv"

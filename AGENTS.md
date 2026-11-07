@@ -26,9 +26,12 @@ declared in `pyproject.toml` and pinned in `uv.lock`. Run dev tools through
 
 ### Development Setup
 ```bash
-# Sync the environment, including dev dependencies (pytest, pyright)
+# Sync the environment, including dev dependencies (pytest, pyright) and the
+# released data (islenska-data from PyPI): enough to run the tests
 uv sync --extra dev
 
+# Optional, to build the data yourself (they then take precedence over the
+# installed islenska-data, see "Data package" below):
 # Build the compressed binary data, a compact build (see "Compact build" below;
 # requires KRISTINsnid.csv.zip, unzipped, in src/islenska/resources/; ~3 min)
 uv run python tools/binpack.py
@@ -165,9 +168,16 @@ islenska's own `resources/` if it holds `compressed.bin` (a source checkout
 with built data), otherwise `islenska_data`'s, which must declare the data
 format that this islenska reads (`islenska_data.FORMAT`) and hold the files,
 or `data_dir()` raises `RuntimeError`; `ISLENSKA_BIN_FILE` still overrides
-`compressed.bin`. In this repository, `[tool.uv.sources]` makes the dev
-environment install the `islenska-data/` subproject (editable, normally
-empty) instead of the PyPI release. Its version is `<format major>.<format minor>.<data
+`compressed.bin`. `uv sync` installs the released islenska-data from PyPI
+(`uv.lock` pins it), so a fresh checkout runs its tests without building
+any data. There is deliberately no `[tool.uv.sources]` entry pointing at the
+local `islenska-data/` subproject: that subproject holds no data until
+`tools/data_package.py` stages some, so with such an entry a fresh `uv sync`
+gave an environment where every test failed (`holds no data files`). Where
+the local subproject is needed — to build data in a format that isn't on
+PyPI yet, as the CI action does — install it explicitly next to islenska:
+`uv pip install -e . -e ./islenska-data`. The local package then satisfies
+islenska's dependency whatever its version. Its version is `<format major>.<format minor>.<data
 release>` (5.0.x for `Greynir 05.00.00`). `tools/data_package.py` checks the
 built files and copies them into the package.
 

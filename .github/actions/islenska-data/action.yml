@@ -72,8 +72,9 @@ runs:
       run: |
         python -m pip install uv
         uv pip install --system --upgrade wheel setuptools cffi
-        # [tool.uv.sources] makes this install the local islenska-data too
-        uv pip install --system -e .
+        # The local islenska-data subproject, named explicitly, satisfies
+        # islenska's dependency even for a data format not yet on PyPI
+        uv pip install --system -e . -e ./islenska-data
         unzip -q -o -d src/islenska/resources/ src/islenska/resources/KRISTINsnid.csv.zip
         python tools/dawgbuilder.py
         python tools/binpack.py

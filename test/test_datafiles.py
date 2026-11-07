@@ -6,6 +6,7 @@ islenska-data package, which must have the data format that this version of
 islenska reads.
 """
 
+import gc
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -14,6 +15,7 @@ import pytest
 from islenska.basics import (
     BIN_COMPRESSED_FILE,
     BIN_COMPRESSOR_VERSION,
+    BIN_FILE_ENV,
     DATA_FILES,
     _data_version,
     data_dir,
@@ -98,3 +100,17 @@ def test_data_version(data_format: str, version: str) -> None:
 
 def test_data_dir_is_cached() -> None:
     assert data_dir() is data_dir()
+
+
+@pytest.mark.filterwarnings("error::pytest.PytestUnraisableExceptionWarning")
+def test_failed_open_reports_only_its_own_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # A BinCompressed whose data file can't be opened raises that error, and
+    # its __del__ adds no AttributeError on the half-initialized object
+    from islenska.bincompress import BinCompressed
+
+    monkeypatch.setenv(BIN_FILE_ENV, str(tmp_path / "missing.bin"))
+    with pytest.raises(FileNotFoundError):
+        BinCompressed()
+    gc.collect()

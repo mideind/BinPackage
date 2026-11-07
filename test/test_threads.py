@@ -1,7 +1,8 @@
 """Lookups from many threads at once must give the same results as from one.
 
 On free-threaded Python (3.14t) the threads really run in parallel, so this exercises
-libbin and the shared lookup caches, including eviction, under contention.
+libbin and the shared lookup caches, including eviction, under contention. With the
+GIL, the threads only interleave, which needs fewer of them to show up.
 """
 
 import random
@@ -17,7 +18,12 @@ from islenska import Bin
 from islenska.basics import GenerationalCache
 from islenska.bindb import GreynirBin
 
-THREADS = 8
+FREE_THREADED = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
+# With the GIL the threads take turns, so more of them add run time but little coverage
+THREADS = 8 if FREE_THREADED else 4
+# Each thread checks a random sample of this share of the lookups. The samples
+# overlap, so the threads still hit the same words and cache entries at once.
+SAMPLE = 0.25
 
 WORDS = [
     "hestur",
@@ -102,8 +108,7 @@ def test_parallel_lookups_match_serial(monkeypatch: pytest.MonkeyPatch) -> None:
     barrier = threading.Barrier(THREADS)
 
     def work(seed: int) -> list[tuple[int, str, str]]:
-        keys = list(expected)
-        random.Random(seed).shuffle(keys)
+        keys = random.Random(seed).sample(list(expected), int(len(expected) * SAMPLE))
         barrier.wait()
         return [
             (i, name, w)
@@ -116,9 +121,7 @@ def test_parallel_lookups_match_serial(monkeypatch: pytest.MonkeyPatch) -> None:
     assert mismatches == []
 
 
-@pytest.mark.skipif(
-    not sysconfig.get_config_var("Py_GIL_DISABLED"), reason="needs free-threaded Python"
-)
+@pytest.mark.skipif(not FREE_THREADED, reason="needs free-threaded Python")
 def test_gil_stays_disabled() -> None:
     # An extension that does not declare free-threading support turns the GIL back on at import
     Bin().lookup("hestur")

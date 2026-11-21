@@ -124,6 +124,62 @@ aarch64) instead of `ubuntu-latest`, which moves to Ubuntu 26 from
   `src/islenska/resources/compressed.bin` and run `tools/binpack.py`. The
   local file being present hid the bug above until CI ran.
 
+### Suffix list and vocabulary additions (2026-11, islenska-data 5.0.1, not yet released)
+
+Why: *vélarmar* (SpaceX news, 2026-11-14) was an unknown word on greynir.is.
+`vél` was a known prefix; no form of `armur` was in `suffixes.txt`, which
+dates from 2021 and leaves out many BÍN forms, some on purpose.
+
+What changed: forms added to `suffixes.txt` (the missing forms of
+`stöð`, `lengd`, `heild`, `skjár`, `klerkur`, `amma`, `vasi`, `glans`,
+`vinstri`, and `armur`, `verkun`, `dama`, `kelling`, `pulsa`, `stía`, `hula`,
+`löndun`, `hold`, `bingur`, `barð`, `garmur`, `svíning`, `kurlari`, `nikka`,
+`húnn`); new Greynir vocabulary at the end of `ord.auka.csv` (`innviður` in
+the singular, `vélarmur`, `eldgosavá`, `hraunavá`, `hraunvá`, the plural of
+`framhjáhald`, and the recurring compounds `fiskeldisseyra`, `holdasæði`,
+`hrossasæði`, `bíltjakkur`, whose last parts are not suffixes, `Thorsari`,
+and the agent nouns `röflari`, `giggari`, `heklari`, `púlari`, `peppari`);
+`varpari` and `passari` as suffix-only entries in `ord.suffixes.csv` (utg -1: *hlað-varpari*, *hunda-passari* get the whole
+paradigm, but `varpari` alone is not a word), with their forms in
+`suffixes.txt` (208 forms added in all). Tests in
+`test/test_suffixes.py`, skipped on an installed islenska-data older than
+5.0.1.
+
+Case casting (`Bin._cast_to_case`, code, so it needs an islenska release
+with the data): `armur`, `stöð` and `lengd` are also adjective forms, and
+casting took the adjective reading first (`cast_to_dative("vélarmur")` gave
+`vél-örmum`). Now a word that the compounder resolved (bin_id 0) is cast as
+a noun if it has a nominative noun reading; words in BÍN keep the
+adjective-first rule (*gul* → *gulri*). No cast result carries a hyphen
+that the input lacks (compound adjectives, `-legur` adjectives). Still open:
+plain `Bin` returns a compound of a suffix-only entry (*hlaðvarpari*,
+*pönkisti*) unchanged from `cast_to_*`; `GreynirBin` casts it.
+
+Rules for a suffix form (a form lets any unknown 'known prefix + form' pass
+as a compound, and the longest last part wins the split):
+
+- No forms of three letters or fewer (`arm` accepts *alarm*, `ker` accepts
+  *Parker*), and no verbs (their short irregular forms: `er`, `et`, `las`).
+- No form that is a linking letter plus an existing suffix form: `sverð`
+  turned *kolefnis-verð* into *kolefni-sverð*, `skafl` took *efnis-kafli*,
+  `seyra` *blómkáls-eyra*, `spanna` *pottjárns-panna*, `tjakka` *haust-jakki*,
+  `armanna` and `damanna` the *-ar-manna* and *-da-manna* genitives. This is
+  why `sverð`, `skafl`, `sæði`, `seyra`, `spönn` and `tjakkur` are not in.
+- An established word with few compounds belongs in the vocabulary
+  (`ord.auka.csv`), not the suffix list. Check `ord.add.csv` and
+  `ord.auka.csv` first (*eldfjallavá* and singular *sifjaspell* were there
+  already). Vocabulary is visible through `GreynirBin` only.
+- A vocabulary entry gets its whole paradigm. A form that coincides with a
+  form of another word (*innviði*, *vélarmanna*) stays in: such ambiguity is
+  normal in Icelandic, and a missing valid form is a bug (villi, 2026-11-15).
+  This differs from the suffix forms above, which are left out because they
+  replace a correct split with a wrong one, not because they add a reading.
+
+How to test a change: look up every distinct word form of a large corpus
+before and after the rebuild, with `Bin` and `GreynirBin`, and read all the
+words whose result changed, not only the newly resolved ones. Testing a
+candidate against unknown words alone misses the stolen linking letters.
+
 ## Tooling
 
 This project is managed with [uv](https://docs.astral.sh/uv/) — dependencies

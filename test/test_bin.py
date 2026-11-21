@@ -735,6 +735,29 @@ def test_casting() -> None:
         == "borgarstjórnarofurmeirihlutans"
     )
 
+    # A compound that is not in BÍN, whose last part is both a noun and an
+    # adjective form, is cast as the noun ('dýr' the animal, not 'dýr' dear)
+    assert not db.contains("véldýr")
+    assert db.cast_to_accusative("véldýr") == "véldýr"
+    assert db.cast_to_dative("véldýr") == "véldýri"
+    assert db.cast_to_genitive("véldýr") == "véldýrs"
+    assert db.cast_to_dative("vélhljóð") == "vélhljóði"
+    # A word that is in BÍN is still cast as an adjective if it can be one
+    assert db.cast_to_dative("gul") == "gulri"
+    # A compound adjective is cast without the hyphen that the compounder
+    # puts at the boundary it finds
+    assert not db.contains("vélgerður")
+    assert db.cast_to_accusative("vélgerður") == "vélgerðan"
+    assert db.cast_to_dative("vélgerður") == "vélgerðum"
+    assert db.cast_to_genitive("vélgerður") == "vélgerðs"
+    assert db_nh.cast_to_dative("vélgerður") == "vélgerðum"
+    assert db.cast_to_dative("vélgerða") == "vélgerðu"
+    # The same goes for an adjective in '-legur' that is not in BÍN, which
+    # the case lookup resolves as a compound
+    assert not db.contains("afburðaleiðinlegt")
+    assert db.cast_to_dative("afburðaleiðinlegt") == "afburðaleiðinlegu"
+    assert db.cast_to_genitive("afburðaheimskuleg") == "afburðaheimskulegrar"
+
 
 def test_capitalized_word_in_bin_not_compounded() -> None:
     """A capitalized surface form (e.g. an address or sentence-initial word)

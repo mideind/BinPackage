@@ -604,6 +604,19 @@ class Bin:
             sc = NounPreferences.DICT.get(m.bmynd.split("-")[-1])
             return 0 if sc is None else sc.get(m.ofl, 0)
 
+        def cast_last_part(m: BinEntry) -> BinEntryList:
+            """Cast a word that the compounder resolved, such as 'vél-hundur':
+            cast its last part, which is always in BÍN as-is, and put the
+            first parts back in front of it, without the hyphens that the
+            compounder inserted to mark the boundaries it found"""
+            cw = m.bmynd.split("-")
+            return Bin._prefix_meanings(
+                case_func(cw[-1], cat=m.ofl, lemma=m.ord.split("-")[-1]),
+                "".join(cw[0:-1]),
+                make_bin_entry,
+                insert_hyphen=False,
+            )
+
         mm: BinEntryList
 
         # Begin by looking up the word form
@@ -613,10 +626,24 @@ class Bin:
             return w
         # Check whether this is (or might be) an adjective
         m_word = next((m for m in mm if m.ofl == "lo" and "NF" in m.mark), None)
+        if (
+            m_word is not None
+            and m_word.bin_id == 0
+            and any(m.ofl in {"kk", "kvk", "hk"} and "NF" in m.mark for m in mm)
+        ):
+            # A word that is not in BÍN as such but was resolved as a compound,
+            # and its last part is both a noun and an adjective form: prefer
+            # the noun ('véldýr' is 'vél-dýr' the animal, 'brottvísunarstöð'
+            # is not a form of the adjective 'staður')
+            m_word = None
         if m_word is not None:
             # This is an adjective: find its forms
             # in the requested case ("Gul gata", "Stjáni blái")
-            mm = case_func(m_word.bmynd, cat="lo", lemma=m_word.ord)
+            if "-" in m_word.bmynd and "-" not in w:
+                # A compound adjective, such as 'vél-gerður'
+                mm = cast_last_part(m_word)
+            else:
+                mm = case_func(m_word.bmynd, cat="lo", lemma=m_word.ord)
             if "VB" in m_word.mark:
                 mm = [m for m in mm if "VB" in m.mark]
             elif "SB" in m_word.mark:
@@ -639,15 +666,7 @@ class Bin:
             if "-" in m_word.bmynd and "-" not in w:
                 # Composite word (and not something like 'Vestur-Þýskaland', which
                 # is in BÍN including the hyphen): use the meaning of its last part
-                cw = m_word.bmynd.split("-")
-                prefix = "".join(cw[0:-1])
-                # No need to think about upper or lower case here,
-                # since the last part of a compound word is always in BÍN as-is
-                mm = case_func(cw[-1], cat=m_word.ofl, lemma=m_word.ord.split("-")[-1])
-                # Add the prefix to the remaining word lemmas
-                mm = Bin._prefix_meanings(
-                    mm, prefix, make_bin_entry, insert_hyphen=False
-                )
+                mm = cast_last_part(m_word)
             else:
                 mm = case_func(w, cat=m_word.ofl, lemma=m_word.ord)
                 if not mm and w[0].isupper() and not w.isupper():
@@ -666,6 +685,11 @@ class Bin:
                 mm = filter_func(mm)
             if mm:
                 o = mm[0].bmynd
+                if "-" in o and "-" not in w:
+                    # The case lookup resolved the word as a compound and
+                    # marked the boundaries it found ('afburða-leiðinlegu'):
+                    # those hyphens are not part of the word
+                    o = o.replace("-", "")
                 # Imitate the case of the original word
                 if w.isupper():
                     o = o.upper()

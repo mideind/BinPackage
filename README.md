@@ -989,7 +989,11 @@ possessive prefixes, which is how modifier decomposition is enabled.
 
 To test whether a word form is present in BÍN at all (without retrieving
 its entries), call `contains()`. The `in` operator on a `Bin` instance is
-equivalent.
+equivalent. The answer is `True` for the word forms that `lookup()` finds an
+entry for without generating one: a compound that BinPackage can resolve
+but that is not in BÍN is not contained, and neither is a word from the
+additional vocabulary (see the [`Bin()` constructor](#bin-constructor)),
+which only `GreynirBin` contains.
 
 ```python
 >>> b.contains("hestur")

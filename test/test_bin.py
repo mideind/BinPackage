@@ -792,6 +792,52 @@ def test_casting() -> None:
     assert db.cast_to_dative("isti") == "isti"
 
 
+def test_contains_and_hidden_entries() -> None:
+    """contains() and the 'in' operator are true for the word forms that
+    lookup() finds an entry for. The data file also holds the Greynir
+    vocabulary, which plain Bin does not return, and the suffix-only entries;
+    neither makes a word 'contained', nor keeps the compounder from it."""
+    b = Bin()
+    g = GreynirBin()
+    assert b.contains("hestur") and "hestur" in b
+    assert g.contains("hestur") and "hestur" in g
+    assert not b.contains("xyzzy") and "xyzzy" not in g
+    # 'instagram' is Greynir vocabulary: hidden from Bin, visible in GreynirBin
+    assert not b.lookup("instagram")[1]
+    assert not b.contains("instagram") and "instagram" not in b
+    assert g.lookup("instagram")[1]
+    assert g.contains("instagram") and "instagram" in g
+    # A suffix-only entry is not a word in either class
+    for db in (b, g):
+        assert not db.lookup("isti")[1]
+        assert not db.contains("isti") and "isti" not in db
+        assert not db.lookup_dative("isti")
+        assert not db.lookup_forms("isti", "kk", "þgf")
+    # 'raddskipun' is Greynir vocabulary, and plain Bin resolves it as a
+    # compound: so do its case lookups, as lookup() does
+    assert not b.contains("raddskipun")
+    assert {(m.ord, m.bin_id) for m in b.lookup("raddskipun")[1]} == {
+        ("radd-skipun", 0)
+    }
+    assert [m.bmynd for m in b.lookup_genitive("raddskipun")] == ["radd-skipunar"]
+    assert {m.bmynd for m in b.lookup_forms("raddskipun", "kvk", "ef")} >= {
+        "radd-skipunar",
+        "radd-skipana",
+    }
+    assert b.cast_to_genitive("raddskipun") == "raddskipunar"
+    assert g.contains("raddskipun")
+    assert {m.ord for m in g.lookup("raddskipun")[1]} == {"raddskipun"}
+    assert g.cast_to_genitive("raddskipun") == "raddskipunar"
+    # With compounding off, plain Bin does not know the word at all
+    nb = Bin(add_compounds=False)
+    assert not nb.contains("raddskipun")
+    assert not nb.lookup("raddskipun")[1]
+    assert not nb.lookup_genitive("raddskipun")
+    # A cast keeps the hyphens of the word and adds none
+    assert b.cast_to_dative("Vestur-vélhundur") == "Vestur-vélhundi"
+    assert b.cast_to_dative("Vestur-hestur") == "Vestur-hesti"
+
+
 def test_case_lookup_of_suffix_only_compounds() -> None:
     """The case lookups resolve a compound whose last part is a suffix-only
     entry (birting 'S', from ord.suffixes.csv), as lookup() does. Such

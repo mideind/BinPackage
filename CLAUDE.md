@@ -174,10 +174,20 @@ and `cast_to_*` did not, because `Bin._filter_meanings` drops every bin_id
 in the Greynir range, and suffix-only entries have such ids. The case
 lookups now keep them for the last part of a compound
 (`Bin._suffix_only_ids`), so `Bin` and `GreynirBin` agree on these words.
-Left as they were: `Bin.contains` is true for suffix-only forms and Greynir
-vocabulary; and plain `Bin` returns nothing from the case lookups for a word
-that it resolves as a compound but that is also Greynir vocabulary
-(*vélarmur*), though `cast_to_*` casts it.
+Entries that a class does not return (code as well, older than this work):
+the data file holds the Greynir vocabulary, hidden from plain `Bin`, and the
+suffix-only entries, which are not words on their own in either class.
+`contains` and `in` asked the trie, so they were true for both kinds, and
+the case lookups use `contains` to decide that a word is in BÍN and must not
+be compounded. So `Bin.lookup("vélarmur")` gave `vél-armur` while
+`lookup_dative` and `lookup_forms` gave nothing (1,483 vocabulary forms),
+and `GreynirBin.lookup_dative("passari")` returned the suffix-only entry.
+Now `contains` is true only if `lookup` finds an entry without generating
+one, the case lookups drop suffix-only entries unless the form is the last
+part of a compound (`Bin._case_meanings`), and a cast removes the
+compounder's hyphens from a word that has hyphens of its own
+(`Vestur-vélhundi`, was `Vestur-vél-hundi`). GreynirEngine uses `GreynirBin`
+only (`reynir/bindb.py`), so the plain `Bin` changes do not reach it.
 
 Suffix-only entries that BÍN also has (`ord.suffixes.csv`, data): `beri`,
 `gjafi` and `stýra` repeated BÍN entries form for form, so every compound of

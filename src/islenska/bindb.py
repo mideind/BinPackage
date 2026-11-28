@@ -305,6 +305,23 @@ class Bin:
         cached = self._ksnid_cache.lookup(w, self._cached_lookup)
         return frozenset(k.bin_id for k in cached.ksnid if k.birting == "S")
 
+    def _case_meanings(
+        self, w: str, mtlist: Iterable[BinEntryTuple], compound: bool
+    ) -> BinEntryList:
+        """Make BinEntry instances from the result of a case lookup of the
+        word form w. Suffix-only entries count if w is the last part of a
+        compound, and only then: GreynirBin, which sees the Greynir-specific
+        entries, would otherwise return 'passara' for 'passari' alone."""
+        m = self._filter_meanings(mtlist, self._suffix_only_ids(w, compound))
+        if compound:
+            return m
+        assert self._bc is not None
+        max_utg = self._bc.begin_greynir_utg
+        if not any(e.bin_id >= max_utg for e in m):
+            return m
+        suffix_ids = self._suffix_only_ids(w)
+        return [e for e in m if e.bin_id not in suffix_ids]
+
     def _filter_ksnid(self, klist: Iterable[Ksnid]) -> KsnidList:
         """Default mapping function to make Ksnid instances
         from EntryTuples coming from BinCompressed"""
@@ -732,11 +749,14 @@ class Bin:
                 mm = filter_func(mm)
             if mm:
                 o = mm[0].bmynd
-                if "-" in o and "-" not in w:
+                n = w.count("-")
+                if o.count("-") > n:
                     # The case lookup resolved the word as a compound and
-                    # marked the boundaries it found ('afburða-leiðinlegu'):
-                    # those hyphens are not part of the word
-                    o = o.replace("-", "")
+                    # marked the boundaries it found ('afburða-leiðinlegu',
+                    # 'Vestur-vél-hundi'): those hyphens are not part of the
+                    # word. The hyphens of the word itself come first.
+                    parts = o.split("-")
+                    o = "-".join(parts[:n] + ["".join(parts[n:])])
                 # Imitate the case of the original word
                 if w.isupper():
                     o = o.upper()
@@ -749,15 +769,17 @@ class Bin:
 
     def __contains__(self, w: str) -> bool:
         """Returns True if the given word form is found in BÍN"""
-        # Note that this does not fall back to the word compounder
-        assert self._bc is not None
-        return self._bc.contains(w)
+        return self.contains(w)
 
     def contains(self, w: str) -> bool:
-        """Returns True if the given word form is found in BÍN"""
-        # Note that this does not fall back to the word compounder
+        """Returns True if the given word form is found in BÍN, i.e. if
+        lookup() finds an entry for it without generating one: this does not
+        fall back to the word compounder. The data file also holds entries
+        that this class does not return, such as the Greynir vocabulary in
+        plain Bin and the suffix-only entries; they do not count."""
         assert self._bc is not None
-        return self._bc.contains(w)
+        # The trie answers most negatives without a lookup
+        return self._bc.contains(w) and bool(self._ksnid_cache_lookup(w))
 
     @staticmethod
     def open_cats(mlist: Iterable[_T]) -> List[_T]:
@@ -856,11 +878,13 @@ class Bin:
         assert self._bc is not None
         bc: BinCompressed = self._bc
         norm_case = case.upper().replace("GR", "gr")
-        m = self._filter_meanings(
-            bc.lookup_case(lemma, norm_case, lemma=lemma, cat=cat, all_forms=True)
+        m = self._case_meanings(
+            lemma,
+            bc.lookup_case(lemma, norm_case, lemma=lemma, cat=cat, all_forms=True),
+            False,
         )
-        if m or bc.contains(lemma) or (
-            lemma != lemma.lower() and bc.contains(lemma.lower())
+        if m or self.contains(lemma) or (
+            lemma != lemma.lower() and self.contains(lemma.lower())
         ):
             # Either the lemma was found, or it is present in BÍN as a non-lemma
             # surface form (and thus deliberately yields nothing here): only a
@@ -874,9 +898,12 @@ class Bin:
             in the requested case. The head is a genuine BÍN word or a
             suffix-only entry, so no further compounding or lemma/id
             constraints apply."""
-            return self._filter_meanings(
-                bc.lookup_case(key, norm_case, cat=cat, all_forms=True),
-                self._suffix_only_ids(key, compound),
+            if not compound and not self.contains(key):
+                # Not a part of a compound but the word itself, and it is
+                # not a word that this class returns
+                return []
+            return self._case_meanings(
+                key, bc.lookup_case(key, norm_case, cat=cat, all_forms=True), compound
             )
 
         return self._compound_case(lemma, suffix_forms_lookup)
@@ -994,7 +1021,8 @@ class Bin:
         If compound_head is True, w is the last part of a compound, where
         suffix-only entries count as well."""
         assert self._bc is not None
-        m = self._filter_meanings(
+        m = self._case_meanings(
+            w,
             case_func(
                 w,
                 cat=cat,
@@ -1005,7 +1033,7 @@ class Bin:
                 all_forms=all_forms,
                 inflection_filter=inflection_filter,
             ),
-            self._suffix_only_ids(w, compound_head),
+            compound_head,
         )
         if (
             m
@@ -1030,7 +1058,12 @@ class Bin:
             """Case forms of a compound head. The whole-word lemma/bin_id are
             not propagated here, as they identify the compound, not its head;
             the cat constraint, however, does apply to the head."""
-            return self._filter_meanings(
+            if not compound and not self.contains(key):
+                # Not a part of a compound but the word itself, and it is
+                # not a word that this class returns
+                return []
+            return self._case_meanings(
+                key,
                 case_func(
                     key,
                     cat=cat,
@@ -1041,7 +1074,7 @@ class Bin:
                     all_forms=all_forms,
                     inflection_filter=inflection_filter,
                 ),
-                self._suffix_only_ids(key, compound),
+                compound,
             )
 
         m = self._compound_case(w, suffix_case_lookup)

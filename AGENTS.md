@@ -2,8 +2,11 @@
 
 This file provides guidance to AI coding agents when working with code in this repository.
 
-## Status (2026-10-15)
+## Status (2026-11-28)
 
+islenska 2.2.0 and islenska-data 5.0.1 were released on 2026-11-28 (PR #42:
+case casting of compounds and comparatives, `contains()` and the case
+lookups in line with `lookup()`, more compound suffixes and vocabulary).
 islenska 2.1.0 was released on 2026-10-15 (PR #39: free-threaded CPython
 3.14t/3.15t wheels, a word cache shared by threads without a lock, cffi 2.0
 required). It uses islenska-data 5.0.0, as 2.0.0 does. islenska 2.0.0 and

@@ -3,7 +3,32 @@
 Guidance for Claude Code in this repository. `AGENTS.md` holds the full project
 overview and architecture notes; the day-to-day essentials are below.
 
-## Status (2026-10-15): 2.1.0 released
+## Status (2026-11-28): 2.2.0 and islenska-data 5.0.1 released
+
+**islenska 2.2.0 and islenska-data 5.0.1 were released on 2026-11-28** (tags
+`2.2.0` and `data-5.0.1`, GitHub release 2.2.0; PR #42). PyPI holds 30
+islenska wheels plus the sdist, and the data wheel (30 MB). What changed is
+under "Suffix list and vocabulary additions" below and in the release notes.
+
+- It is 2.2.0 and not 2.1.1 because `contains()` and several cast results
+  changed (villi's call).
+- islenska went first, then the data: 2.2.0 works with the 5.0.0 data, but
+  the 5.0.1 data with 2.1.0 or older make `cast_to_*` return adjective forms
+  for compounds ending in `armur`, `stöð` and `lengd`. Existing
+  installations get 5.0.1 with `pip install -U islenska-data`.
+- No dry run was made. The first release run failed at once because GitHub
+  had retired `macos-14`; nothing was published, the runner was changed to
+  `macos-15` and the tag moved. A release run that fails publishes nothing,
+  so it serves as its own dry run.
+- Verified from PyPI in fresh venvs (CPython 3.14): 2.2.0 with 5.0.0, the
+  same after `-U islenska-data`, and a fresh `pip install islenska`, which
+  gets 2.2.0 and 5.0.1.
+- Open: villi suggested dropping the macOS x86_64 wheels (2026-11-28). Not
+  done: pip would then build from source on Intel Macs. To do it, set
+  `CIBW_ARCHS_MACOS: "arm64"` and `"macOS": 1` in the wheel check of
+  `wheels.yml`, and fix the wheel lists in `RELEASING.md`.
+
+### 2.1.0 (released 2026-10-15)
 
 **islenska 2.1.0 was released on 2026-10-15** (tag `2.1.0`, GitHub release
 2.1.0): free-threaded CPython. PyPI holds 30 islenska wheels plus the sdist.
@@ -127,7 +152,7 @@ The current labels are in the README of `actions/runner-images`.
   `src/islenska/resources/compressed.bin` and run `tools/binpack.py`. The
   local file being present hid the bug above until CI ran.
 
-### Suffix list and vocabulary additions (2026-11, islenska-data 5.0.1, not yet released)
+### Suffix list and vocabulary additions (2026-11; islenska 2.2.0, islenska-data 5.0.1)
 
 Why: *vélarmar* (SpaceX news, 2026-11-14) was an unknown word on greynir.is.
 `vél` was a known prefix; no form of `armur` was in `suffixes.txt`, which
@@ -340,6 +365,12 @@ lock (PR #39); see "Status" above. Free-threaded CPython has no stable ABI,
 so each new version needs a wheel of its own: for 3.16t, add `cp316t-*` to
 `CIBW_BUILD` and `cp316-cp316t` to the expected set of the wheel check in
 `wheels.yml`, and `3.16t` to the matrix in `python-package.yml`.
+
+### 2.2.0 (released 2026-11-28): casting, `contains`, suffix list
+
+Case casting of compounds and comparatives, `contains()` and the case
+lookups in line with `lookup()`, and islenska-data 5.0.1 (PR #42); see
+"Status" above.
 
 ### Possible later step: one wheel for every non-CPython interpreter
 

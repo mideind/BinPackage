@@ -44,8 +44,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # ubuntu-26.04-arm builds the Linux aarch64 wheels
-        os: [windows-latest, macos-14, ubuntu-26.04, ubuntu-26.04-arm]
+        # ubuntu-26.04-arm builds the Linux aarch64 wheels; macos-15 is an
+        # arm64 runner that builds both macOS architectures
+        os: [windows-latest, macos-15, ubuntu-26.04, ubuntu-26.04-arm]
 
     env:
       # Build abi3 wheel for CPython 3.10+ (one wheel for all versions)

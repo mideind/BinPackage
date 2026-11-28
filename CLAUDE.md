@@ -112,7 +112,10 @@ CI after the release (#38): every action is on its Node.js 24 version, the
 Slack failure notifications go through `slackapi/slack-github-action`, and
 every Linux job runs on an explicit `ubuntu-26.04` (`ubuntu-26.04-arm` for
 aarch64) instead of `ubuntu-latest`, which moves to Ubuntu 26 from
-2026-10-19. Windows and macOS keep `windows-latest` and `macos-14`.
+2026-10-19. Windows keeps `windows-latest`. macOS is on `macos-15` since
+2026-11-28: GitHub retired `macos-14`, which failed the first 2.2.0 release
+run ("The configuration 'macos-14-arm64-us-default' is not supported").
+The current labels are in the README of `actions/runner-images`.
 
 ### Lessons from 2.0.0
 

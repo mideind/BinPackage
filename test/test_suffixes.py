@@ -174,6 +174,16 @@ def test_suffix_only_entries() -> None:
         assert {(mm.ord, mm.ofl, mm.bin_id) for mm in m} == {(lemma, "kk", 0)}, w
     for w in ("varpari", "passari", "passarar"):
         assert not b.lookup(w)[1], w
+        assert not b.lookup_dative(w), w
+        assert b.cast_to_dative(w) == w
+    # The compounds are cast, by Bin as well as GreynirBin
+    for db in (b, GreynirBin()):
+        assert db.cast_to_accusative("hlaðvarpari") == "hlaðvarpara"
+        assert db.cast_to_dative("barnapassarar") == "barnapössurum"
+        assert db.cast_to_genitive("hundapassarinn") == "hundapassarans"
+        assert [mm.bmynd for mm in db.lookup_dative("skjávarparar")] == [
+            "skjá-vörpurum"
+        ]
     # A compound that BÍN has is found there, not composed
     _, m = b.lookup("kúluvarpari")
     assert m and all(mm.ord == "kúluvarpari" and mm.bin_id > 0 for mm in m)

@@ -151,9 +151,19 @@ casting took the adjective reading first (`cast_to_dative("vélarmur")` gave
 `vél-örmum`). Now a word that the compounder resolved (bin_id 0) is cast as
 a noun if it has a nominative noun reading; words in BÍN keep the
 adjective-first rule (*gul* → *gulri*). No cast result carries a hyphen
-that the input lacks (compound adjectives, `-legur` adjectives). Still open:
-plain `Bin` returns a compound of a suffix-only entry (*hlaðvarpari*,
-*pönkisti*) unchanged from `cast_to_*`; `GreynirBin` casts it.
+that the input lacks (compound adjectives, `-legur` adjectives).
+
+Suffix-only entries in plain `Bin` (code as well): `lookup` resolved
+*pönkisti* and *hlaðvarpari*, but `lookup_nominative` etc., `lookup_forms`
+and `cast_to_*` did not, because `Bin._filter_meanings` drops every bin_id
+in the Greynir range, and suffix-only entries have such ids. The case
+lookups now keep them for the last part of a compound
+(`Bin._suffix_only_ids`), so `Bin` and `GreynirBin` agree on these words.
+Left as they were: a head that is both a BÍN word and a suffix-only entry
+(`beri`, `gjafi`) gives each form twice, in `lookup` too; `Bin.contains` is
+true for suffix-only forms and Greynir vocabulary; and plain `Bin` returns
+nothing from the case lookups for a word that it resolves as a compound but
+that is also Greynir vocabulary (*vélarmur*), though `cast_to_*` casts it.
 
 Rules for a suffix form (a form lets any unknown 'known prefix + form' pass
 as a compound, and the longest last part wins the split):

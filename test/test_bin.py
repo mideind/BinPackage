@@ -757,6 +757,45 @@ def test_casting() -> None:
     assert not db.contains("afburðaleiðinlegt")
     assert db.cast_to_dative("afburðaleiðinlegt") == "afburðaleiðinlegu"
     assert db.cast_to_genitive("afburðaheimskuleg") == "afburðaheimskulegrar"
+    # A compound whose last part is a suffix-only entry ('-isti' and '-rænn'
+    # in ord.suffixes.csv) is cast like any other compound
+    assert db.cast_to_accusative("pönkisti") == "pönkista"
+    assert db.cast_to_dative("pönkistar") == "pönkistum"
+    assert db.cast_to_genitive("Pönkistinn") == "Pönkistans"
+    assert db_nh.cast_to_dative("pönkistar") == "pönkistum"
+    assert db.cast_to_dative("pönkrænn") == "pönkrænum"
+    # The suffix alone is not a word
+    assert db.cast_to_dative("isti") == "isti"
+
+
+def test_case_lookup_of_suffix_only_compounds() -> None:
+    """The case lookups resolve a compound whose last part is a suffix-only
+    entry (birting 'S', from ord.suffixes.csv), as lookup() does. Such
+    entries have bin_ids in the Greynir-specific range, which plain Bin
+    otherwise leaves out."""
+    for db in (Bin(), GreynirBin()):
+        _, m = db.lookup("pönkisti")
+        assert {(mm.ord, mm.ofl, mm.bin_id) for mm in m} == {("pönk-isti", "kk", 0)}
+        assert [mm.bmynd for mm in db.lookup_nominative("pönkistanum")] == [
+            "pönk-istinn"
+        ]
+        assert [mm.bmynd for mm in db.lookup_accusative("pönkisti")] == ["pönk-ista"]
+        assert [mm.bmynd for mm in db.lookup_dative("pönkistar")] == ["pönk-istum"]
+        assert [mm.bmynd for mm in db.lookup_genitive("pönkistinn")] == [
+            "pönk-istans"
+        ]
+        assert {mm.bmynd for mm in db.lookup_forms("pönkisti", "kk", "ef")} == {
+            "pönk-ista",
+            "pönk-istans",
+            "pönk-istanna",
+        }
+        assert {mm.bmynd for mm in db.lookup_dative("pönkrænn")} == {"pönk-rænum"}
+    # The suffix alone is not a word in BÍN
+    db = Bin()
+    assert not db.lookup("isti")[1]
+    assert not db.lookup_dative("isti")
+    assert not db.lookup_forms("isti", "kk", "ef")
+    assert not db.lookup_dative("pönk-isti")
 
 
 def test_capitalized_word_in_bin_not_compounded() -> None:

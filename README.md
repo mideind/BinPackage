@@ -886,6 +886,11 @@ Compound words are cast by resolving their head, so a compound that is not in
 BÍN is still cast — `cast_to_accusative("Vestur-hestur")` gives `Vestur-hest`.
 Hyphens that are part of the input are preserved in the result.
 
+A word that is only in Miðeind's additional vocabulary (see the
+[`Bin()` constructor](#bin-constructor)) is unknown to `Bin`, which returns
+it unchanged unless it can be resolved as a compound; the `GreynirBin`
+subclass casts it.
+
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | w | `str` | | The word to cast (assumed to be in nominative case). |

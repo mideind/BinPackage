@@ -153,6 +153,21 @@ a noun if it has a nominative noun reading; words in BÍN keep the
 adjective-first rule (*gul* → *gulri*). No cast result carries a hyphen
 that the input lacks (compound adjectives, `-legur` adjectives).
 
+Casting of comparatives (code as well, older than this work):
+`cast_to_accusative("fallegri")` gave *fallega*. The case lookup starts from
+every reading of the word form, and *fallegri* is also the dative of the
+positive degree in the feminine; the old filter looked only for `VB` or `SB`
+in the mark, which `MST` has neither of. It hit 5,452 of BÍN's 17,257
+adjectives with a comparative. Now the result must have the degree and
+declension of the chosen reading (the first part of the mark), and where a
+word has alternative forms (*snotrari*/*snoturri*, marks ending in `2`) the
+forms of the input's own series come first, so every comparative is cast to
+itself. Not done, on purpose: requiring the gender of the chosen reading as
+well. That turns the dative of every weak form in *-a* from *stóra* (right
+for *stóra húsið*) into *stóru* (right for *stóra konan*), 151 k casts of
+432 k adjective forms, with no better claim to be right; a caller that knows
+the gender passes a `filter_func`.
+
 Suffix-only entries in plain `Bin` (code as well): `lookup` resolved
 *pönkisti* and *hlaðvarpari*, but `lookup_nominative` etc., `lookup_forms`
 and `cast_to_*` did not, because `Bin._filter_meanings` drops every bin_id

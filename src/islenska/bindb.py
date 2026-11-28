@@ -138,6 +138,10 @@ class CaseFunc(Protocol):
         ...
 
 
+# The first part of an adjective's inflection mark: positive, comparative
+# and superlative degree, the first and last in strong and weak declension
+_ADJ_DEGREES = frozenset(("FSB", "FVB", "MST", "ESB", "EVB"))
+
 # Size of LRU caches for word lookups
 CACHE_SIZE = 512
 # Generation size of the cache of word form lookups: it holds between this
@@ -641,6 +645,13 @@ class Bin:
                 insert_hyphen=False,
             )
 
+        def adj_degree(mark: str) -> str:
+            """Return the degree and declension of an adjective form from its
+            inflection mark ('MST' from 'MST-KK-NFET'), or an empty string if
+            the mark has none, as for an ordinal in GreynirBin"""
+            first = mark.split("-", maxsplit=1)[0]
+            return first if first in _ADJ_DEGREES else ""
+
         mm: BinEntryList
 
         # Begin by looking up the word form
@@ -668,10 +679,22 @@ class Bin:
                 mm = cast_last_part(m_word)
             else:
                 mm = case_func(m_word.bmynd, cat="lo", lemma=m_word.ord)
-            if "VB" in m_word.mark:
-                mm = [m for m in mm if "VB" in m.mark]
-            elif "SB" in m_word.mark:
-                mm = [m for m in mm if "SB" in m.mark]
+            # The case lookup starts from every reading of the word form, also
+            # the ones that are not nominative: 'fallegri' is the comparative,
+            # but the dative of the positive degree in the feminine too, whose
+            # accusative is 'fallega'. Keep the forms that have the degree and
+            # declension of the chosen reading ('MST'; 'FSB', 'FVB'; 'ESB',
+            # 'EVB')...
+            degree = adj_degree(m_word.mark)
+            mm = [m for m in mm if adj_degree(m.mark) == degree]
+            # ...and where there are alternative forms ('snotrari' and
+            # 'snoturri', marked 'MST-KK-NFET' and 'MST-KK-NFET2'), put the
+            # ones of the same series first
+            variant = m_word.mark[-1:] if m_word.mark[-1:] in ("2", "3") else ""
+            mm.sort(
+                key=lambda m: (m.mark[-1:] if m.mark[-1:] in ("2", "3") else "")
+                != variant
+            )
         else:
             # Sort the matching entries in reverse order by score
             mm = sorted(mm, key=score, reverse=True)

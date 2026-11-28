@@ -757,6 +757,30 @@ def test_casting() -> None:
     assert not db.contains("afburðaleiðinlegt")
     assert db.cast_to_dative("afburðaleiðinlegt") == "afburðaleiðinlegu"
     assert db.cast_to_genitive("afburðaheimskuleg") == "afburðaheimskulegrar"
+    # A comparative is cast as a comparative, also where it has the same form
+    # as the dative of the positive degree in the feminine ('fallegri konu'),
+    # whose accusative and genitive are 'fallega' and 'fallegrar'
+    for w in ("fallegri", "gagnsærri", "trúverðugri", "sólbrúnni", "stærri"):
+        assert db.cast_to_accusative(w) == w
+        assert db.cast_to_dative(w) == w
+        assert db.cast_to_genitive(w) == w
+    assert db.cast_to_accusative("fallegra") == "fallegra"
+    assert db.cast_to_accusative("afburðaleiðinlegri") == "afburðaleiðinlegri"
+    assert db.cast_to_genitive("vélgerðari") == "vélgerðari"
+    # Where a comparative has two forms, each is cast to itself
+    for w in ("snotrari", "snoturri", "bitrari", "biturri"):
+        assert db.cast_to_accusative(w) == w
+        assert db.cast_to_dative(w) == w
+        assert db.cast_to_genitive(w) == w
+    # The positive and the superlative are cast as before
+    assert db.cast_to_accusative("falleg") == "fallega"
+    assert db.cast_to_dative("falleg") == "fallegri"
+    assert db.cast_to_genitive("falleg") == "fallegrar"
+    assert db.cast_to_accusative("fallegastur") == "fallegastan"
+    assert db.cast_to_dative("fallegastur") == "fallegustum"
+    assert db.cast_to_dative("stóra") == "stóra"
+    f = lambda mm: [m for m in mm if "KVK" in m.mark]
+    assert db.cast_to_dative("stóra", filter_func=f) == "stóru"
     # A compound whose last part is a suffix-only entry ('-isti' and '-rænn'
     # in ord.suffixes.csv) is cast like any other compound
     assert db.cast_to_accusative("pönkisti") == "pönkista"

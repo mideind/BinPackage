@@ -735,6 +735,138 @@ def test_casting() -> None:
         == "borgarstjórnarofurmeirihlutans"
     )
 
+    # A compound that is not in BÍN, whose last part is both a noun and an
+    # adjective form, is cast as the noun ('dýr' the animal, not 'dýr' dear)
+    assert not db.contains("véldýr")
+    assert db.cast_to_accusative("véldýr") == "véldýr"
+    assert db.cast_to_dative("véldýr") == "véldýri"
+    assert db.cast_to_genitive("véldýr") == "véldýrs"
+    assert db.cast_to_dative("vélhljóð") == "vélhljóði"
+    # A word that is in BÍN is still cast as an adjective if it can be one
+    assert db.cast_to_dative("gul") == "gulri"
+    # A compound adjective is cast without the hyphen that the compounder
+    # puts at the boundary it finds
+    assert not db.contains("vélgerður")
+    assert db.cast_to_accusative("vélgerður") == "vélgerðan"
+    assert db.cast_to_dative("vélgerður") == "vélgerðum"
+    assert db.cast_to_genitive("vélgerður") == "vélgerðs"
+    assert db_nh.cast_to_dative("vélgerður") == "vélgerðum"
+    assert db.cast_to_dative("vélgerða") == "vélgerðu"
+    # The same goes for an adjective in '-legur' that is not in BÍN, which
+    # the case lookup resolves as a compound
+    assert not db.contains("afburðaleiðinlegt")
+    assert db.cast_to_dative("afburðaleiðinlegt") == "afburðaleiðinlegu"
+    assert db.cast_to_genitive("afburðaheimskuleg") == "afburðaheimskulegrar"
+    # A comparative is cast as a comparative, also where it has the same form
+    # as the dative of the positive degree in the feminine ('fallegri konu'),
+    # whose accusative and genitive are 'fallega' and 'fallegrar'
+    for w in ("fallegri", "gagnsærri", "trúverðugri", "sólbrúnni", "stærri"):
+        assert db.cast_to_accusative(w) == w
+        assert db.cast_to_dative(w) == w
+        assert db.cast_to_genitive(w) == w
+    assert db.cast_to_accusative("fallegra") == "fallegra"
+    assert db.cast_to_accusative("afburðaleiðinlegri") == "afburðaleiðinlegri"
+    assert db.cast_to_genitive("vélgerðari") == "vélgerðari"
+    # Where a comparative has two forms, each is cast to itself
+    for w in ("snotrari", "snoturri", "bitrari", "biturri"):
+        assert db.cast_to_accusative(w) == w
+        assert db.cast_to_dative(w) == w
+        assert db.cast_to_genitive(w) == w
+    # The positive and the superlative are cast as before
+    assert db.cast_to_accusative("falleg") == "fallega"
+    assert db.cast_to_dative("falleg") == "fallegri"
+    assert db.cast_to_genitive("falleg") == "fallegrar"
+    assert db.cast_to_accusative("fallegastur") == "fallegastan"
+    assert db.cast_to_dative("fallegastur") == "fallegustum"
+    assert db.cast_to_dative("stóra") == "stóra"
+    f = lambda mm: [m for m in mm if "KVK" in m.mark]
+    assert db.cast_to_dative("stóra", filter_func=f) == "stóru"
+    # A compound whose last part is a suffix-only entry ('-isti' and '-rænn'
+    # in ord.suffixes.csv) is cast like any other compound
+    assert db.cast_to_accusative("pönkisti") == "pönkista"
+    assert db.cast_to_dative("pönkistar") == "pönkistum"
+    assert db.cast_to_genitive("Pönkistinn") == "Pönkistans"
+    assert db_nh.cast_to_dative("pönkistar") == "pönkistum"
+    assert db.cast_to_dative("pönkrænn") == "pönkrænum"
+    # The suffix alone is not a word
+    assert db.cast_to_dative("isti") == "isti"
+
+
+def test_contains_and_hidden_entries() -> None:
+    """contains() and the 'in' operator are true for the word forms that
+    lookup() finds an entry for. The data file also holds the Greynir
+    vocabulary, which plain Bin does not return, and the suffix-only entries;
+    neither makes a word 'contained', nor keeps the compounder from it."""
+    b = Bin()
+    g = GreynirBin()
+    assert b.contains("hestur") and "hestur" in b
+    assert g.contains("hestur") and "hestur" in g
+    assert not b.contains("xyzzy") and "xyzzy" not in g
+    # 'instagram' is Greynir vocabulary: hidden from Bin, visible in GreynirBin
+    assert not b.lookup("instagram")[1]
+    assert not b.contains("instagram") and "instagram" not in b
+    assert g.lookup("instagram")[1]
+    assert g.contains("instagram") and "instagram" in g
+    # A suffix-only entry is not a word in either class
+    for db in (b, g):
+        assert not db.lookup("isti")[1]
+        assert not db.contains("isti") and "isti" not in db
+        assert not db.lookup_dative("isti")
+        assert not db.lookup_forms("isti", "kk", "þgf")
+    # 'raddskipun' is Greynir vocabulary, and plain Bin resolves it as a
+    # compound: so do its case lookups, as lookup() does
+    assert not b.contains("raddskipun")
+    assert {(m.ord, m.bin_id) for m in b.lookup("raddskipun")[1]} == {
+        ("radd-skipun", 0)
+    }
+    assert [m.bmynd for m in b.lookup_genitive("raddskipun")] == ["radd-skipunar"]
+    assert {m.bmynd for m in b.lookup_forms("raddskipun", "kvk", "ef")} >= {
+        "radd-skipunar",
+        "radd-skipana",
+    }
+    assert b.cast_to_genitive("raddskipun") == "raddskipunar"
+    assert g.contains("raddskipun")
+    assert {m.ord for m in g.lookup("raddskipun")[1]} == {"raddskipun"}
+    assert g.cast_to_genitive("raddskipun") == "raddskipunar"
+    # With compounding off, plain Bin does not know the word at all
+    nb = Bin(add_compounds=False)
+    assert not nb.contains("raddskipun")
+    assert not nb.lookup("raddskipun")[1]
+    assert not nb.lookup_genitive("raddskipun")
+    # A cast keeps the hyphens of the word and adds none
+    assert b.cast_to_dative("Vestur-vélhundur") == "Vestur-vélhundi"
+    assert b.cast_to_dative("Vestur-hestur") == "Vestur-hesti"
+
+
+def test_case_lookup_of_suffix_only_compounds() -> None:
+    """The case lookups resolve a compound whose last part is a suffix-only
+    entry (birting 'S', from ord.suffixes.csv), as lookup() does. Such
+    entries have bin_ids in the Greynir-specific range, which plain Bin
+    otherwise leaves out."""
+    for db in (Bin(), GreynirBin()):
+        _, m = db.lookup("pönkisti")
+        assert {(mm.ord, mm.ofl, mm.bin_id) for mm in m} == {("pönk-isti", "kk", 0)}
+        assert [mm.bmynd for mm in db.lookup_nominative("pönkistanum")] == [
+            "pönk-istinn"
+        ]
+        assert [mm.bmynd for mm in db.lookup_accusative("pönkisti")] == ["pönk-ista"]
+        assert [mm.bmynd for mm in db.lookup_dative("pönkistar")] == ["pönk-istum"]
+        assert [mm.bmynd for mm in db.lookup_genitive("pönkistinn")] == [
+            "pönk-istans"
+        ]
+        assert {mm.bmynd for mm in db.lookup_forms("pönkisti", "kk", "ef")} == {
+            "pönk-ista",
+            "pönk-istans",
+            "pönk-istanna",
+        }
+        assert {mm.bmynd for mm in db.lookup_dative("pönkrænn")} == {"pönk-rænum"}
+    # The suffix alone is not a word in BÍN
+    db = Bin()
+    assert not db.lookup("isti")[1]
+    assert not db.lookup_dative("isti")
+    assert not db.lookup_forms("isti", "kk", "ef")
+    assert not db.lookup_dative("pönk-isti")
+
 
 def test_capitalized_word_in_bin_not_compounded() -> None:
     """A capitalized surface form (e.g. an address or sentence-initial word)

@@ -40,6 +40,7 @@
 
 from typing import (
     AbstractSet,
+    FrozenSet,
     Mapping,
     Optional,
     Callable,
@@ -56,7 +57,7 @@ from typing_extensions import Protocol
 
 import re
 import threading
-from functools import lru_cache
+from functools import lru_cache, partial
 from pathlib import Path
 
 from .basics import (
@@ -136,6 +137,10 @@ class CaseFunc(Protocol):
     ) -> BinEntryList:
         ...
 
+
+# The first part of an adjective's inflection mark: positive, comparative
+# and superlative degree, the first and last in strong and weak declension
+_ADJ_DEGREES = frozenset(("FSB", "FVB", "MST", "ESB", "EVB"))
 
 # Size of LRU caches for word lookups
 CACHE_SIZE = 512
@@ -269,9 +274,14 @@ class Bin:
             for r in mlist
         ]
 
-    def _filter_meanings(self, mtlist: Iterable[BinEntryTuple]) -> BinEntryList:
+    def _filter_meanings(
+        self,
+        mtlist: Iterable[BinEntryTuple],
+        suffix_ids: AbstractSet[int] = frozenset(),
+    ) -> BinEntryList:
         """Default mapping function to make BinEntry instances
-        from EntryTuples coming from BinCompressed"""
+        from EntryTuples coming from BinCompressed. The entries with a
+        bin_id in suffix_ids are kept: see _suffix_only_ids()."""
         assert self._bc is not None
         max_utg = self._bc.begin_greynir_utg
         return [
@@ -279,8 +289,38 @@ class Bin:
             for mt in mtlist
             # Only return entries with bin_id numbers below the Greynir-specific mark,
             # i.e. skip entries that are Greynir-specific
-            if mt[1] < max_utg
+            if mt[1] < max_utg or mt[1] in suffix_ids
         ]
+
+    def _suffix_only_ids(self, w: str, compound: bool = True) -> FrozenSet[int]:
+        """Return the bin_ids of the suffix-only entries (birting 'S', from
+        ord.suffixes.csv) that have the given word form, if it is the last
+        part of a compound. These bin_ids are in the Greynir-specific range,
+        and a BinEntryTuple has no 'birting' field to tell them from the
+        Greynir vocabulary, so the case lookups pass this set to
+        _filter_meanings() to keep the forms of '-isti' in 'pönk-isti'."""
+        if not compound:
+            # A suffix-only entry is not a word on its own
+            return frozenset()
+        cached = self._ksnid_cache.lookup(w, self._cached_lookup)
+        return frozenset(k.bin_id for k in cached.ksnid if k.birting == "S")
+
+    def _case_meanings(
+        self, w: str, mtlist: Iterable[BinEntryTuple], compound: bool
+    ) -> BinEntryList:
+        """Make BinEntry instances from the result of a case lookup of the
+        word form w. Suffix-only entries count if w is the last part of a
+        compound, and only then: GreynirBin, which sees the Greynir-specific
+        entries, would otherwise return 'passara' for 'passari' alone."""
+        m = self._filter_meanings(mtlist, self._suffix_only_ids(w, compound))
+        if compound:
+            return m
+        assert self._bc is not None
+        max_utg = self._bc.begin_greynir_utg
+        if not any(e.bin_id >= max_utg for e in m):
+            return m
+        suffix_ids = self._suffix_only_ids(w)
+        return [e for e in m if e.bin_id not in suffix_ids]
 
     def _filter_ksnid(self, klist: Iterable[Ksnid]) -> KsnidList:
         """Default mapping function to make Ksnid instances
@@ -594,15 +634,40 @@ class Bin:
         lookup_func: TupleLookupFunc[BinEntry],
         case_func: CaseFunc,
         filter_func: Optional[BinFilterFunc],
+        head_func: Optional[CaseFunc] = None,
     ) -> str:
         """Return a word after casting it from nominative to another case,
-        as returned by the case_func"""
+        as returned by the case_func. The head_func, if given, is used
+        instead of the case_func for the last part of a compound."""
+        if head_func is None:
+            head_func = case_func
 
         def score(m: BinEntry) -> int:
             """Return a score for a noun word form, based on the
             [noun_preferences] section in Prefs.conf"""
             sc = NounPreferences.DICT.get(m.bmynd.split("-")[-1])
             return 0 if sc is None else sc.get(m.ofl, 0)
+
+        def cast_last_part(m: BinEntry) -> BinEntryList:
+            """Cast a word that the compounder resolved, such as 'vél-hundur':
+            cast its last part, which is always in BÍN as-is or a suffix-only
+            entry ('pönk-isti'), and put the first parts back in front of it,
+            without the hyphens that the compounder inserted to mark the
+            boundaries it found"""
+            cw = m.bmynd.split("-")
+            return Bin._prefix_meanings(
+                head_func(cw[-1], cat=m.ofl, lemma=m.ord.split("-")[-1]),
+                "".join(cw[0:-1]),
+                make_bin_entry,
+                insert_hyphen=False,
+            )
+
+        def adj_degree(mark: str) -> str:
+            """Return the degree and declension of an adjective form from its
+            inflection mark ('MST' from 'MST-KK-NFET'), or an empty string if
+            the mark has none, as for an ordinal in GreynirBin"""
+            first = mark.split("-", maxsplit=1)[0]
+            return first if first in _ADJ_DEGREES else ""
 
         mm: BinEntryList
 
@@ -613,14 +678,40 @@ class Bin:
             return w
         # Check whether this is (or might be) an adjective
         m_word = next((m for m in mm if m.ofl == "lo" and "NF" in m.mark), None)
+        if (
+            m_word is not None
+            and m_word.bin_id == 0
+            and any(m.ofl in {"kk", "kvk", "hk"} and "NF" in m.mark for m in mm)
+        ):
+            # A word that is not in BÍN as such but was resolved as a compound,
+            # and its last part is both a noun and an adjective form: prefer
+            # the noun ('véldýr' is 'vél-dýr' the animal, 'brottvísunarstöð'
+            # is not a form of the adjective 'staður')
+            m_word = None
         if m_word is not None:
             # This is an adjective: find its forms
             # in the requested case ("Gul gata", "Stjáni blái")
-            mm = case_func(m_word.bmynd, cat="lo", lemma=m_word.ord)
-            if "VB" in m_word.mark:
-                mm = [m for m in mm if "VB" in m.mark]
-            elif "SB" in m_word.mark:
-                mm = [m for m in mm if "SB" in m.mark]
+            if "-" in m_word.bmynd and "-" not in w:
+                # A compound adjective, such as 'vél-gerður'
+                mm = cast_last_part(m_word)
+            else:
+                mm = case_func(m_word.bmynd, cat="lo", lemma=m_word.ord)
+            # The case lookup starts from every reading of the word form, also
+            # the ones that are not nominative: 'fallegri' is the comparative,
+            # but the dative of the positive degree in the feminine too, whose
+            # accusative is 'fallega'. Keep the forms that have the degree and
+            # declension of the chosen reading ('MST'; 'FSB', 'FVB'; 'ESB',
+            # 'EVB')...
+            degree = adj_degree(m_word.mark)
+            mm = [m for m in mm if adj_degree(m.mark) == degree]
+            # ...and where there are alternative forms ('snotrari' and
+            # 'snoturri', marked 'MST-KK-NFET' and 'MST-KK-NFET2'), put the
+            # ones of the same series first
+            variant = m_word.mark[-1:] if m_word.mark[-1:] in ("2", "3") else ""
+            mm.sort(
+                key=lambda m: (m.mark[-1:] if m.mark[-1:] in ("2", "3") else "")
+                != variant
+            )
         else:
             # Sort the matching entries in reverse order by score
             mm = sorted(mm, key=score, reverse=True)
@@ -639,15 +730,7 @@ class Bin:
             if "-" in m_word.bmynd and "-" not in w:
                 # Composite word (and not something like 'Vestur-Þýskaland', which
                 # is in BÍN including the hyphen): use the meaning of its last part
-                cw = m_word.bmynd.split("-")
-                prefix = "".join(cw[0:-1])
-                # No need to think about upper or lower case here,
-                # since the last part of a compound word is always in BÍN as-is
-                mm = case_func(cw[-1], cat=m_word.ofl, lemma=m_word.ord.split("-")[-1])
-                # Add the prefix to the remaining word lemmas
-                mm = Bin._prefix_meanings(
-                    mm, prefix, make_bin_entry, insert_hyphen=False
-                )
+                mm = cast_last_part(m_word)
             else:
                 mm = case_func(w, cat=m_word.ofl, lemma=m_word.ord)
                 if not mm and w[0].isupper() and not w.isupper():
@@ -666,6 +749,14 @@ class Bin:
                 mm = filter_func(mm)
             if mm:
                 o = mm[0].bmynd
+                n = w.count("-")
+                if o.count("-") > n:
+                    # The case lookup resolved the word as a compound and
+                    # marked the boundaries it found ('afburða-leiðinlegu',
+                    # 'Vestur-vél-hundi'): those hyphens are not part of the
+                    # word. The hyphens of the word itself come first.
+                    parts = o.split("-")
+                    o = "-".join(parts[:n] + ["".join(parts[n:])])
                 # Imitate the case of the original word
                 if w.isupper():
                     o = o.upper()
@@ -678,15 +769,17 @@ class Bin:
 
     def __contains__(self, w: str) -> bool:
         """Returns True if the given word form is found in BÍN"""
-        # Note that this does not fall back to the word compounder
-        assert self._bc is not None
-        return self._bc.contains(w)
+        return self.contains(w)
 
     def contains(self, w: str) -> bool:
-        """Returns True if the given word form is found in BÍN"""
-        # Note that this does not fall back to the word compounder
+        """Returns True if the given word form is found in BÍN, i.e. if
+        lookup() finds an entry for it without generating one: this does not
+        fall back to the word compounder. The data file also holds entries
+        that this class does not return, such as the Greynir vocabulary in
+        plain Bin and the suffix-only entries; they do not count."""
         assert self._bc is not None
-        return self._bc.contains(w)
+        # The trie answers most negatives without a lookup
+        return self._bc.contains(w) and bool(self._ksnid_cache_lookup(w))
 
     @staticmethod
     def open_cats(mlist: Iterable[_T]) -> List[_T]:
@@ -785,11 +878,13 @@ class Bin:
         assert self._bc is not None
         bc: BinCompressed = self._bc
         norm_case = case.upper().replace("GR", "gr")
-        m = self._filter_meanings(
-            bc.lookup_case(lemma, norm_case, lemma=lemma, cat=cat, all_forms=True)
+        m = self._case_meanings(
+            lemma,
+            bc.lookup_case(lemma, norm_case, lemma=lemma, cat=cat, all_forms=True),
+            False,
         )
-        if m or bc.contains(lemma) or (
-            lemma != lemma.lower() and bc.contains(lemma.lower())
+        if m or self.contains(lemma) or (
+            lemma != lemma.lower() and self.contains(lemma.lower())
         ):
             # Either the lemma was found, or it is present in BÍN as a non-lemma
             # surface form (and thus deliberately yields nothing here): only a
@@ -800,10 +895,15 @@ class Bin:
 
         def suffix_forms_lookup(key: str, compound: bool = False) -> BinEntryList:
             """Enumerate the forms of a compound head (the last component),
-            in the requested case. The head is a genuine BÍN word, so no
-            further compounding or lemma/id constraints apply."""
-            return self._filter_meanings(
-                bc.lookup_case(key, norm_case, cat=cat, all_forms=True)
+            in the requested case. The head is a genuine BÍN word or a
+            suffix-only entry, so no further compounding or lemma/id
+            constraints apply."""
+            if not compound and not self.contains(key):
+                # Not a part of a compound but the word itself, and it is
+                # not a word that this class returns
+                return []
+            return self._case_meanings(
+                key, bc.lookup_case(key, norm_case, cat=cat, all_forms=True), compound
             )
 
         return self._compound_case(lemma, suffix_forms_lookup)
@@ -915,19 +1015,26 @@ class Bin:
         indefinite: bool = False,
         all_forms: bool = False,
         inflection_filter: Optional[InflectionFilter] = None,
+        compound_head: bool = False,
     ) -> BinEntryList:
-        """Shared implementation of lookup_nominative/accusative/dative/genitive."""
+        """Shared implementation of lookup_nominative/accusative/dative/genitive.
+        If compound_head is True, w is the last part of a compound, where
+        suffix-only entries count as well."""
         assert self._bc is not None
-        m = self._filter_meanings(case_func(
+        m = self._case_meanings(
             w,
-            cat=cat,
-            lemma=lemma,
-            utg=bin_id,
-            singular=singular,
-            indefinite=indefinite,
-            all_forms=all_forms,
-            inflection_filter=inflection_filter,
-        ))
+            case_func(
+                w,
+                cat=cat,
+                lemma=lemma,
+                utg=bin_id,
+                singular=singular,
+                indefinite=indefinite,
+                all_forms=all_forms,
+                inflection_filter=inflection_filter,
+            ),
+            compound_head,
+        )
         if (
             m
             or bin_id is not None
@@ -951,16 +1058,24 @@ class Bin:
             """Case forms of a compound head. The whole-word lemma/bin_id are
             not propagated here, as they identify the compound, not its head;
             the cat constraint, however, does apply to the head."""
-            return self._filter_meanings(case_func(
+            if not compound and not self.contains(key):
+                # Not a part of a compound but the word itself, and it is
+                # not a word that this class returns
+                return []
+            return self._case_meanings(
                 key,
-                cat=cat,
-                lemma=None,
-                utg=None,
-                singular=singular,
-                indefinite=indefinite,
-                all_forms=all_forms,
-                inflection_filter=inflection_filter,
-            ))
+                case_func(
+                    key,
+                    cat=cat,
+                    lemma=None,
+                    utg=None,
+                    singular=singular,
+                    indefinite=indefinite,
+                    all_forms=all_forms,
+                    inflection_filter=inflection_filter,
+                ),
+                compound,
+            )
 
         m = self._compound_case(w, suffix_case_lookup)
         if lemma is not None:
@@ -1082,11 +1197,15 @@ class Bin:
         # by necessity simplistic; for instance it does not know whether
         # an adjective is being used with an indefinite or definite noun,
         # or whether a word such as 'við' is actually a preposition.
+        assert self._bc is not None
         return self._cast_to_case(
             w,
             self._lookup_keep_hyphens,
             self.lookup_accusative,
             filter_func=filter_func,
+            head_func=partial(
+                self._lookup_case, self._bc.accusative, compound_head=True
+            ),
         )
 
     def cast_to_dative(
@@ -1098,11 +1217,15 @@ class Bin:
         # by necessity simplistic; for instance it does not know whether
         # an adjective is being used with an indefinite or definite noun,
         # or whether a word such as 'við' is actually a preposition.
+        assert self._bc is not None
         return self._cast_to_case(
             w,
             self._lookup_keep_hyphens,
             self.lookup_dative,
             filter_func=filter_func,
+            head_func=partial(
+                self._lookup_case, self._bc.dative, compound_head=True
+            ),
         )
 
     def cast_to_genitive(
@@ -1114,11 +1237,15 @@ class Bin:
         # by necessity simplistic; for instance it does not know whether
         # an adjective is being used with an indefinite or definite noun,
         # or whether a word such as 'við' is actually a preposition.
+        assert self._bc is not None
         return self._cast_to_case(
             w,
             self._lookup_keep_hyphens,
             self.lookup_genitive,
             filter_func=filter_func,
+            head_func=partial(
+                self._lookup_case, self._bc.genitive, compound_head=True
+            ),
         )
 
     def get_compound(
@@ -1219,10 +1346,15 @@ class GreynirBin(Bin):
                 GreynirBin.bin_deletions = BinDeletions.SET
                 GreynirBin.bin_errata = BinErrata.DICT
 
-    def _filter_meanings(self, mtlist: Iterable[BinEntryTuple]) -> BinEntryList:
+    def _filter_meanings(
+        self,
+        mtlist: Iterable[BinEntryTuple],
+        suffix_ids: AbstractSet[int] = frozenset(),
+    ) -> BinEntryList:
         """Override the default straight-through translation of
         a BinEntryTuple from BinCompressed over to a BinEntry
-        returned from Bin/GreynirBin"""
+        returned from Bin/GreynirBin. The Greynir-specific entries are
+        all visible here, so suffix_ids is not needed."""
         result: BinEntryList = []
         for mt in mtlist:
             if (mt[0], mt[2], mt[3]) in self.bin_deletions:

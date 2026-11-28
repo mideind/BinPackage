@@ -159,11 +159,31 @@ and `cast_to_*` did not, because `Bin._filter_meanings` drops every bin_id
 in the Greynir range, and suffix-only entries have such ids. The case
 lookups now keep them for the last part of a compound
 (`Bin._suffix_only_ids`), so `Bin` and `GreynirBin` agree on these words.
-Left as they were: a head that is both a BÍN word and a suffix-only entry
-(`beri`, `gjafi`) gives each form twice, in `lookup` too; `Bin.contains` is
-true for suffix-only forms and Greynir vocabulary; and plain `Bin` returns
-nothing from the case lookups for a word that it resolves as a compound but
-that is also Greynir vocabulary (*vélarmur*), though `cast_to_*` casts it.
+Left as they were: `Bin.contains` is true for suffix-only forms and Greynir
+vocabulary; and plain `Bin` returns nothing from the case lookups for a word
+that it resolves as a compound but that is also Greynir vocabulary
+(*vélarmur*), though `cast_to_*` casts it.
+
+Suffix-only entries that BÍN also has (`ord.suffixes.csv`, data): `beri`,
+`gjafi` and `stýra` repeated BÍN entries form for form, so every compound of
+them got each reading twice (the compounder sets bin_id to 0, which was the
+only difference). They are deleted; the forms stay in `suffixes.txt`, so the
+compounds resolve as before, from the BÍN entry. The set of lemmas that the
+compact build drops did not change. `test_suffix_only_entries_are_not_in_bin`
+fails when a suffix-only entry has no form that a BÍN entry of the same
+lemma and category lacks. Before adding a suffix-only entry, look the lemma
+up in BÍN.
+
+`sær` (lo) stays whole, 120 forms, although BÍN has its 48 positive forms
+(bin_id 494909): BÍN lacks the comparative and superlative. Tried on
+2026-11-28: with the entry cut down to the 72 forms that BÍN lacks, every
+form of *tölvusær* is still found, but `lookup_variants` no longer gets from
+the positive to the comparative or superlative or back, because it stays
+within one bin_id and the paradigm is then split over two. So a suffix-only
+entry must hold the whole paradigm. Readings still come twice where BÍN
+itself has two entries of one lemma and category (`sær` 494909 and 561848,
+the verb `bera`, `ró`); only removing duplicates in the code
+(`Bin._prefix_meanings`) would end that, and it has not been done.
 
 Rules for a suffix form (a form lets any unknown 'known prefix + form' pass
 as a compound, and the longest last part wins the split):

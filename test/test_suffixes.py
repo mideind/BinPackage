@@ -15,7 +15,7 @@
 """
 
 from pathlib import Path
-from typing import Set
+from typing import Dict, Set, Tuple
 
 import pytest
 
@@ -187,6 +187,46 @@ def test_suffix_only_entries() -> None:
     # A compound that BÍN has is found there, not composed
     _, m = b.lookup("kúluvarpari")
     assert m and all(mm.ord == "kúluvarpari" and mm.bin_id > 0 for mm in m)
+
+
+def test_suffix_only_entries_are_not_in_bin() -> None:
+    """A suffix-only entry that repeats a BÍN entry (same lemma, same
+    category, no form that BÍN lacks) adds nothing, and gives every compound
+    of it each reading twice. 'beri', 'gjafi' and 'stýra' were such entries."""
+    csv = Path(__file__).parent.parent / "src/islenska/resources/ord.suffixes.csv"
+    entries: Dict[Tuple[str, str], Set[Tuple[str, str]]] = {}
+    for line in csv.read_text(encoding="utf-8").splitlines():
+        if not line.strip() or line.startswith("#"):
+            continue
+        lemma, _, ofl, _, form, mark = line.split(";")[:6]
+        entries.setdefault((lemma, ofl), set()).add((form, mark))
+    assert ("isti", "kk") in entries
+    b = Bin()
+    for (lemma, ofl), forms in entries.items():
+        # Bin.lookup_ksnid() returns the BÍN entries only
+        for bin_id in {
+            k.bin_id for k in b.lookup_ksnid(lemma)[1] if (k.ord, k.ofl) == (lemma, ofl)
+        }:
+            bin_forms = {(k.bmynd, k.mark) for k in b.lookup_id(bin_id)}
+            assert not forms <= bin_forms, f"{lemma} ({ofl}) is BÍN entry {bin_id}"
+    # A compound of such a word gets each reading of it once, from the BÍN
+    # entry. (Other readings can still come twice, where BÍN itself has two
+    # entries of one lemma and category: the verb 'bera' in 'pönk-bera'.)
+    for w, lemma, ofl in (
+        ("barnagjafi", "barna-gjafi", "kk"),
+        ("pönkbera", "pönk-beri", "kk"),
+        ("hundastýrunnar", "hunda-stýra", "kvk"),
+    ):
+        for mm in (
+            b.lookup(w)[1],
+            b.lookup_dative(w, all_forms=True),
+            b.lookup_forms(lemma.replace("-", ""), ofl, "ef"),
+        ):
+            m = [e for e in mm if (e.ord, e.ofl) == (lemma, ofl)]
+            assert m, w
+            assert len(m) == len(set(m)), w
+    assert b.cast_to_dative("barnagjafi") == "barnagjafa"
+    assert b.cast_to_genitive("hundastýra") == "hundastýru"
 
 
 def test_agent_nouns_in_vocabulary() -> None:
